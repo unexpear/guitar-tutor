@@ -39,3 +39,15 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# signing
+keystore.properties
+
+# built APKs
+app-release.apk
+*.apk
+
+# never commit the encoded keystore either
+docs/KEYSTORE-BASE64.txt
+keystore-base64.txt
+*.keystore

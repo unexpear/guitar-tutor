@@ -1,0 +1,566 @@
+import React, { useState, useCallback, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  Pressable,
+  FlatList,
+  SectionList,
+  useWindowDimensions,
+} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  cancelAnimation,
+  interpolate,
+  Easing,
+} from 'react-native-reanimated';
+import { useTuner } from '../../features/tuner/hooks/useTuner';
+import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
+import {
+  TUNING_PRESETS,
+  TuningPreset,
+} from '../../features/tuner/data/tunings';
+import { Colors, CARD_SHADOW, centsToColor } from '../../constants/Colors';
+import PressableScale from '../../components/PressableScale';
+import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
+
+const SECTIONS = [
+  {
+    title: 'Acoustic',
+    data: TUNING_PRESETS.filter((p) => p.guitarType === 'acoustic'),
+  },
+  {
+    title: 'Electric',
+    data: TUNING_PRESETS.filter((p) => p.guitarType === 'electric'),
+  },
+];
+
+export default function TunerScreen() {
+  const { width, height } = useWindowDimensions();
+  const [tuning, setTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const pulseValue = useSharedValue(1);
+
+  const tuner = useTuner(tuning);
+  const { playNote } = useGuitarSound();
+
+  // Peg labels follow the selected tuning (e.g. Drop D shows D A D G B E).
+  const stringLabels = tuning.strings.map((n, i) => {
+    const name = n.replace(/\d/g, '');
+    return i === tuning.strings.length - 1 ? name.toLowerCase() : name;
+  });
+
+  const isTuned =
+    tuner.isActive && tuner.stringIndex !== null && Math.abs(tuner.cents) <= 5;
+
+  const centsColor = tuner.isActive ? centsToColor(tuner.cents) : Colors.dark.muted;
+  const noteColor = isTuned ? Colors.success : Colors.dark.text;
+
+  const centsDisplay = tuner.isActive
+    ? tuner.cents > 0
+      ? `+${tuner.cents}`
+      : `${tuner.cents}`
+    : '0';
+  const centsLabel = Math.abs(tuner.cents) <= 5
+    ? 'In Tune'
+    : tuner.cents > 0
+    ? 'Sharp'
+    : 'Flat';
+
+  const startPulse = useCallback(() => {
+    pulseValue.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      false,
+    );
+  }, [pulseValue]);
+
+  const stopPulse = useCallback(() => {
+    cancelAnimation(pulseValue);
+    pulseValue.value = withTiming(1, { duration: 200 });
+  }, [pulseValue]);
+
+  const handleToggleTuning = useCallback(() => {
+    tuner.toggleListening();
+  }, [tuner.toggleListening]);
+
+  useEffect(() => {
+    if (tuner.isActive) {
+      startPulse();
+    } else {
+      stopPulse();
+    }
+  }, [tuner.isActive, startPulse, stopPulse]);
+
+  const handleSelectTuning = useCallback(
+    (preset: TuningPreset) => {
+      setTuning(preset);
+      setPickerVisible(false);
+    },
+    [],
+  );
+
+  const handlePlayReference = useCallback(
+    (note: string) => {
+      playNote(note);
+    },
+    [playNote],
+  );
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseValue.value }],
+  }));
+
+  const circleSize = Math.min(width * 0.12, 48);
+  const noteFontSize = Math.min(width * 0.28, 120);
+  const centsFontSize = Math.min(width * 0.06, 28);
+  const headstockHeight = Math.min(height * 0.28, 280);
+  const headstockWidth = headstockHeight * (200 / 320);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.topArea}>
+        <PressableScale
+          onPress={() => setPickerVisible(true)}
+          style={styles.tuningIndicator}
+          accessibilityLabel={`Current tuning: ${tuning.name}. Tap to change tuning.`}
+          accessibilityRole="button"
+        >
+          <Text style={styles.tuningLabel}>{tuning.name}</Text>
+          <Text style={styles.tuningChevron}>v</Text>
+        </PressableScale>
+      </View>
+
+      <View style={styles.stringsArea}>
+        <View style={styles.stringColumn}>
+          {stringLabels.map((label, i) => {
+            const isHighlighted = tuner.stringIndex === i;
+            return (
+              <PressableScale
+                key={`left-${i}`}
+                onPress={() => handlePlayReference(tuning.strings[i])}
+                style={[
+                  styles.stringCircle,
+                  {
+                    width: circleSize,
+                    height: circleSize,
+                    borderRadius: circleSize / 2,
+                    backgroundColor: isHighlighted
+                      ? Colors.success
+                      : Colors.dark.surfaceElevated,
+                  },
+                  isHighlighted && CARD_SHADOW,
+                ]}
+                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}. Tap to hear reference.`}
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.stringLabel,
+                    {
+                      color: isHighlighted
+                        ? '#fff'
+                        : Colors.dark.muted,
+                      fontSize: circleSize * 0.38,
+                    },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </PressableScale>
+            );
+          })}
+        </View>
+
+        <View style={styles.headstockArea}>
+          <HeadstockSvg
+            guitarType={tuning.guitarType}
+            highlightColor={Colors.success}
+            highlightedPeg={tuner.stringIndex ?? undefined}
+          />
+        </View>
+
+        <View style={styles.stringColumn}>
+          {stringLabels.map((label, i) => {
+            const isHighlighted = tuner.stringIndex === i;
+            return (
+              <PressableScale
+                key={`right-${i}`}
+                onPress={() => handlePlayReference(tuning.strings[i])}
+                style={[
+                  styles.stringCircle,
+                  {
+                    width: circleSize,
+                    height: circleSize,
+                    borderRadius: circleSize / 2,
+                    backgroundColor: isHighlighted
+                      ? Colors.success
+                      : Colors.dark.surfaceElevated,
+                  },
+                  isHighlighted && CARD_SHADOW,
+                ]}
+                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}. Tap to hear reference.`}
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.stringLabel,
+                    {
+                      color: isHighlighted
+                        ? '#fff'
+                        : Colors.dark.muted,
+                      fontSize: circleSize * 0.38,
+                    },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </PressableScale>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={styles.centerDisplay}>
+        <Text
+          style={[styles.noteText, { color: noteColor, fontSize: noteFontSize }]}
+          accessibilityLabel={
+            tuner.isActive
+              ? `Detected note: ${tuner.note}, ${centsLabel} by ${Math.abs(tuner.cents)} cents`
+              : 'Tuner inactive'
+          }
+        >
+          {tuner.note}
+        </Text>
+
+        <View style={styles.centsRow}>
+          <View style={styles.centsIndicatorContainer}>
+            <View style={styles.centsTrack}>
+              <View
+                style={[
+                  styles.centsNeedle,
+                  {
+                    left: `${50 + interpolate(
+                      tuner.cents,
+                      [-50, 50],
+                      [-50, 50],
+                    )}%`,
+                    backgroundColor: centsColor,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+          <Text style={[styles.centsValue, { color: centsColor, fontSize: centsFontSize }]}>
+            {centsDisplay}
+          </Text>
+          <Text style={[styles.centsUnit, { fontSize: centsFontSize * 0.6 }]}>
+            cents
+          </Text>
+        </View>
+        <Text style={[styles.centsLabel, { color: centsColor }]}>
+          {centsLabel}
+        </Text>
+      </View>
+
+      <View style={styles.bottomArea}>
+        <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
+          <PressableScale
+            onPress={handleToggleTuning}
+            style={[
+              styles.tuneButton,
+              {
+                backgroundColor: tuner.isActive
+                  ? Colors.dark.surfaceElevated
+                  : Colors.success,
+              },
+            ]}
+            accessibilityLabel={
+              tuner.isActive ? 'Stop tuning' : 'Tap to start tuning'
+            }
+            accessibilityRole="button"
+          >
+            <Text
+              style={[
+                styles.tuneButtonText,
+                { color: tuner.isActive ? Colors.dark.text : '#fff' },
+              ]}
+            >
+              {tuner.isActive ? 'Stop' : 'Tap to Tune'}
+            </Text>
+          </PressableScale>
+        </Animated.View>
+      </View>
+
+      <Modal
+        visible={pickerVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPickerVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setPickerVisible(false)}
+          accessibilityLabel="Close tuning picker"
+        >
+          <Pressable
+            style={styles.bottomSheet}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Select Tuning</Text>
+
+            <SectionList
+              sections={SECTIONS}
+              keyExtractor={(item) => `${item.guitarType}-${item.name}`}
+              stickySectionHeadersEnabled
+              renderSectionHeader={({ section }) => (
+                <Text style={styles.sectionHeader}>{section.title}</Text>
+              )}
+              renderItem={({ item }) => {
+                const isSelected =
+                  item.name === tuning.name &&
+                  item.guitarType === tuning.guitarType;
+                return (
+                  <PressableScale
+                    onPress={() => handleSelectTuning(item)}
+                    style={[
+                      styles.presetRow,
+                      isSelected && styles.presetRowSelected,
+                    ]}
+                    accessibilityLabel={`${item.name} tuning for ${item.guitarType} guitar${isSelected ? ', currently selected' : ''}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <View style={styles.presetInfo}>
+                      <Text
+                        style={[
+                          styles.presetName,
+                          isSelected && styles.presetNameSelected,
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text style={styles.presetStrings}>
+                        {item.strings.join(' - ')}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Text style={styles.checkmark}>✓</Text>
+                    )}
+                  </PressableScale>
+                );
+              }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f0f23',
+  },
+  topArea: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  tuningIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.dark.surfaceElevated,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  tuningLabel: {
+    color: Colors.dark.text,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  tuningChevron: {
+    color: Colors.dark.muted,
+    fontSize: 12,
+  },
+  stringsArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  stringColumn: {
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    flex: 0,
+  },
+  headstockArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 8,
+  },
+  stringCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  stringLabel: {
+    fontWeight: '700',
+  },
+  centerDisplay: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  noteText: {
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  centsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
+  },
+  centsIndicatorContainer: {
+    width: 120,
+    height: 4,
+    overflow: 'hidden',
+    borderRadius: 2,
+  },
+  centsTrack: {
+    flex: 1,
+    backgroundColor: Colors.dark.surfaceElevated,
+    borderRadius: 2,
+    position: 'relative',
+  },
+  centsNeedle: {
+    position: 'absolute',
+    top: -1,
+    width: 3,
+    height: 6,
+    borderRadius: 1.5,
+  },
+  centsValue: {
+    fontWeight: '700',
+    minWidth: 36,
+    textAlign: 'right',
+  },
+  centsUnit: {
+    color: Colors.dark.muted,
+    fontWeight: '500',
+  },
+  centsLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  bottomArea: {
+    alignItems: 'center',
+    paddingBottom: 24,
+    paddingTop: 8,
+  },
+  buttonContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  tuneButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 32,
+    minWidth: 220,
+    alignItems: 'center',
+    ...CARD_SHADOW,
+  },
+  tuneButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    backgroundColor: '#1a1a2e',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    paddingBottom: 32,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: Colors.dark.muted,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  sheetTitle: {
+    color: Colors.dark.text,
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    color: Colors.dark.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 6,
+    backgroundColor: '#1a1a2e',
+  },
+  presetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.dark.cardBorder,
+  },
+  presetRowSelected: {
+    backgroundColor: 'rgba(76,175,80,0.1)',
+  },
+  presetInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  presetName: {
+    color: Colors.dark.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  presetNameSelected: {
+    color: Colors.success,
+  },
+  presetStrings: {
+    color: Colors.dark.muted,
+    fontSize: 13,
+    fontWeight: '400',
+  },
+  checkmark: {
+    color: Colors.success,
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 12,
+  },
+});

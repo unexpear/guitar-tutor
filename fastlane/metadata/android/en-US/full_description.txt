@@ -1,0 +1,13 @@
+<b>StandardTune</b> is a free and open source guitar tuner and learning companion.
+
+Features:
+- Real-time guitar tuner with YIN pitch detection algorithm
+- GuitarTuna-style headstock visual with animated string feedback
+- 16 tuning presets (Standard, Drop D, Open G, DADGAD, and more)
+- Interactive chord library with finger positions and audio playback
+- Structured lessons from beginner to advanced
+- Fun mini-games to practice chord recognition and ear training
+- Built-in metronome with customizable tempo and time signatures
+- Dark theme optimized for low-light environments
+
+Built with React Native and Expo. Fully free and open source with no ads, no tracking, and no in-app purchases.
