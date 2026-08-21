@@ -17,6 +17,7 @@ import { useProgressStore } from '../../features/store/progressStore';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 import Questionnaire from '../../components/Questionnaire';
 import GuitarAnatomy from '../../components/GuitarAnatomy';
+import { LESSON_CONTENT } from '../../features/lessons/data/lessonContent';
 
 const TOTAL_LESSONS = 11;
 
@@ -284,42 +285,59 @@ function LessonDetail({
   onClose: () => void;
   onComplete: () => void;
 }) {
+  const sections = LESSON_CONTENT[lesson.id] ?? [];
+
   return (
     <View style={[styles.detailOverlay, styles.detailContainer]}>
       <View style={[styles.detailCard, CARD_SHADOW]}>
-        <View style={styles.detailHeader}>
-          <DifficultyDot difficulty={lesson.difficulty} />
-          <Text style={styles.detailDifficulty}>
-            {lesson.difficulty.charAt(0).toUpperCase() + lesson.difficulty.slice(1)}
-          </Text>
-        </View>
-
-        <Text style={styles.detailTitle}>{lesson.title}</Text>
-        <Text style={styles.detailDescription}>{lesson.description}</Text>
-
-        {completed && (
-          <View style={styles.completedBadge}>
-            <Text style={styles.completedBadgeText}>Completed</Text>
+        <ScrollView
+          style={styles.detailScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.detailHeader}>
+            <DifficultyDot difficulty={lesson.difficulty} />
+            <Text style={styles.detailDifficulty}>
+              {lesson.difficulty.charAt(0).toUpperCase() + lesson.difficulty.slice(1)}
+            </Text>
+            {completed && (
+              <View style={styles.completedBadge}>
+                <Text style={styles.completedBadgeText}>Completed</Text>
+              </View>
+            )}
           </View>
-        )}
 
-        <PressableScale
-          onPress={onComplete}
-          style={[styles.startButton, completed && styles.startButtonAgain]}
-          accessibilityLabel={completed ? 'Complete lesson again' : 'Start lesson'}
-        >
-          <Text style={styles.startButtonText}>
-            {completed ? 'Complete Again' : 'Start Lesson'}
-          </Text>
-        </PressableScale>
+          <Text style={styles.detailTitle}>{lesson.title}</Text>
+          <Text style={styles.detailDescription}>{lesson.description}</Text>
 
-        <PressableScale
-          onPress={onClose}
-          style={styles.closeButton}
-          accessibilityLabel="Close lesson detail"
-        >
-          <Text style={styles.closeButtonText}>Back to Lessons</Text>
-        </PressableScale>
+          {sections.map((section, i) => (
+            <View key={section.heading} style={styles.sectionBlock}>
+              <Text style={styles.sectionHeading}>
+                {i + 1}. {section.heading}
+              </Text>
+              <Text style={styles.sectionBody}>{section.body}</Text>
+            </View>
+          ))}
+
+          <PressableScale
+            onPress={onComplete}
+            style={[styles.startButton, completed && styles.startButtonAgain]}
+            accessibilityLabel={
+              completed ? 'Mark lesson complete again' : 'Mark lesson as complete'
+            }
+          >
+            <Text style={styles.startButtonText}>
+              {completed ? 'Mark Complete Again' : 'Mark as Complete'}
+            </Text>
+          </PressableScale>
+
+          <PressableScale
+            onPress={onClose}
+            style={styles.closeButton}
+            accessibilityLabel="Close lesson detail"
+          >
+            <Text style={styles.closeButtonText}>Back to Lessons</Text>
+          </PressableScale>
+        </ScrollView>
       </View>
     </View>
   );
@@ -632,9 +650,27 @@ const styles = StyleSheet.create({
     borderRadius: Colors.radius.xl,
     padding: Colors.spacing.xl,
     marginHorizontal: Colors.spacing.lg,
-    width: '100%',
+    width: '92%',
+    maxHeight: '85%',
     borderWidth: 1,
     borderColor: Colors.dark.cardBorder,
+  },
+  detailScroll: {
+    flexGrow: 0,
+  },
+  sectionBlock: {
+    marginBottom: Colors.spacing.md,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.dark.text,
+    marginBottom: 4,
+  },
+  sectionBody: {
+    fontSize: 14,
+    color: Colors.dark.muted,
+    lineHeight: 21,
   },
   detailHeader: {
     flexDirection: 'row',
@@ -660,12 +696,11 @@ const styles = StyleSheet.create({
     marginBottom: Colors.spacing.lg,
   },
   completedBadge: {
-    alignSelf: 'flex-start',
+    marginLeft: 'auto',
     backgroundColor: Colors.success,
     borderRadius: Colors.radius.sm,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    marginBottom: Colors.spacing.md,
   },
   completedBadgeText: {
     fontSize: 13,

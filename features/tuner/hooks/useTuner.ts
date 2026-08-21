@@ -5,12 +5,15 @@ import { TUNING_PRESETS, TuningPreset, noteToFrequency } from '../data/tunings';
 export interface TunerState {
   note: string;
   octave: number;
+  /** Deviation from the nearest chromatic note, -50..+50. */
   cents: number;
   frequency: number;
   confidence: number;
   isActive: boolean;
   stringIndex: number | null;
   nearestTarget: string | null;
+  /** Deviation from the matched string's target pitch, or null when no string matched. */
+  targetCents: number | null;
 }
 
 /** Max distance (in cents) from a string's target pitch to still highlight it. */
@@ -25,6 +28,7 @@ const IDLE_STATE: TunerState = {
   isActive: false,
   stringIndex: null,
   nearestTarget: null,
+  targetCents: null,
 };
 
 /**
@@ -73,17 +77,19 @@ export function useTuner(tuning: TuningPreset = TUNING_PRESETS[0]) {
 
     // Find the tuning string closest to the detected pitch (in cents).
     let nearestIdx: number | null = null;
-    let nearestCents = Infinity;
+    let nearestSignedCents = 0;
+    let nearestAbsCents = Infinity;
     for (let i = 0; i < stringFrequencies.length; i++) {
       const target = stringFrequencies[i];
       if (target <= 0) continue;
-      const cents = Math.abs(1200 * Math.log2(latest.frequency / target));
-      if (cents < nearestCents) {
-        nearestCents = cents;
+      const signed = 1200 * Math.log2(latest.frequency / target);
+      if (Math.abs(signed) < nearestAbsCents) {
+        nearestAbsCents = Math.abs(signed);
+        nearestSignedCents = signed;
         nearestIdx = i;
       }
     }
-    const withinRange = nearestIdx !== null && nearestCents <= STRING_MATCH_CENTS;
+    const withinRange = nearestIdx !== null && nearestAbsCents <= STRING_MATCH_CENTS;
 
     return {
       note: latest.noteName,
@@ -94,6 +100,7 @@ export function useTuner(tuning: TuningPreset = TUNING_PRESETS[0]) {
       isActive: true,
       stringIndex: withinRange ? nearestIdx : null,
       nearestTarget: withinRange && nearestIdx !== null ? tuning.strings[nearestIdx] : null,
+      targetCents: withinRange ? Math.round(nearestSignedCents) : null,
     };
   }, [latest, isRunning, stringFrequencies, tuning]);
 

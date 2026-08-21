@@ -16,7 +16,6 @@ import Animated, {
   withTiming,
   withSequence,
   cancelAnimation,
-  interpolate,
   Easing,
 } from 'react-native-reanimated';
 import { useTuner } from '../../features/tuner/hooks/useTuner';
@@ -55,22 +54,39 @@ export default function TunerScreen() {
     return i === tuning.strings.length - 1 ? name.toLowerCase() : name;
   });
 
-  const isTuned =
-    tuner.isActive && tuner.stringIndex !== null && Math.abs(tuner.cents) <= 5;
+  const hasPitch = tuner.isActive && tuner.note !== '--';
 
-  const centsColor = tuner.isActive ? centsToColor(tuner.cents) : Colors.dark.muted;
+  // When the pitch is near a string, guide toward that string's target
+  // (e.g. tuning down to Drop D shows "D" and how far you are from D2,
+  // not the nearest chromatic note). Otherwise fall back to chromatic.
+  const displayCents =
+    hasPitch && tuner.targetCents !== null ? tuner.targetCents : tuner.cents;
+  const displayNote = !hasPitch
+    ? '--'
+    : tuner.nearestTarget
+    ? tuner.nearestTarget.replace(/\d/g, '')
+    : tuner.note;
+
+  const isTuned = hasPitch && tuner.stringIndex !== null && Math.abs(displayCents) <= 5;
+
+  const centsColor = hasPitch ? centsToColor(displayCents) : Colors.dark.muted;
   const noteColor = isTuned ? Colors.success : Colors.dark.text;
 
-  const centsDisplay = tuner.isActive
-    ? tuner.cents > 0
-      ? `+${tuner.cents}`
-      : `${tuner.cents}`
+  const centsDisplay = hasPitch
+    ? displayCents > 0
+      ? `+${displayCents}`
+      : `${displayCents}`
     : '0';
-  const centsLabel = Math.abs(tuner.cents) <= 5
+  const centsLabel = !hasPitch
+    ? tuner.isActive
+      ? 'Listening…'
+      : 'Tap to Tune'
+    : Math.abs(displayCents) <= 5
     ? 'In Tune'
-    : tuner.cents > 0
+    : displayCents > 0
     ? 'Sharp'
     : 'Flat';
+  const needlePercent = 50 + Math.max(-50, Math.min(50, displayCents));
 
   const startPulse = useCallback(() => {
     pulseValue.value = withRepeat(
@@ -141,7 +157,7 @@ export default function TunerScreen() {
 
       <View style={styles.stringsArea}>
         <View style={styles.stringColumn}>
-          {stringLabels.map((label, i) => {
+          {stringLabels.slice(0, 3).map((label, i) => {
             const isHighlighted = tuner.stringIndex === i;
             return (
               <PressableScale
@@ -189,7 +205,8 @@ export default function TunerScreen() {
         </View>
 
         <View style={styles.stringColumn}>
-          {stringLabels.map((label, i) => {
+          {stringLabels.slice(3).map((label, iRel) => {
+            const i = iRel + 3;
             const isHighlighted = tuner.stringIndex === i;
             return (
               <PressableScale
@@ -233,12 +250,14 @@ export default function TunerScreen() {
         <Text
           style={[styles.noteText, { color: noteColor, fontSize: noteFontSize }]}
           accessibilityLabel={
-            tuner.isActive
-              ? `Detected note: ${tuner.note}, ${centsLabel} by ${Math.abs(tuner.cents)} cents`
+            hasPitch
+              ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents)} cents`
+              : tuner.isActive
+              ? 'Listening for a note'
               : 'Tuner inactive'
           }
         >
-          {tuner.note}
+          {displayNote}
         </Text>
 
         <View style={styles.centsRow}>
@@ -248,11 +267,7 @@ export default function TunerScreen() {
                 style={[
                   styles.centsNeedle,
                   {
-                    left: `${50 + interpolate(
-                      tuner.cents,
-                      [-50, 50],
-                      [-50, 50],
-                    )}%`,
+                    left: `${needlePercent}%`,
                     backgroundColor: centsColor,
                   },
                 ]}
