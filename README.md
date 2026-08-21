@@ -45,6 +45,10 @@ CI (`.github/workflows/build-release.yml`) builds an APK on every push to `main`
 
 Signed builds require four repository secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` — see [docs/KEYSTORE-CI.md](docs/KEYSTORE-CI.md). Without them, CI still produces a debug-signed APK artifact, but no Release is published.
 
+## Privacy
+
+StandardTune collects no data. Microphone audio is processed on-device for pitch detection and never recorded or transmitted — see [PRIVACY.md](PRIVACY.md). Play Store submission notes live in [docs/PLAY-SUBMISSION.md](docs/PLAY-SUBMISSION.md).
+
 ## License
 
 [MIT](LICENSE)

@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Colors, CARD_SHADOW } from '../constants/Colors';
 import PressableScale from '../components/PressableScale';
 import { useProgressStore } from '../features/store/progressStore';
+import * as Linking from 'expo-linking';
 import { useUserPreferencesStore } from '../features/store/userPreferencesStore';
 import { useSettingsStore } from '../features/store/settingsStore';
 import { TUNING_PRESETS } from '../features/tuner/data/tunings';
@@ -418,6 +419,19 @@ export default function SettingsScreen() {
             accessibilityLabel="App version: 1.0.0"
             right={<Text style={styles.rowValue}>1.0.0</Text>}
           />
+          <TouchableOpacity
+            onPress={() =>
+              Linking.openURL('https://github.com/unexpear/guitar-tutor/blob/main/PRIVACY.md')
+            }
+            accessibilityRole="link"
+            accessibilityLabel="Open the privacy policy in your browser"
+          >
+            <SettingRow
+              label="Privacy Policy"
+              accessibilityLabel="Privacy policy"
+              right={<Text style={styles.rowLink}>View ↗</Text>}
+            />
+          </TouchableOpacity>
         </SectionCard>
 
         <View style={styles.bottomSpacer} />
@@ -494,6 +508,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.dark.text,
     flex: 1,
+  },
+  rowLink: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.success,
   },
   rowValue: {
     fontSize: 16,
