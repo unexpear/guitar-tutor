@@ -514,6 +514,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Colors.spacing.lg,
+    paddingTop: 60,
     paddingBottom: Colors.spacing.xxl * 2,
   },
   topBar: {
@@ -750,6 +751,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: Colors.spacing.lg,
+    paddingTop: 60,
     borderBottomWidth: 1,
     borderBottomColor: Colors.dark.cardBorder,
   },

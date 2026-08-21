@@ -66,7 +66,7 @@ export default function TunerScreen() {
   const displayCents =
     hasPitch && tuner.targetCents !== null ? tuner.targetCents : tuner.cents;
   const displayNote = !hasPitch
-    ? '--'
+    ? '–'
     : tuner.nearestTarget
     ? tuner.nearestTarget.replace(/\d/g, '')
     : tuner.note;

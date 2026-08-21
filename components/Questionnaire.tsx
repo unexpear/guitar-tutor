@@ -179,7 +179,7 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
-          <Text style={styles.title}>Welcome to Guitar Tutor!</Text>
+          <Text style={styles.title}>Welcome to StandardTune!</Text>
           <Text style={styles.subtitle}>
             Let's personalize your experience
           </Text>
@@ -234,6 +234,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: Colors.spacing.lg,
+    paddingTop: 60,
   },
   header: {
     alignItems: 'center',

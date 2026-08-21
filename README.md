@@ -2,6 +2,16 @@
 
 A free and open source guitar tuner and learning companion for Android. No ads, no tracking, no in-app purchases.
 
+## Screenshots
+
+| Tuner | Chords | Anatomy lesson |
+|---|---|---|
+| ![Tuner](fastlane/metadata/android/en-US/images/phoneScreenshots/01-tuner.png) | ![Chords](fastlane/metadata/android/en-US/images/phoneScreenshots/02-chords.png) | ![Anatomy](fastlane/metadata/android/en-US/images/phoneScreenshots/03-anatomy.png) |
+
+| Metronome | Lessons | Songs |
+|---|---|---|
+| ![Metronome](fastlane/metadata/android/en-US/images/phoneScreenshots/04-metronome.png) | ![Lessons](fastlane/metadata/android/en-US/images/phoneScreenshots/05-lessons.png) | ![Songs](fastlane/metadata/android/en-US/images/phoneScreenshots/06-songs.png) |
+
 ## Features
 
 - **Real-time tuner** powered by [react-native-tuner-engine](https://www.npmjs.com/package/react-native-tuner-engine) — a native C++ pitch-detection pipeline (YIN / PYIN / cepstrum ensemble) running on a dedicated audio thread
