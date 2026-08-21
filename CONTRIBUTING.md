@@ -36,6 +36,7 @@ scripts/          asset generators
 - **Audio assets** are generated, not hand-edited — change `scripts/generate-samples.js` and regenerate rather than committing edited WAVs.
 - **Chord/tuning data**: string arrays are ordered low E → high e (index 0 = 6th string, `-1` = muted, `0` = open). Note names use sharps (`D#2`, not `Eb2`).
 - Keep the app free of ads, tracking, and network calls — that's the point of the project.
+- **No copyrighted song content.** The Songs tab may list titles and artists (facts), but never add tabs, chord sheets, lyrics, or recordings of copyrighted songs — that's a music-licensing violation and a store-policy violation. Play-along drills must stay original exercises. Store descriptions must not name other apps or brands.
 
 ## Reporting bugs
 
