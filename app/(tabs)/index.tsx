@@ -39,11 +39,15 @@ const SECTIONS = [
   },
 ];
 
+const NEEDLE_TRACK_WIDTH = 120;
+
 export default function TunerScreen() {
   const { width, height } = useWindowDimensions();
   const [tuning, setTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
   const pulseValue = useSharedValue(1);
+  const needleX = useSharedValue(0);
 
   const tuner = useTuner(tuning);
   const { playNote } = useGuitarSound();
@@ -86,7 +90,34 @@ export default function TunerScreen() {
     : displayCents > 0
     ? 'Sharp'
     : 'Flat';
-  const needlePercent = 50 + Math.max(-50, Math.min(50, displayCents));
+  const clampedCents = Math.max(-50, Math.min(50, displayCents));
+
+  // Animate the needle instead of snapping per pitch event.
+  useEffect(() => {
+    needleX.value = withTiming(
+      (clampedCents / 100) * NEEDLE_TRACK_WIDTH,
+      { duration: 120, easing: Easing.out(Easing.quad) },
+    );
+  }, [clampedCents, needleX]);
+
+  const needleStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: needleX.value }],
+  }));
+
+  // Mark a string as tuned once it holds "in tune" for a moment.
+  useEffect(() => {
+    if (!isTuned || tuner.stringIndex === null) return;
+    const stringIndex = tuner.stringIndex;
+    const timer = setTimeout(() => {
+      setTunedStrings((prev) => {
+        if (prev.has(stringIndex)) return prev;
+        const next = new Set(prev);
+        next.add(stringIndex);
+        return next;
+      });
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [isTuned, tuner.stringIndex]);
 
   const startPulse = useCallback(() => {
     pulseValue.value = withRepeat(
@@ -119,10 +150,19 @@ export default function TunerScreen() {
   const handleSelectTuning = useCallback(
     (preset: TuningPreset) => {
       setTuning(preset);
+      setTunedStrings(new Set());
       setPickerVisible(false);
     },
     [],
   );
+
+  const prevActiveRef = React.useRef(false);
+  useEffect(() => {
+    if (tuner.isActive && !prevActiveRef.current) {
+      setTunedStrings(new Set()); // fresh session
+    }
+    prevActiveRef.current = tuner.isActive;
+  }, [tuner.isActive]);
 
   const handlePlayReference = useCallback(
     (note: string) => {
@@ -175,7 +215,7 @@ export default function TunerScreen() {
                   },
                   isHighlighted && CARD_SHADOW,
                 ]}
-                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}. Tap to hear reference.`}
+                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}${tunedStrings.has(i) ? ', in tune' : ''}. Tap to hear reference.`}
                 accessibilityRole="button"
               >
                 <Text
@@ -184,6 +224,8 @@ export default function TunerScreen() {
                     {
                       color: isHighlighted
                         ? '#fff'
+                        : tunedStrings.has(i)
+                        ? Colors.success
                         : Colors.dark.muted,
                       fontSize: circleSize * 0.38,
                     },
@@ -191,6 +233,11 @@ export default function TunerScreen() {
                 >
                   {label}
                 </Text>
+                {tunedStrings.has(i) && (
+                  <View style={styles.tunedBadge}>
+                    <Text style={styles.tunedBadgeText}>{'✓'}</Text>
+                  </View>
+                )}
               </PressableScale>
             );
           })}
@@ -224,7 +271,7 @@ export default function TunerScreen() {
                   },
                   isHighlighted && CARD_SHADOW,
                 ]}
-                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}. Tap to hear reference.`}
+                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}${tunedStrings.has(i) ? ', in tune' : ''}. Tap to hear reference.`}
                 accessibilityRole="button"
               >
                 <Text
@@ -233,6 +280,8 @@ export default function TunerScreen() {
                     {
                       color: isHighlighted
                         ? '#fff'
+                        : tunedStrings.has(i)
+                        ? Colors.success
                         : Colors.dark.muted,
                       fontSize: circleSize * 0.38,
                     },
@@ -240,6 +289,11 @@ export default function TunerScreen() {
                 >
                   {label}
                 </Text>
+                {tunedStrings.has(i) && (
+                  <View style={styles.tunedBadge}>
+                    <Text style={styles.tunedBadgeText}>{'✓'}</Text>
+                  </View>
+                )}
               </PressableScale>
             );
           })}
@@ -263,13 +317,12 @@ export default function TunerScreen() {
         <View style={styles.centsRow}>
           <View style={styles.centsIndicatorContainer}>
             <View style={styles.centsTrack}>
-              <View
+              <View style={styles.centsCenterTick} />
+              <Animated.View
                 style={[
                   styles.centsNeedle,
-                  {
-                    left: `${needlePercent}%`,
-                    backgroundColor: centsColor,
-                  },
+                  { backgroundColor: centsColor },
+                  needleStyle,
                 ]}
               />
             </View>
@@ -283,6 +336,9 @@ export default function TunerScreen() {
         </View>
         <Text style={[styles.centsLabel, { color: centsColor }]}>
           {centsLabel}
+        </Text>
+        <Text style={styles.freqText}>
+          {hasPitch ? `${tuner.frequency.toFixed(1)} Hz` : ' '}
         </Text>
       </View>
 
@@ -464,9 +520,20 @@ const styles = StyleSheet.create({
   centsNeedle: {
     position: 'absolute',
     top: -1,
+    left: '50%',
+    marginLeft: -1.5,
     width: 3,
     height: 6,
     borderRadius: 1.5,
+  },
+  centsCenterTick: {
+    position: 'absolute',
+    left: '50%',
+    top: -3,
+    marginLeft: -0.5,
+    width: 1,
+    height: 10,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   centsValue: {
     fontWeight: '700',
@@ -481,6 +548,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
+  },
+  freqText: {
+    fontSize: 12,
+    color: Colors.dark.muted,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+    minHeight: 14,
+  },
+  tunedBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: Colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tunedBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
   },
   bottomArea: {
     alignItems: 'center',
