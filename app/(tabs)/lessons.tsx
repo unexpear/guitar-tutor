@@ -19,6 +19,8 @@ import { useUserPreferencesStore } from '../../features/store/userPreferencesSto
 import Questionnaire from '../../components/Questionnaire';
 import GuitarAnatomy from '../../components/GuitarAnatomy';
 import { LESSON_CONTENT } from '../../features/lessons/data/lessonContent';
+import { getDrill } from '../../features/lessons/data/drills';
+import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
 
 const TOTAL_LESSONS = 11;
 
@@ -337,11 +339,13 @@ function LessonDetail({
   completed,
   onClose,
   onComplete,
+  onPractice,
 }: {
   lesson: Lesson;
   completed: boolean;
   onClose: () => void;
   onComplete: () => void;
+  onPractice: (() => void) | null;
 }) {
   const sections = LESSON_CONTENT[lesson.id] ?? [];
 
@@ -376,6 +380,16 @@ function LessonDetail({
             </View>
           ))}
 
+          {onPractice && (
+            <PressableScale
+              onPress={onPractice}
+              style={styles.practiceButton}
+              accessibilityLabel="Practice this lesson with your guitar"
+            >
+              <Ionicons name="mic-outline" size={18} color="#fff" />
+              <Text style={styles.startButtonText}>Practice with Your Guitar</Text>
+            </PressableScale>
+          )}
           <PressableScale
             onPress={onComplete}
             style={[styles.startButton, completed && styles.startButtonAgain]}
@@ -428,6 +442,7 @@ export default function LessonsScreen() {
   );
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeLessonContent, setActiveLessonContent] = useState<string | null>(null);
+  const [practiceLesson, setPracticeLesson] = useState<Lesson | null>(null);
 
   const completedCount = useMemo(
     () => Object.values(completedLessons).filter((l) => l.completed).length,
@@ -469,6 +484,22 @@ export default function LessonsScreen() {
     setActiveLessonContent(null);
   }, []);
 
+  const handleStartPractice = useCallback(() => {
+    if (selectedLesson) {
+      setPracticeLesson(selectedLesson);
+      setSelectedLesson(null);
+    }
+  }, [selectedLesson]);
+
+  const handlePracticeComplete = useCallback(
+    (scorePercent: number) => {
+      if (practiceLesson) {
+        completeLesson(practiceLesson.id, scorePercent);
+      }
+    },
+    [practiceLesson, completeLesson],
+  );
+
   const handleAnatomyQuizPassed = useCallback(
     (scorePercent: number) => {
       completeLesson('beginner-guitar-anatomy', scorePercent);
@@ -492,6 +523,19 @@ export default function LessonsScreen() {
 
   if (showQuestionnaire) {
     return <Questionnaire onComplete={handleQuestionnaireComplete} />;
+  }
+
+  if (practiceLesson) {
+    const drill = getDrill(practiceLesson.id);
+    if (drill) {
+      return (
+        <PlayAlongLesson
+          drill={drill}
+          onClose={() => setPracticeLesson(null)}
+          onComplete={handlePracticeComplete}
+        />
+      );
+    }
   }
 
   if (activeLessonContent === 'guitar-anatomy') {
@@ -556,6 +600,7 @@ export default function LessonsScreen() {
           completed={isLessonCompleted(selectedLesson.id)}
           onClose={handleCloseDetail}
           onComplete={handleLessonComplete}
+          onPractice={getDrill(selectedLesson.id) ? handleStartPractice : null}
         />
       )}
     </View>
@@ -786,6 +831,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#fff',
+  },
+  practiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#3b82f6',
+    borderRadius: Colors.radius.md,
+    paddingVertical: 14,
+    marginBottom: Colors.spacing.sm,
   },
   startButton: {
     backgroundColor: Colors.success,

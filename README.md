@@ -19,6 +19,7 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 - **Chord library** — 29 chords with finger positions, diagrams, and audio playback
 - **Metronome** — 40–200 BPM, tap tempo, accented downbeats, 2/4 · 3/4 · 4/4 · 6/8
 - **Lessons & games** — structured beginner-to-advanced lessons and practice mini-games
+- **Play-along practice** — Guitar Hero-style drills that listen to your real guitar: pluck the directed string/fret or strum the directed chord, with an "any tone" beginner mode and a "full chord" mode that requires evidence of multiple chord tones before scoring a hit
 - Dark theme throughout
 
 ## Development
