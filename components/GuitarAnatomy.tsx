@@ -380,9 +380,11 @@ type QuizState =
 
 interface GuitarAnatomyProps {
   guitarType: GuitarType;
+  /** Called when the quiz is passed, with the score as a percentage. */
+  onQuizPassed?: (scorePercent: number) => void;
 }
 
-export default function GuitarAnatomy({ guitarType }: GuitarAnatomyProps) {
+export default function GuitarAnatomy({ guitarType, onQuizPassed }: GuitarAnatomyProps) {
   const [selectedPart, setSelectedPart] = useState<GuitarPart | null>(null);
   const [quiz, setQuiz] = useState<QuizState>({ phase: 'idle' });
   const [quizOrder, setQuizOrder] = useState<GuitarPart[]>([]);
@@ -468,6 +470,9 @@ export default function GuitarAnatomy({ guitarType }: GuitarAnatomyProps) {
         const nextRound = quiz.round + 1;
         if (nextRound >= quizOrder.length) {
           setQuiz({ phase: 'done', score: newScore });
+          if (newScore >= QUIZ_PASS) {
+            onQuizPassed?.(Math.round((newScore / quizOrder.length) * 100));
+          }
         } else {
           const q = quizOrder[nextRound];
           setQuiz({
@@ -486,7 +491,7 @@ export default function GuitarAnatomy({ guitarType }: GuitarAnatomyProps) {
         }
       }, 900);
     },
-    [quiz, quizOrder, visibleParts],
+    [quiz, quizOrder, visibleParts, onQuizPassed],
   );
 
   const quizActive = quiz.phase === 'asking';
@@ -609,7 +614,9 @@ export default function GuitarAnatomy({ guitarType }: GuitarAnatomyProps) {
             <Text style={styles.quizDoneScore}>
               You got {quiz.score} of {quizOrder.length} right
               {quiz.score >= QUIZ_PASS
-                ? ' — you know your way around a guitar.'
+                ? onQuizPassed
+                  ? ' — lesson marked complete!'
+                  : ' — you know your way around a guitar.'
                 : ` — review the parts below and try again. ${QUIZ_PASS} correct is a pass.`}
             </Text>
             <TouchableOpacity

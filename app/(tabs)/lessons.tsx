@@ -343,9 +343,13 @@ function LessonDetail({
   );
 }
 
-function GuitarAnatomyLessonContent() {
+function GuitarAnatomyLessonContent({
+  onQuizPassed,
+}: {
+  onQuizPassed: (scorePercent: number) => void;
+}) {
   const { guitarType } = useUserPreferencesStore();
-  return <GuitarAnatomy guitarType={guitarType} />;
+  return <GuitarAnatomy guitarType={guitarType} onQuizPassed={onQuizPassed} />;
 }
 
 export default function LessonsScreen() {
@@ -405,8 +409,14 @@ export default function LessonsScreen() {
 
   const handleCloseLessonContent = useCallback(() => {
     setActiveLessonContent(null);
-    completeLesson('beginner-guitar-anatomy', 100);
-  }, [completeLesson]);
+  }, []);
+
+  const handleAnatomyQuizPassed = useCallback(
+    (scorePercent: number) => {
+      completeLesson('beginner-guitar-anatomy', scorePercent);
+    },
+    [completeLesson],
+  );
 
   // The Questionnaire component flips hasCompletedQuestionnaire in the store
   // itself, which hides it here - onComplete needs no extra work.
@@ -434,11 +444,14 @@ export default function LessonsScreen() {
             style={styles.lessonBackButton}
             onPress={handleCloseLessonContent}
           >
-            <Text style={styles.lessonBackButtonText}>← Complete & Back</Text>
+            <Text style={styles.lessonBackButtonText}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.lessonHeaderTitle}>Guitar Anatomy</Text>
+          {isLessonCompleted('beginner-guitar-anatomy') && (
+            <Text style={styles.lessonHeaderDone}>✓</Text>
+          )}
         </View>
-        <GuitarAnatomyLessonContent />
+        <GuitarAnatomyLessonContent onQuizPassed={handleAnatomyQuizPassed} />
       </View>
     );
   }
@@ -752,5 +765,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: Colors.dark.text,
+  },
+  lessonHeaderDone: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.success,
+    marginLeft: 'auto',
   },
 });
