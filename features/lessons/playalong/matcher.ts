@@ -3,6 +3,7 @@ import {
   getChord,
   chordPitchClasses,
   chordBassMidi,
+  chordMidiNotes,
   stringFretToMidi,
 } from '../../chords/data/chords';
 
@@ -31,24 +32,39 @@ import {
  *   low-confidence transient right before the first voiced frame (a soft
  *   pluck's pick noise settling into a tone), a steep early drop (a hard
  *   pluck's transient settling), or a level rise above the recent envelope.
- * - The provisional arm is REVOKED if the first frames show the signature
- *   of a ring joined mid-decay: the SAME pitch gently fading frame over
- *   frame, or (for chord rings, where the mono lock wanders string to
- *   string and beats make the level non-monotone) a net level decay across
- *   the first few frames with no attack evidence anywhere.
- * - Once disarmed, only a genuine new attack re-arms: an rmsDb rise that
- *   also reaches the recent envelope peak (a recovery out of a narrow beat
- *   null rises steeply but stays below the envelope), or a gap in voiced
- *   frames whose post-gap level is at/above what the old ring could still
- *   be at (a confidence dropout over a decaying ring re-locks SOFTER than
- *   the pre-gap level; a fresh pluck does not).
+ * - If the first frames instead show the signature of a ring joined
+ *   mid-decay - the SAME pitch gently fading frame over frame, or (for
+ *   chord rings, where the mono lock wanders string to string) a net level
+ *   decay with no attack evidence anywhere - the matcher enters the
+ *   RING-JOINED state. In continuous play-along the next target activates
+ *   ON the beat while correct attacks scatter 30-80 ms EARLY, so the attack
+ *   transient routinely lands in the previous target's matcher and the
+ *   fresh matcher sees only the young ring. A ring whose content MATCHES
+ *   the target is therefore still credited (with a stiffer hold for mono
+ *   decisions); a non-matching ring is the previous sound's ring-over and
+ *   stays silent - it never produces 'wrong' events.
+ * - Once an event has fired the gate is DISARMED; only a genuine new attack
+ *   re-arms: a level rise (vetted against beat-null recovery - a rise
+ *   right after a steep dip must also reach the decayed envelope peak), a
+ *   softer-but-genuine attack that reverses a decaying trend (real dynamics
+ *   put up-strums and fingerstyle plucks 5-15 dB below the last strum, so
+ *   re-arm evidence must not require matching the loudest recent level), or
+ *   a gap in voiced frames whose post-gap level is either at/above what the
+ *   old ring could still be, or well above the unvoiced noise floor seen
+ *   during the gap (damped/palm-muted strings kill the old ring, so any
+ *   clearly louder re-entry is a new attack).
  * - Every emitted event ('hit' or 'wrong') consumes the arm, so one
  *   physical strum yields at most one event; a "strum 4 times" target
  *   really takes four attacks.
  *
- * While disarmed the matcher stays silent: the natural decay of the
- * previous (correct) chord or note never produces 'wrong' events, and the
- * ring-over of a shared tone never credits the next target.
+ * Harmonic mislocks: YIN-family trackers sporadically lock onto harmonics
+ * of ringing strings (+19 = 3rd harmonic, +7 = octave-reduced twelfth...).
+ * Those frames are NEUTRAL - never wrong-note or out-of-chord evidence -
+ * but neutrality is BOUNDED: a real mislock is a 1-5 frame artifact around
+ * the attack or a sporadic blip amid genuine target frames. A sustained
+ * solid lock at a harmonic offset with no target evidence anywhere in the
+ * ring is a genuinely played wrong string (open B against low E is exactly
+ * +19) and counts as wrong evidence.
  */
 
 export type DetectionMode = 'mono' | 'poly';
@@ -104,22 +120,27 @@ const ONSET_RISE_DB = 2;
 /**
  * Steep early drop that CONFIRMS a provisional arm: a pluck transient is
  * loud and settles fast, so "loud frame then >=2 dB fall" is an attack
- * signature, not a ring.
+ * signature, not a ring. The same threshold marks a beat-null DIP: a rise
+ * arriving within DIP_GUARD_MS of such a drop is treated as null recovery
+ * unless it also reaches the decayed envelope peak.
  */
 const ATTACK_DROP_DB = 2;
 /**
- * Gentle same-pitch fade (per ~frame) that REVOKES a provisional arm: a
- * freely ringing string decays ~0.2-0.5 dB per 33 ms frame. Seeing that
- * from the very first frames means the target activated mid-ring.
+ * Gentle same-pitch fade (per ~frame) that sends a provisional arm to the
+ * RING-JOINED state: a freely ringing string decays ~0.2-0.5 dB per 33 ms
+ * frame. Seeing that from the very first frames means the target activated
+ * mid-ring - which, at a beat handoff, may be the player's own slightly
+ * early attack (see class docs).
  */
 const RING_DECAY_MIN_DB = 0.1;
 /** Two frames are "the same pitch" within this many semitones. */
 const SAME_PITCH_SEMIS = 0.6;
 /**
  * A voiced-frame gap at least this long MAY be a fresh attack - but only if
- * the post-gap level is consistent with one (see RING_MIN_DECAY_DB_PER_MS).
- * Confidence dropouts over a still-ringing string (ambient masking, lock
- * ambiguity between beating strings) produce the same gap without any pluck.
+ * the post-gap level is consistent with one (see RING_MIN_DECAY_DB_PER_MS
+ * and SILENCE_RISE_DB). Confidence dropouts over a still-ringing string
+ * (ambient masking, lock ambiguity between beating strings) produce the
+ * same gap without any pluck.
  */
 const REARM_GAP_MS = 300;
 /**
@@ -127,19 +148,49 @@ const REARM_GAP_MS = 300;
  * ~33 ms frame). Across a voiced-frame gap the old ring must have kept
  * fading at least this fast, so a post-gap level at/above
  * (pre-gap level - rate * gap) cannot be the old ring: it is a new attack.
- * The same rate decays the envelope peak used to vet ONSET_RISE_DB.
+ * The same rate decays the envelope peak used to vet beat-null recovery.
  */
 const RING_MIN_DECAY_DB_PER_MS = RING_DECAY_MIN_DB / 33;
 /**
- * Provisional-arm revoke for CHORD rings: the mono lock wanders string to
- * string (consecutive frames rarely share a pitch) and beating partials make
- * frame-to-frame level non-monotone, so the same-pitch rule alone misses
- * them. A net fade this deep across the first frames - regardless of pitch -
- * with no attack evidence means the target activated over a pre-existing
- * ring. Kept above typical RMS estimator jitter (~+-0.2 dB).
+ * Gap re-arm, silence-floor path: if unvoiced frames DURING the gap showed
+ * the level collapsing (player damped/muted the strings, so the old ring is
+ * dead), any post-gap lock this far above that floor is a new attack even
+ * when it is much softer than the pre-gap ring. A confidence dropout over a
+ * ring that keeps sounding leaves the unvoiced rms near the ring's level,
+ * so it cannot pass this.
+ */
+const SILENCE_RISE_DB = 6;
+/**
+ * A rise within this window after a steep (>= ATTACK_DROP_DB) drop is
+ * suspected beat-null recovery and must reach the decayed envelope peak to
+ * count as an attack. Rises with no recent dip need no peak test: free
+ * decay never rises, so ONSET_RISE_DB over the previous frame is already a
+ * new attack no matter how far below the loudest recent event it is
+ * (up-strums and fingerstyle plucks run 5-15 dB softer than a full strum).
+ */
+const DIP_GUARD_MS = 250;
+/**
+ * Trend-reversal attack: a genuinely new soft attack over a still-decaying
+ * ring may lift the level by well under ONSET_RISE_DB (energy summing gives
+ * < 2 dB when the new attack is softer than the ring). But a free ring can
+ * only fade - so a level this far ABOVE the projected continuation of the
+ * observed decay trend, with no recent beat-null dip, is a new attack. Kept
+ * above RMS estimator jitter (~+-0.2 dB) plus beat wiggle (~+-0.25 dB).
+ */
+const REVERSAL_MARGIN_DB = 0.7;
+/** Frame pairs no farther apart than this feed the decay-trend estimate. */
+const TREND_FRAME_MAX_MS = 132;
+/**
+ * Chord-ring signature that sends a provisional arm to RING-JOINED: the
+ * mono lock wanders string to string (consecutive frames rarely share a
+ * pitch) and beating partials make frame-to-frame level non-monotone, so
+ * the same-pitch rule alone misses it. A net fade this deep across the
+ * first frames - regardless of pitch - with no attack evidence means the
+ * target activated over an already-sounding ring. Kept above typical RMS
+ * estimator jitter (~+-0.2 dB).
  */
 const RING_NET_DECAY_DB = 0.3;
-/** Frame pairs that must accumulate before the net-decay revoke applies. */
+/** Frame pairs that must accumulate before the net-decay signature applies. */
 const RING_NET_MIN_PAIRS = 2;
 /**
  * A pluck's pick transient is loud but unpitched: the detector reports it as
@@ -160,8 +211,26 @@ const TRANSIENT_LEVEL_MARGIN_DB = 1;
  * harmonic (twelfth), +24 = 4th harmonic. These frames are NEUTRAL for a
  * note target: they are not independent wrong-note evidence, but (except
  * for +12 via allowOctaveUp) they do not count toward the hit either.
+ * Neutrality is bounded by HARMONIC_MAX_RUN below.
  */
 const HARMONIC_NEUTRAL_OFFSETS = [-12, 7, 12, 19, 24];
+/**
+ * Harmonic offsets of a chord's SOUNDING notes that land on a foreign pitch
+ * class (+12/+24/-12 keep the class and need no special case). Checked
+ * octave-specifically against the chord's actual voicing, so only real
+ * twelfth/3rd-harmonic mislocks qualify - not any note 7 semitones above
+ * any chord class.
+ */
+const CHORD_HARMONIC_OFFSETS = [7, 19];
+/**
+ * Bound on harmonic neutrality: real harmonic mislocks are 1-5 frame attack
+ * artifacts, or sporadic blips amid genuine target frames. A CONSECUTIVE
+ * run at a harmonic offset longer than this, in a ring where the target
+ * itself was never heard, is a played wrong note (the classic wrong-open-
+ * string error lands exactly on +19 of the two lowest open strings) and
+ * must produce 'wrong' feedback, not silence.
+ */
+const HARMONIC_MAX_RUN = 5;
 
 // ---- Poly relaxed-completion tuning ----
 
@@ -179,7 +248,7 @@ const RELAXED_MIN_FRAMES = 8;
  * this many voiced frames in the evidence window: a wrong-but-similar chord
  * (Am against C, Em against G) keeps feeding shared classes while its own
  * root recurs frame after frame. Stray harmonic mislocks on a correct strum
- * never dwell on one foreign class this long.
+ * are neutralized before they reach this counter (CHORD_HARMONIC_OFFSETS).
  */
 const OUT_CLASS_VETO_FRAMES = 4;
 /**
@@ -192,10 +261,19 @@ const OUT_CLASS_VETO_FRAMES = 4;
 const BASS_REGISTER_SEMIS = 7;
 /**
  * Rolloff fallback: phone mics lose fundamentals below ~100 Hz, so a low
- * bass (E2) may only ever be reported an octave up. Accept a higher
- * bass-class detection only when it is (within tolerance) the LOWEST pitch
- * seen for this target - if anything lower was detected, the real sounding
- * bass was reportable and it was not this note.
+ * bass (E2 82 Hz ... G2 98 Hz) may only ever be reported an octave up. For
+ * such basses a bass-class detection AT the octave (bass + 12) is accepted
+ * as bass evidence outright: other in-chord strings above the bass (the E
+ * chord's B2, the G chord's B2/D3) are fully reportable and may win the
+ * first lock, so "lowest pitch seen" must not gate the fallback - which
+ * string locks first after a broadband strum transient is a coin flip.
+ */
+const ROLLOFF_BASS_MAX_MIDI = 43.5; // G2 (98 Hz) and below
+/**
+ * Looser fallback for reportable basses: accept a higher bass-class
+ * detection when it is (within tolerance) the LOWEST pitch seen for this
+ * target - if anything lower was detected, the real sounding bass was
+ * reportable and it was not this note.
  */
 const BASS_LOWEST_TOL_SEMIS = 0.6;
 
@@ -210,7 +288,7 @@ export interface MatchState {
 
 export type MatchEvent = 'hit' | 'wrong' | null;
 
-type ArmState = 'provisional' | 'confirmed' | 'disarmed';
+type ArmState = 'provisional' | 'confirmed' | 'ringJoined' | 'disarmed';
 
 function frequencyToMidiFloat(frequency: number): number {
   return 69 + 12 * Math.log2(frequency / 440);
@@ -230,6 +308,8 @@ export class TargetMatcher {
   private target: Target;
   private chord: Chord | null;
   private chordClasses: Set<number>;
+  /** Actual sounding MIDI notes of the chord voicing (octave-specific). */
+  private chordMidis: number[];
   private bassClass: number | null;
   private bassMidi: number | null;
   private noteMidi: number | null;
@@ -251,7 +331,7 @@ export class TargetMatcher {
   private lastRmsDb: number | null = null;
   private lastMidi: number | null = null;
   private lastTMs: number | null = null;
-  /** First voiced frame's level (baseline for the net-decay revoke). */
+  /** First voiced frame's level (baseline for the net-decay signature). */
   private firstRmsDb: number | null = null;
   /** Consecutive-voiced frame pairs seen so far. */
   private pairCount = 0;
@@ -260,12 +340,21 @@ export class TargetMatcher {
   /** Most recent below-confidence (unvoiced) frame - transient evidence. */
   private lastUnvoicedTMs: number | null = null;
   private lastUnvoicedRmsDb: number | null = null;
+  /** Smoothed observed decay rate of the current ring (dB per ms, >= 0). */
+  private decayRatePerMs: number | null = null;
+  /** Time of the last steep (beat-null-like) level drop. */
+  private lastDipTMs: number | null = null;
+  /** Consecutive voiced frames locked at a harmonic-neutral offset. */
+  private harmonicRun = 0;
+  /** Whether target evidence was heard since the last attack (ring start). */
+  private targetSeenInRing = false;
 
   constructor(target: Target, config: Partial<MatcherConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.target = target;
     this.chord = targetChord(target);
     this.chordClasses = this.chord ? chordPitchClasses(this.chord) : new Set();
+    this.chordMidis = this.chord ? chordMidiNotes(this.chord) : [];
     this.bassMidi = this.chord ? chordBassMidi(this.chord) : null;
     this.bassClass = this.bassMidi !== null ? pitchClassOf(this.bassMidi) : null;
     this.noteMidi =
@@ -291,6 +380,10 @@ export class TargetMatcher {
     this.envPeakDb = null;
     this.lastUnvoicedTMs = null;
     this.lastUnvoicedRmsDb = null;
+    this.decayRatePerMs = null;
+    this.lastDipTMs = null;
+    this.harmonicRun = 0;
+    this.targetSeenInRing = false;
   }
 
   state(): MatchState {
@@ -305,7 +398,8 @@ export class TargetMatcher {
   feed(sample: PitchSample): MatchEvent {
     if (sample.confidence < this.config.minConfidence || sample.frequency <= 0) {
       // Unvoiced frames still carry the rms envelope: a pluck's pick
-      // transient shows up here, right before the first voiced frame.
+      // transient shows up here, right before the first voiced frame - and
+      // the collapsed floor of damped strings shows up here too.
       this.lastUnvoicedTMs = sample.tMs;
       this.lastUnvoicedRmsDb = sample.rmsDb;
       return null;
@@ -314,19 +408,28 @@ export class TargetMatcher {
     this.minMidiSeen =
       this.minMidiSeen === null ? midiFloat : Math.min(this.minMidiSeen, midiFloat);
     this.updateArming(midiFloat, sample.rmsDb, sample.tMs);
-    const armed = this.armState !== 'disarmed';
+
+    // Ring-joined: the target activated over an already-sounding ring. At a
+    // beat handoff that ring is usually the player's own slightly-early
+    // attack, so hits stay possible (with a stiffer hold for mono
+    // decisions) - but the previous sound's ring-over must never read as a
+    // played wrong note, so wrong evidence is suppressed.
+    const armedHit = this.armState !== 'disarmed';
+    const armedWrong = this.armState === 'provisional' || this.armState === 'confirmed';
+    const hold =
+      this.armState === 'ringJoined' ? this.config.monoHold * 2 : this.config.monoHold;
 
     let event: MatchEvent;
     if (this.target.kind === 'note') {
-      event = this.feedNote(midiFloat, armed);
+      event = this.feedNote(midiFloat, armedHit, armedWrong, hold);
     } else if (this.config.mode === 'poly') {
-      event = this.feedChordPoly(midiFloat, sample.tMs, armed);
+      event = this.feedChordPoly(midiFloat, sample.tMs, armedHit, armedWrong);
     } else {
-      event = this.feedChordMono(midiFloat, armed);
+      event = this.feedChordMono(midiFloat, armedHit, armedWrong, hold);
     }
 
     // One event per physical attack: firing consumes the arm. Only a new
-    // attack (rms rise or silence gap) re-arms.
+    // attack (rms rise, trend reversal, or silence gap) re-arms.
     if (event !== null) this.armState = 'disarmed';
     return event;
   }
@@ -353,17 +456,43 @@ export class TargetMatcher {
       this.pairCount += 1;
       const decayedPeak =
         (this.envPeakDb ?? rmsDb) - RING_MIN_DECAY_DB_PER_MS * Math.max(0, dtMs);
-      // Dropout gap: a new attack only if the level is at/above where the
-      // old ring could still be (it kept decaying through the gap).
+      const recentDip = this.lastDipTMs !== null && tMs - this.lastDipTMs <= DIP_GUARD_MS;
+      // Silence-floor evidence: unvoiced frames during the gap showed the
+      // old ring dead (player damped), so a clearly louder re-entry is a
+      // new attack even when far softer than the pre-gap ring.
+      const silenceFloor =
+        this.lastUnvoicedTMs !== null &&
+        this.lastUnvoicedRmsDb !== null &&
+        this.lastUnvoicedTMs > this.lastTMs &&
+        rmsDb >= this.lastUnvoicedRmsDb + SILENCE_RISE_DB;
+      // Dropout gap: a new attack if the level is at/above where the old
+      // ring could still be (it kept decaying through the gap), or if the
+      // gap's unvoiced floor shows the old ring was killed.
       const gapAttack =
         dtMs >= REARM_GAP_MS &&
-        rmsDb >= this.lastRmsDb - RING_MIN_DECAY_DB_PER_MS * dtMs;
-      // Level jump: a new attack only if it reaches the recent envelope
-      // peak - recovery out of a narrow beat null rises steeply but stays
-      // below the envelope of the ring it belongs to.
-      const riseAttack = dDb >= ONSET_RISE_DB && rmsDb >= decayedPeak;
-      if (gapAttack || riseAttack) {
+        (rmsDb >= this.lastRmsDb - RING_MIN_DECAY_DB_PER_MS * dtMs || silenceFloor);
+      // Level jump: free decay never rises, so a >= ONSET_RISE_DB rise is a
+      // new attack regardless of the recent envelope peak - EXCEPT right
+      // after a steep dip, where it may be recovery out of a narrow beat
+      // null and must also reach the decayed envelope of its own ring.
+      const riseAttack = dDb >= ONSET_RISE_DB && (!recentDip || rmsDb >= decayedPeak);
+      // Trend reversal: a softer new attack over a decaying ring lifts the
+      // level by less than ONSET_RISE_DB (energy summing), but a free ring
+      // can only keep fading - a level clearly above the projected
+      // continuation of the observed decay is a new attack.
+      const reversalAttack =
+        !recentDip &&
+        dtMs > 0 &&
+        dtMs < REARM_GAP_MS &&
+        this.pairCount >= 3 &&
+        this.decayRatePerMs !== null &&
+        this.decayRatePerMs >= RING_MIN_DECAY_DB_PER_MS &&
+        rmsDb >= this.lastRmsDb - this.decayRatePerMs * dtMs + REVERSAL_MARGIN_DB;
+      if (gapAttack || riseAttack || reversalAttack) {
+        // A new attack starts a new ring: reset per-ring evidence.
         this.armState = 'confirmed';
+        this.targetSeenInRing = false;
+        this.harmonicRun = 0;
       } else if (this.armState === 'provisional') {
         if (dDb <= -ATTACK_DROP_DB && dtMs < REARM_GAP_MS) {
           // Loud transient settling fast: we caught the attack itself.
@@ -373,7 +502,7 @@ export class TargetMatcher {
           Math.abs(midiFloat - this.lastMidi) <= SAME_PITCH_SEMIS
         ) {
           // Same pitch gently fading from the very start: joined mid-ring.
-          this.armState = 'disarmed';
+          this.armState = 'ringJoined';
         } else if (
           this.pairCount >= RING_NET_MIN_PAIRS &&
           this.firstRmsDb !== null &&
@@ -382,8 +511,15 @@ export class TargetMatcher {
           // Wandering-lock chord ring: pitches differ frame to frame and
           // beats wiggle the level, but the NET trend since activation is
           // a fade with no attack anywhere - joined mid-ring.
-          this.armState = 'disarmed';
+          this.armState = 'ringJoined';
         }
+      }
+      // Track dips and the observed decay trend AFTER judging this frame.
+      if (dDb <= -ATTACK_DROP_DB) this.lastDipTMs = tMs;
+      if (dtMs > 0 && dtMs <= TREND_FRAME_MAX_MS && dDb <= 0) {
+        const rate = -dDb / dtMs;
+        this.decayRatePerMs =
+          this.decayRatePerMs === null ? rate : 0.5 * this.decayRatePerMs + 0.5 * rate;
       }
       this.envPeakDb = Math.max(rmsDb, decayedPeak);
     }
@@ -395,17 +531,60 @@ export class TargetMatcher {
   /**
    * Octave-aware bass evidence: the detection must be IN the bass register
    * (within BASS_REGISTER_SEMIS above the chord's bass note; period-doubled
-   * reports below it also land here), or - for sub-100Hz basses phone mics
-   * cannot report at pitch - be the lowest pitch seen for this target.
+   * reports below it also land here). For sub-100Hz basses phone mics
+   * cannot report at pitch, the octave-up report (bass + 12) counts
+   * outright - other in-chord strings above the bass are reportable and may
+   * lock first, so this must not depend on detection order. For reportable
+   * basses a higher bass-class report still counts when it is the lowest
+   * pitch seen for this target.
    */
   private isBassEvidence(midiFloat: number, pc: number): boolean {
     if (this.bassClass === null || pc !== this.bassClass) return false;
     if (this.bassMidi === null) return true;
     if (midiFloat <= this.bassMidi + BASS_REGISTER_SEMIS) return true;
+    if (
+      this.bassMidi <= ROLLOFF_BASS_MAX_MIDI &&
+      Math.abs(midiFloat - (this.bassMidi + 12)) <= BASS_LOWEST_TOL_SEMIS
+    ) {
+      return true;
+    }
     return this.minMidiSeen !== null && midiFloat <= this.minMidiSeen + BASS_LOWEST_TOL_SEMIS;
   }
 
-  private feedNote(midiFloat: number, armed: boolean): MatchEvent {
+  /**
+   * Whether a detection sits at a class-changing harmonic offset (+7
+   * octave-reduced twelfth, +19 twelfth) of a note the chord voicing
+   * actually sounds. Octave-specific on purpose: only real mislock targets
+   * qualify, so genuine foreign chord roots still count as wrong evidence.
+   */
+  private isChordHarmonic(midiFloat: number): boolean {
+    const tolSemis = this.config.noteToleranceCents / 100;
+    for (const chordMidi of this.chordMidis) {
+      for (const offset of CHORD_HARMONIC_OFFSETS) {
+        if (Math.abs(midiFloat - (chordMidi + offset)) <= tolSemis) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Bounded harmonic neutrality: returns true while this harmonic-offset
+   * frame should stay neutral. Real mislocks are short attack artifacts
+   * (run <= HARMONIC_MAX_RUN) or sporadic blips in a ring where the target
+   * itself is also being heard. A long solid dwell with no target evidence
+   * is a played wrong note and must NOT stay neutral.
+   */
+  private harmonicNeutral(): boolean {
+    this.harmonicRun += 1;
+    return this.harmonicRun <= HARMONIC_MAX_RUN || this.targetSeenInRing;
+  }
+
+  private feedNote(
+    midiFloat: number,
+    armedHit: boolean,
+    armedWrong: boolean,
+    hold: number
+  ): MatchEvent {
     const tolSemis = this.config.noteToleranceCents / 100;
     const target = this.noteMidi as number;
     const matches =
@@ -414,19 +593,31 @@ export class TargetMatcher {
 
     if (matches) {
       this.wrongRun = 0;
+      this.harmonicRun = 0;
+      this.targetSeenInRing = true;
       this.matchRun += 1;
-      if (armed && this.matchRun >= this.config.monoHold) return 'hit';
+      if (armedHit && this.matchRun >= hold) return 'hit';
       return null;
     }
 
     // Harmonic-family locks on the target are detector errors on a
-    // correctly played note, never wrong-note evidence.
+    // correctly played note - but only within the neutrality bound: a
+    // sustained lone lock at +19 is the wrong open string, not a mislock.
+    let harmonic = false;
     for (const offset of HARMONIC_NEUTRAL_OFFSETS) {
-      if (Math.abs(midiFloat - (target + offset)) <= tolSemis) return null;
+      if (Math.abs(midiFloat - (target + offset)) <= tolSemis) {
+        harmonic = true;
+        break;
+      }
+    }
+    if (harmonic) {
+      if (this.harmonicNeutral()) return null;
+    } else {
+      this.harmonicRun = 0;
     }
 
     this.matchRun = 0;
-    if (!armed) return null;
+    if (!armedWrong) return null;
     this.wrongRun += 1;
     if (this.wrongRun >= this.config.wrongStreak) {
       this.wrongRun = 0;
@@ -435,18 +626,30 @@ export class TargetMatcher {
     return null;
   }
 
-  private feedChordMono(midiFloat: number, armed: boolean): MatchEvent {
+  private feedChordMono(
+    midiFloat: number,
+    armedHit: boolean,
+    armedWrong: boolean,
+    hold: number
+  ): MatchEvent {
     const pc = pitchClassOf(midiFloat);
     if (this.chordClasses.has(pc)) {
       this.wrongRun = 0;
+      this.harmonicRun = 0;
+      this.targetSeenInRing = true;
       this.matchRun += 1;
       this.heard.add(pc);
       if (this.isBassEvidence(midiFloat, pc)) this.bassHeard = true;
-      if (armed && this.matchRun >= this.config.monoHold) return 'hit';
+      if (armedHit && this.matchRun >= hold) return 'hit';
       return null;
     }
+    if (this.isChordHarmonic(midiFloat)) {
+      if (this.harmonicNeutral()) return null;
+    } else {
+      this.harmonicRun = 0;
+    }
     this.matchRun = 0;
-    if (!armed) return null;
+    if (!armedWrong) return null;
     this.wrongRun += 1;
     if (this.wrongRun >= this.config.wrongStreak) {
       this.wrongRun = 0;
@@ -455,11 +658,18 @@ export class TargetMatcher {
     return null;
   }
 
-  private feedChordPoly(midiFloat: number, tMs: number, armed: boolean): MatchEvent {
+  private feedChordPoly(
+    midiFloat: number,
+    tMs: number,
+    armedHit: boolean,
+    armedWrong: boolean
+  ): MatchEvent {
     const pc = pitchClassOf(midiFloat);
 
     if (this.chordClasses.has(pc)) {
       this.wrongRun = 0;
+      this.harmonicRun = 0;
+      this.targetSeenInRing = true;
       if (this.windowStart === null) {
         this.windowStart = tMs;
         this.inChordFrames = 0;
@@ -476,7 +686,7 @@ export class TargetMatcher {
       this.heard.add(pc);
       if (this.isBassEvidence(midiFloat, pc)) this.bassHeard = true;
 
-      if (!armed) return null;
+      if (!armedHit) return null;
 
       const needed = Math.min(this.config.polyMinClasses, this.chordClasses.size);
       const bassOk = !this.config.requireBassClass || this.bassHeard;
@@ -508,8 +718,20 @@ export class TargetMatcher {
       return null;
     }
 
+    // Twelfth/3rd-harmonic mislocks on the chord's own strings land on a
+    // foreign pitch class but are the detector's error, not the player's:
+    // they must feed neither the out-class veto nor the wrong streak
+    // (within the neutrality bound).
+    if (this.isChordHarmonic(midiFloat)) {
+      if (this.harmonicNeutral()) return null;
+    } else {
+      this.harmonicRun = 0;
+    }
+
+    // Ring-over / post-event frames are not the player's judged sound:
+    // they feed neither the veto nor the wrong streak.
+    if (!armedWrong) return null;
     this.outClassFrames.set(pc, (this.outClassFrames.get(pc) ?? 0) + 1);
-    if (!armed) return null;
     this.wrongRun += 1;
     if (this.wrongRun >= this.config.wrongStreak) {
       this.wrongRun = 0;

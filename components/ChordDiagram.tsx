@@ -1,141 +1,212 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import Svg, {
+  Defs,
+  LinearGradient,
+  RadialGradient,
+  Stop,
+  Rect,
+  Circle,
+  Line,
+  Text as SvgText,
+} from 'react-native-svg';
 import { Colors } from '../constants/Colors';
 import { Chord } from '../features/chords/data/chords';
 
 const FRETBOARD_STRING_COUNT = 6;
 const FRET_COUNT = 5;
+/** Standard-tuning string letters, low E on the left. */
+const STRING_LETTERS = ['E', 'A', 'D', 'G', 'B', 'e'];
+
+/** Flat, palette-native diagram colors (navy surface, slate lines, green accent). */
+const STRING_COLOR = 'rgba(148, 158, 196, 0.75)';
+const FRET_COLOR = 'rgba(148, 158, 196, 0.32)';
+const NUT_COLOR = '#8f98c2';
 
 export default function ChordDiagram({ chord, small }: { chord: Chord; small?: boolean }) {
   const color = Colors.dark;
   // Finger-dot radius drives all other proportions.
-  const dotR = small ? 7 : 14;
-  const boardW = small ? 82 : 150;
-  const boardH = small ? 92 : 168;
-  const nutH = small ? 5 : 7;
-  const markerH = small ? 17 : 26; // X / O row above the nut
-  const lineW = small ? 1.5 : 2;
+  const dotR = small ? 7 : 15;
+  const boardW = small ? 82 : 188;
+  const boardH = small ? 92 : 196;
+  const nutH = small ? 3 : 5;
+  const markerH = small ? 15 : 24; // X / O row above the nut
+  const edge = small ? 3 : 5; // fretboard overhang past the outer strings
   const cellH = boardH / FRET_COUNT;
   const cellW = boardW / (FRETBOARD_STRING_COUNT - 1);
-  const pad = dotR + 1; // room for dots on the outer strings
-  const gridColor = color.muted;
+  const pad = dotR + 2; // room for dots on the outer strings
   const boardTop = markerH + nutH;
-  const openR = small ? 4.5 : 8;
+  const openR = small ? 4 : 6.5;
+  const labelH = small ? 0 : 20;
+  // Bass strings are subtly heavier than the trebles — one color, graded weight.
+  const stringWeights = small
+    ? [1.6, 1.5, 1.4, 1.3, 1.2, 1.1]
+    : [2.4, 2.2, 2, 1.8, 1.6, 1.5];
+
+  const width = boardW + pad * 2;
+  const height = boardTop + boardH + labelH + 2;
+  const boardX = pad - edge;
+  const boardWFull = boardW + edge * 2;
+  const fretH = small ? 1.25 : 1.75;
 
   return (
-    <View style={{ width: boardW + pad * 2, height: boardTop + boardH + lineW }}>
-      {/* Nut — bold bar across the top */}
-      <View
-        style={{
-          position: 'absolute',
-          top: markerH,
-          left: pad - lineW,
-          width: boardW + lineW * 2,
-          height: nutH,
-          borderRadius: nutH / 3,
-          backgroundColor: color.tint,
-        }}
-      />
-      {/* Frets */}
-      {[...Array(FRET_COUNT)].map((_, i) => (
-        <View
-          key={`fret-${i}`}
-          style={{
-            position: 'absolute',
-            top: boardTop + (i + 1) * cellH - lineW,
-            left: pad,
-            width: boardW,
-            height: lineW,
-            backgroundColor: gridColor,
-          }}
+    <View style={{ width, height }}>
+      <Svg width={width} height={height}>
+        <Defs>
+          {/* Fretboard surface — barely-there top light on the navy panel */}
+          <LinearGradient id="cdBoard" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#232342" />
+            <Stop offset="1" stopColor="#1c1c35" />
+          </LinearGradient>
+          {/* Finger dot — soft top-left light */}
+          <RadialGradient id="cdDot" cx="0.35" cy="0.3" r="0.85">
+            <Stop offset="0" stopColor="#84da88" />
+            <Stop offset="0.55" stopColor={Colors.success} />
+            <Stop offset="1" stopColor="#3a8a3f" />
+          </RadialGradient>
+        </Defs>
+
+        {/* Fretboard surface */}
+        <Rect
+          x={boardX}
+          y={boardTop}
+          width={boardWFull}
+          height={boardH}
+          rx={small ? 4 : 6}
+          fill="url(#cdBoard)"
         />
-      ))}
-      {/* Strings */}
-      {[...Array(FRETBOARD_STRING_COUNT)].map((_, i) => (
-        <View
-          key={`string-${i}`}
-          style={{
-            position: 'absolute',
-            left: pad + i * cellW - lineW / 2,
-            top: boardTop,
-            height: boardH,
-            width: lineW,
-            backgroundColor: gridColor,
-          }}
-        />
-      ))}
-      {chord.strings.map((fret, stringIdx) => {
-        const cx = pad + stringIdx * cellW;
-        if (fret === -1) {
+        {/* square off the top corners so the board meets the nut cleanly */}
+        <Rect x={boardX} y={boardTop} width={boardWFull} height={small ? 5 : 8} fill="#232342" />
+
+        {/* Frets — flat hairlines in the panel's slate tone */}
+        {[...Array(FRET_COUNT)].map((_, i) => {
+          const y = boardTop + (i + 1) * cellH - fretH;
           return (
-            <Text
-              key={`x-${stringIdx}`}
-              style={{
-                position: 'absolute',
-                left: cx - dotR,
-                top: 0,
-                width: dotR * 2,
-                height: markerH,
-                lineHeight: markerH - (small ? 3 : 4),
-                textAlign: 'center',
-                color: color.text,
-                fontSize: small ? 12 : 18,
-                fontWeight: '800',
-              }}
-            >
-              ×
-            </Text>
-          );
-        }
-        if (fret === 0) {
-          return (
-            <View
-              key={`open-${stringIdx}`}
-              style={{
-                position: 'absolute',
-                left: cx - openR,
-                top: (markerH - nutH) / 2 - openR,
-                width: openR * 2,
-                height: openR * 2,
-                borderRadius: openR,
-                borderWidth: small ? 1.5 : 2,
-                borderColor: color.text,
-                backgroundColor: 'transparent',
-              }}
+            <Rect
+              key={`fret-${i}`}
+              x={boardX}
+              y={y}
+              width={boardWFull}
+              height={fretH}
+              fill={FRET_COLOR}
             />
           );
-        }
-        const finger = chord.fingers[stringIdx];
-        return (
-          <View
-            key={`dot-${stringIdx}`}
-            style={{
-              position: 'absolute',
-              left: cx - dotR,
-              top: boardTop + (fret - 0.5) * cellH - dotR,
-              width: dotR * 2,
-              height: dotR * 2,
-              borderRadius: dotR,
-              backgroundColor: Colors.success,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {finger > 0 && (
-              <Text
-                style={{
-                  color: color.background,
-                  fontSize: small ? 10 : 15,
-                  fontWeight: '800',
-                  lineHeight: small ? 13 : 19,
-                }}
-              >
-                {finger}
-              </Text>
-            )}
-          </View>
-        );
-      })}
+        })}
+
+        {/* Strings — one slate tone, weight graded bass to treble */}
+        {[...Array(FRETBOARD_STRING_COUNT)].map((_, i) => {
+          const w = stringWeights[i];
+          return (
+            <Rect
+              key={`string-${i}`}
+              x={pad + i * cellW - w / 2}
+              y={boardTop}
+              width={w}
+              height={boardH}
+              rx={w / 2}
+              fill={STRING_COLOR}
+            />
+          );
+        })}
+
+        {/* Nut — slim slate bar flush with the fretboard edges */}
+        <Rect
+          x={boardX}
+          y={markerH}
+          width={boardWFull}
+          height={nutH}
+          rx={nutH / 2}
+          fill={NUT_COLOR}
+        />
+
+        {/* Per-string markers: muted ×, open ○, or finger dot */}
+        {chord.strings.map((fret, stringIdx) => {
+          const cx = pad + stringIdx * cellW;
+          if (fret === -1) {
+            const s = small ? 3 : 4.5;
+            const cy = markerH - (small ? 6 : 9);
+            return (
+              <React.Fragment key={`x-${stringIdx}`}>
+                <Line
+                  x1={cx - s}
+                  y1={cy - s}
+                  x2={cx + s}
+                  y2={cy + s}
+                  stroke={color.muted}
+                  strokeWidth={small ? 1.5 : 2}
+                  strokeLinecap="round"
+                  opacity={0.75}
+                />
+                <Line
+                  x1={cx + s}
+                  y1={cy - s}
+                  x2={cx - s}
+                  y2={cy + s}
+                  stroke={color.muted}
+                  strokeWidth={small ? 1.5 : 2}
+                  strokeLinecap="round"
+                  opacity={0.75}
+                />
+              </React.Fragment>
+            );
+          }
+          if (fret === 0) {
+            return (
+              <Circle
+                key={`open-${stringIdx}`}
+                cx={cx}
+                cy={markerH - (small ? 6 : 9)}
+                r={openR}
+                stroke={Colors.success}
+                strokeWidth={small ? 1.5 : 2}
+                fill="none"
+              />
+            );
+          }
+          const finger = chord.fingers[stringIdx];
+          const cy = boardTop + (fret - 0.5) * cellH;
+          return (
+            <React.Fragment key={`dot-${stringIdx}`}>
+              <Circle
+                cx={cx}
+                cy={cy}
+                r={dotR}
+                fill={Colors.success}
+                stroke="rgba(255,255,255,0.25)"
+                strokeWidth={small ? 1 : 1.2}
+              />
+              {finger > 0 && (
+                <SvgText
+                  x={cx}
+                  y={cy + (small ? 3.5 : 5.5)}
+                  fontSize={small ? 10 : 15}
+                  fontWeight="800"
+                  fill="#fff"
+                  textAnchor="middle"
+                >
+                  {finger}
+                </SvgText>
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {/* String letters */}
+        {!small &&
+          STRING_LETTERS.map((letter, i) => (
+            <SvgText
+              key={`letter-${i}`}
+              x={pad + i * cellW}
+              y={boardTop + boardH + 15}
+              fontSize={10.5}
+              fontWeight="700"
+              fill={chord.strings[i] === -1 ? 'rgba(156,163,175,0.4)' : color.muted}
+              textAnchor="middle"
+            >
+              {letter}
+            </SvgText>
+          ))}
+      </Svg>
     </View>
   );
 }

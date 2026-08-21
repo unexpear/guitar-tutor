@@ -5,6 +5,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSequence,
+  withRepeat,
+  withDelay,
   Easing,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,13 +40,14 @@ function TabStrip({ target }: { target: Extract<Target, { kind: 'note' }> }) {
         return (
           <View key={label} style={styles.tabRow}>
             <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
-            <View style={[styles.tabLine, active && styles.tabLineActive]} />
-            {active && (
-              <View style={styles.tabFretBadge}>
-                <Text style={styles.tabFretText}>{target.fret}</Text>
-              </View>
-            )}
-            <View style={[styles.tabLine, active && styles.tabLineActive]} />
+            <View style={styles.tabLineWrap}>
+              <View style={[styles.tabLine, active && styles.tabLineActive]} />
+              {active && (
+                <View style={styles.tabFretBadge}>
+                  <Text style={styles.tabFretText}>{target.fret}</Text>
+                </View>
+              )}
+            </View>
           </View>
         );
       })}
@@ -70,6 +73,50 @@ function PolyPips({
           </Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+/** Tiny equalizer that breathes while the mic is live — the listening-state indicator. */
+function ListeningBars({ live }: { live: boolean }) {
+  const b1 = useSharedValue(1);
+  const b2 = useSharedValue(1);
+  const b3 = useSharedValue(1);
+
+  useEffect(() => {
+    const bounce = (delay: number) =>
+      withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(1.35, { duration: 300, easing: Easing.inOut(Easing.quad) }),
+            withTiming(0.55, { duration: 340, easing: Easing.inOut(Easing.quad) }),
+          ),
+          -1,
+          true,
+        ),
+      );
+    if (live) {
+      b1.value = bounce(0);
+      b2.value = bounce(140);
+      b3.value = bounce(280);
+    } else {
+      b1.value = withTiming(1, { duration: 200 });
+      b2.value = withTiming(1, { duration: 200 });
+      b3.value = withTiming(1, { duration: 200 });
+    }
+  }, [live, b1, b2, b3]);
+
+  const s1 = useAnimatedStyle(() => ({ transform: [{ scaleY: b1.value }] }));
+  const s2 = useAnimatedStyle(() => ({ transform: [{ scaleY: b2.value }] }));
+  const s3 = useAnimatedStyle(() => ({ transform: [{ scaleY: b3.value }] }));
+  const liveStyle = live && styles.eqBarLive;
+
+  return (
+    <View style={styles.eqWrap}>
+      <Animated.View style={[styles.eqBar, styles.eqBarShort, liveStyle, s1]} />
+      <Animated.View style={[styles.eqBar, styles.eqBarTall, liveStyle, s2]} />
+      <Animated.View style={[styles.eqBar, styles.eqBarMid, liveStyle, s3]} />
     </View>
   );
 }
@@ -268,8 +315,8 @@ export default function PlayAlongLesson({
 
   const target = finished ? null : drill.targets[idx];
   const targetChordData = target?.kind === 'chord' ? getChord(target.chordName) : null;
-  const detectedLabel =
-    started && latest?.hasPitch ? `${latest.noteName}${latest.octave}` : '···';
+  const heardNote = started && latest?.hasPitch ? `${latest.noteName}${latest.octave}` : null;
+  const listenLabel = !isRunning ? 'Mic paused' : heardNote ? `Heard ${heardNote}` : 'Listening…';
 
   return (
     <View style={styles.container}>
@@ -292,9 +339,12 @@ export default function PlayAlongLesson({
         </View>
       </View>
 
-      {/* Mode + pace toggles */}
+      {/* Mode + pace toggles (hidden on the results screen so the end-state reads clean) */}
+      {!finished && (
       <View style={styles.toggleRow}>
         {hasChordTargets && (
+          <View>
+            <Text style={styles.toggleCaption}>Detection</Text>
           <View style={styles.toggleGroup}>
             {(['mono', 'poly'] as DetectionMode[]).map((m) => (
               <TouchableOpacity
@@ -310,7 +360,10 @@ export default function PlayAlongLesson({
               </TouchableOpacity>
             ))}
           </View>
+          </View>
         )}
+        <View>
+          <Text style={styles.toggleCaption}>Pace</Text>
         <View style={styles.toggleGroup}>
           {(['wait', 'flow'] as Pace[]).map((p) => (
             <TouchableOpacity
@@ -326,9 +379,12 @@ export default function PlayAlongLesson({
             </TouchableOpacity>
           ))}
         </View>
+        </View>
       </View>
+      )}
 
-      {/* Conveyor */}
+      {/* Conveyor (also cleared once the drill is over) */}
+      {!finished && (
       <View style={styles.conveyorWrap}>
         <View style={styles.hitZone} />
         <Animated.View style={[styles.conveyor, conveyorStyle]}>
@@ -368,9 +424,13 @@ export default function PlayAlongLesson({
           })}
         </Animated.View>
       </View>
+      )}
 
       {/* Stage */}
-      <ScrollView contentContainerStyle={styles.stage} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.stage, started && !finished && styles.stageLive]}
+        showsVerticalScrollIndicator={false}
+      >
         {!started ? (
           <View style={styles.introBox}>
             <Ionicons name="mic-outline" size={40} color={Colors.success} />
@@ -393,7 +453,7 @@ export default function PlayAlongLesson({
             </PressableScale>
           </View>
         ) : finished ? (
-          <View style={styles.introBox}>
+          <View style={[styles.introBox, styles.finishBox]}>
             <Ionicons
               name={scorePercent >= PASS_PERCENT ? 'trophy-outline' : 'refresh-outline'}
               size={44}
@@ -402,12 +462,50 @@ export default function PlayAlongLesson({
             <Text style={styles.doneTitle}>
               {scorePercent >= PASS_PERCENT ? 'Nailed it!' : 'Keep at it'}
             </Text>
+            <View style={styles.finishStatsRow}>
+              <View style={styles.finishStatTile}>
+                <Ionicons
+                  name="checkmark-done-outline"
+                  size={18}
+                  color={hits > 0 ? Colors.success : Colors.dark.muted}
+                />
+                <Text style={styles.finishStatValue}>
+                  {hits}
+                  <Text style={styles.finishStatDenom}>/{drill.targets.length}</Text>
+                </Text>
+                <Text style={styles.statLabel}>Targets</Text>
+              </View>
+              <View style={styles.finishStatTile}>
+                <Ionicons
+                  name="analytics-outline"
+                  size={18}
+                  color={scorePercent >= PASS_PERCENT ? Colors.success : Colors.dark.muted}
+                />
+                <Text
+                  style={[
+                    styles.finishStatValue,
+                    scorePercent >= PASS_PERCENT && styles.finishStatValuePass,
+                  ]}
+                >
+                  {scorePercent}
+                  <Text style={styles.finishStatDenom}>%</Text>
+                </Text>
+                <Text style={styles.statLabel}>Accuracy</Text>
+              </View>
+              <View style={styles.finishStatTile}>
+                <Ionicons
+                  name="flame-outline"
+                  size={18}
+                  color={bestStreak > 0 ? Colors.warning : Colors.dark.muted}
+                />
+                <Text style={styles.finishStatValue}>{bestStreak}</Text>
+                <Text style={styles.statLabel}>Best streak</Text>
+              </View>
+            </View>
             <Text style={styles.doneText}>
-              {hits} of {drill.targets.length} targets · {scorePercent}% accuracy · best streak{' '}
-              {bestStreak}
               {scorePercent >= PASS_PERCENT
-                ? ' — lesson marked complete.'
-                : ` — reach ${PASS_PERCENT}% to complete the lesson.`}
+                ? 'Lesson marked complete.'
+                : `Reach ${PASS_PERCENT}% accuracy to complete the lesson.`}
             </Text>
             <PressableScale
               style={styles.startBtn}
@@ -419,37 +517,72 @@ export default function PlayAlongLesson({
             </PressableScale>
           </View>
         ) : (
-          <Animated.View style={[styles.targetBox, zoneStyle]}>
-            {target?.kind === 'chord' && targetChordData ? (
-              <>
-                <Text style={styles.targetName}>{target.chordName}</Text>
-                {(target.strums ?? 1) > 1 && (
-                  <Text style={styles.strumCount}>
-                    {strumsLeft} strum{strumsLeft === 1 ? '' : 's'} to go
-                  </Text>
-                )}
-                <ChordDiagram chord={targetChordData} />
-                {mode === 'poly' && (
+          <>
+            <Animated.View style={[styles.targetBox, styles.targetBoxLive, zoneStyle]}>
+              <Text style={styles.targetEyebrow}>Play this</Text>
+              <View style={styles.targetBody}>
+                {target?.kind === 'chord' && targetChordData ? (
+                  <>
+                    <Text style={styles.targetName}>{target.chordName}</Text>
+                    {(target.strums ?? 1) > 1 && (
+                      <Text style={styles.strumCount}>
+                        {strumsLeft} strum{strumsLeft === 1 ? '' : 's'} to go
+                      </Text>
+                    )}
+                    <ChordDiagram chord={targetChordData} />
+                  </>
+                ) : target?.kind === 'note' ? (
+                  <>
+                    <Text style={styles.targetName}>
+                      {TAB_ROWS[5 - target.stringIndex]} string ·{' '}
+                      {target.fret === 0 ? 'open' : `fret ${target.fret}`}
+                    </Text>
+                    <TabStrip target={target} />
+                  </>
+                ) : null}
+              </View>
+              <View style={styles.cardFooter}>
+                {target?.kind === 'chord' && mode === 'poly' && (
                   <PolyPips
                     targetClasses={heardState.target}
                     heardClasses={heardState.heard}
                   />
                 )}
-              </>
-            ) : target?.kind === 'note' ? (
-              <>
-                <Text style={styles.targetName}>
-                  {TAB_ROWS[5 - target.stringIndex]} string ·{' '}
-                  {target.fret === 0 ? 'open' : `fret ${target.fret}`}
+                <View style={[styles.listenPill, isRunning && styles.listenPillLive]}>
+                  <ListeningBars live={isRunning} />
+                  <Text
+                    style={[styles.listenPillText, isRunning && styles.listenPillTextLive]}
+                    numberOfLines={1}
+                  >
+                    {listenLabel}
+                  </Text>
+                </View>
+              </View>
+            </Animated.View>
+            <View style={styles.statsRow}>
+              <View style={styles.statTile}>
+                <Ionicons
+                  name="flame-outline"
+                  size={18}
+                  color={streak > 0 ? Colors.warning : Colors.dark.muted}
+                />
+                <Text style={styles.statValue}>{streak}</Text>
+                <Text style={styles.statLabel}>Streak</Text>
+              </View>
+              <View style={styles.statTile}>
+                <Ionicons name="trending-up-outline" size={18} color={Colors.success} />
+                <Text style={styles.statValue}>{bestStreak}</Text>
+                <Text style={styles.statLabel}>Best</Text>
+              </View>
+              <View style={styles.statTile}>
+                <Ionicons name="analytics-outline" size={18} color={Colors.dark.muted} />
+                <Text style={styles.statValue}>
+                  {attempts === 0 ? '—' : `${scorePercent}%`}
                 </Text>
-                <TabStrip target={target} />
-              </>
-            ) : null}
-            <View style={styles.listenRow}>
-              <View style={[styles.listenDot, isRunning && styles.listenDotLive]} />
-              <Text style={styles.listenText}>Hearing: {detectedLabel}</Text>
+                <Text style={styles.statLabel}>Accuracy</Text>
+              </View>
             </View>
-          </Animated.View>
+          </>
         )}
       </ScrollView>
     </View>
@@ -493,6 +626,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 14,
     flexWrap: 'wrap',
+  },
+  toggleCaption: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: Colors.dark.muted,
+    marginBottom: 4,
+    marginLeft: 4,
   },
   toggleGroup: {
     flexDirection: 'row',
@@ -588,10 +730,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
+  stageLive: {
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
   introBox: {
     alignItems: 'center',
     gap: 16,
-    maxWidth: 340,
+    maxWidth: 360,
+    alignSelf: 'stretch',
+    backgroundColor: Colors.dark.card,
+    borderWidth: 1,
+    borderColor: Colors.dark.cardBorder,
+    borderRadius: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
   },
   introText: {
     fontSize: 15,
@@ -616,6 +771,40 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
   },
+  finishBox: {
+    width: '100%',
+  },
+  finishStatsRow: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    gap: 10,
+    marginTop: 4,
+  },
+  finishStatTile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.dark.card,
+    borderWidth: 1,
+    borderColor: Colors.dark.cardBorder,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+  },
+  finishStatValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: Colors.dark.text,
+    fontVariant: ['tabular-nums'],
+  },
+  finishStatValuePass: {
+    color: Colors.success,
+  },
+  finishStatDenom: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.dark.muted,
+  },
   doneTitle: {
     fontSize: 24,
     fontWeight: '800',
@@ -628,8 +817,71 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   targetBox: {
+    alignSelf: 'stretch',
     alignItems: 'center',
     gap: 12,
+    backgroundColor: Colors.dark.card,
+    borderWidth: 1,
+    borderColor: Colors.dark.cardBorder,
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    ...CARD_SHADOW,
+  },
+  targetBoxLive: {
+    paddingVertical: 18,
+    gap: 10,
+  },
+  targetBody: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  cardFooter: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    columnGap: 12,
+    rowGap: 8,
+    flexWrap: 'wrap',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    gap: 10,
+    marginTop: 12,
+  },
+  statTile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.dark.card,
+    borderWidth: 1,
+    borderColor: Colors.dark.cardBorder,
+    borderRadius: 16,
+    paddingVertical: 14,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.dark.text,
+    fontVariant: ['tabular-nums'],
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: Colors.dark.muted,
+  },
+  targetEyebrow: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: Colors.success,
   },
   targetName: {
     fontSize: 30,
@@ -662,16 +914,23 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     color: Colors.success,
   },
-  tabLine: {
+  tabLineWrap: {
     flex: 1,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabLine: {
+    alignSelf: 'stretch',
     height: 2,
     borderRadius: 1,
-    backgroundColor: Colors.dark.surfaceElevated,
+    backgroundColor: '#2e2e55',
   },
   tabLineActive: {
     backgroundColor: 'rgba(76,175,80,0.5)',
   },
   tabFretBadge: {
+    position: 'absolute',
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -687,8 +946,7 @@ const styles = StyleSheet.create({
   pipsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
+    gap: 6,
   },
   pipsLabel: {
     fontSize: 12,
@@ -696,10 +954,10 @@ const styles = StyleSheet.create({
     color: Colors.dark.muted,
   },
   pip: {
-    minWidth: 30,
-    height: 30,
-    borderRadius: 15,
-    paddingHorizontal: 6,
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
+    paddingHorizontal: 5,
     backgroundColor: Colors.dark.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -718,24 +976,45 @@ const styles = StyleSheet.create({
   pipTextHeard: {
     color: '#fff',
   },
-  listenRow: {
+  listenPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
+    gap: 9,
+    backgroundColor: Colors.dark.surfaceElevated,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 16,
+    paddingVertical: 7,
+    paddingHorizontal: 15,
   },
-  listenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.dark.muted,
+  listenPillLive: {
+    backgroundColor: 'rgba(76,175,80,0.10)',
+    borderColor: 'rgba(76,175,80,0.35)',
   },
-  listenDotLive: {
-    backgroundColor: Colors.danger,
-  },
-  listenText: {
+  listenPillText: {
     fontSize: 13,
+    fontWeight: '600',
     color: Colors.dark.muted,
     fontVariant: ['tabular-nums'],
   },
+  listenPillTextLive: {
+    color: '#a5d6a7',
+  },
+  eqWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2.5,
+    height: 14,
+  },
+  eqBar: {
+    width: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.dark.muted,
+  },
+  eqBarLive: {
+    backgroundColor: Colors.success,
+  },
+  eqBarShort: { height: 7 },
+  eqBarTall: { height: 13 },
+  eqBarMid: { height: 9 },
 });
