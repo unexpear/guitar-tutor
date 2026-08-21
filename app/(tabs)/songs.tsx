@@ -48,6 +48,33 @@ const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   Hard: '#F44336',
 };
 
+// Deterministic per-artist cover-art tints (dark-theme friendly duotones).
+const ART_PALETTE: { bg: string; fg: string }[] = [
+  { bg: '#3E3A6B', fg: '#B7B0F0' },
+  { bg: '#2E4A63', fg: '#9CC7EA' },
+  { bg: '#553A5E', fg: '#DDA9E6' },
+  { bg: '#2F5548', fg: '#9BDCC0' },
+  { bg: '#5E4632', fg: '#EAC08F' },
+  { bg: '#5A3540', fg: '#F0A3B5' },
+  { bg: '#33525E', fg: '#A5D8E6' },
+  { bg: '#4E4E33', fg: '#DCDC9B' },
+];
+
+function artForArtist(artist: string) {
+  let hash = 0;
+  for (let i = 0; i < artist.length; i++) {
+    hash = (hash * 31 + artist.charCodeAt(i)) | 0;
+  }
+  return ART_PALETTE[Math.abs(hash) % ART_PALETTE.length];
+}
+
+function initialsFor(artist: string) {
+  const words = artist.replace(/^The\s+/i, '').split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? '?';
+  const second = words[1]?.[0] ?? '';
+  return (first + second).toUpperCase();
+}
+
 export default function SongLibraryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<Difficulty | 'All'>('All');
@@ -60,36 +87,55 @@ export default function SongLibraryScreen() {
     return matchesSearch && matchesFilter;
   });
 
-  const renderDifficultyBadge = (difficulty: Difficulty) => (
-    <View
-      style={[styles.badge, { backgroundColor: DIFFICULTY_COLORS[difficulty] }]}
-      accessibilityLabel={`Difficulty: ${difficulty}`}
-    >
-      <Text style={styles.badgeText}>{difficulty}</Text>
-    </View>
-  );
-
-  const renderSongItem = ({ item }: { item: Song }) => (
-    <PressableScale
-      style={styles.songCard}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.title} by ${item.artist}, difficulty ${item.difficulty}`}
-    >
-      <View style={styles.songInfo}>
-        <Text style={styles.songTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.songArtist} numberOfLines={1}>
-          {item.artist}
-        </Text>
-        <View style={styles.songMeta}>
-          {renderDifficultyBadge(item.difficulty)}
-          <Text style={styles.songDuration}>{item.duration}</Text>
+  const renderSongItem = ({ item }: { item: Song }) => {
+    const art = artForArtist(item.artist);
+    return (
+      <PressableScale
+        style={styles.songCard}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.title} by ${item.artist}, difficulty ${item.difficulty}`}
+      >
+        <View style={[styles.artTile, { backgroundColor: art.bg }]}>
+          <Ionicons
+            name="musical-notes"
+            size={34}
+            color={art.fg}
+            style={styles.artGlyph}
+          />
+          <Text style={[styles.artInitials, { color: art.fg }]}>
+            {initialsFor(item.artist)}
+          </Text>
         </View>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={Colors.dark.muted} />
-    </PressableScale>
-  );
+        <View style={styles.songInfo}>
+          <Text style={styles.songTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.songArtist} numberOfLines={1}>
+            {item.artist}
+          </Text>
+          <View style={styles.songMeta}>
+            <View
+              style={[
+                styles.difficultyDot,
+                { backgroundColor: DIFFICULTY_COLORS[item.difficulty] },
+              ]}
+            />
+            <Text
+              style={[
+                styles.difficultyText,
+                { color: DIFFICULTY_COLORS[item.difficulty] },
+              ]}
+            >
+              {item.difficulty}
+            </Text>
+            <Text style={styles.metaSeparator}>·</Text>
+            <Text style={styles.songDuration}>{item.duration}</Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={Colors.dark.muted} />
+      </PressableScale>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -225,45 +271,72 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 100,
-    gap: 10,
+    gap: 8,
   },
   songCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1a1a3e',
     borderRadius: 14,
-    padding: 16,
+    paddingVertical: 10,
+    paddingLeft: 10,
+    paddingRight: 14,
     ...CARD_SHADOW,
+  },
+  artTile: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  artGlyph: {
+    position: 'absolute',
+    right: -7,
+    bottom: -7,
+    opacity: 0.28,
+    transform: [{ rotate: '-12deg' }],
+  },
+  artInitials: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   songInfo: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
   },
   songTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   songArtist: {
     fontSize: 13,
     color: Colors.dark.muted,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   songMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 5,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  difficultyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  difficultyText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  metaSeparator: {
+    fontSize: 12,
+    color: Colors.dark.muted,
+    opacity: 0.6,
   },
   songDuration: {
     fontSize: 12,

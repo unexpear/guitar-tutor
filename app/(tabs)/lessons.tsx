@@ -11,6 +11,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import { useProgressStore } from '../../features/store/progressStore';
@@ -28,6 +29,24 @@ const LEVEL_COLORS: Record<Difficulty, string> = {
   intermediate: Colors.warning,
   advanced: Colors.danger,
 };
+
+type MCIName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+const LESSON_ICONS: Record<string, MCIName> = {
+  'beginner-guitar-anatomy': 'guitar-acoustic',
+  'beginner-basic-strumming': 'guitar-pick',
+  'beginner-open-chords': 'music-clef-treble',
+  'beginner-reading-tabs': 'file-music',
+  'intermediate-barre-chords': 'guitar-electric',
+  'intermediate-fingerpicking': 'gesture-tap',
+  'intermediate-scales-101': 'stairs',
+  'intermediate-music-theory': 'book-open-variant',
+  'advanced-improvisation': 'lightning-bolt',
+  'advanced-techniques': 'fire',
+  'advanced-songwriting': 'playlist-edit',
+};
+
+const FALLBACK_ICON: MCIName = 'music-note';
 
 interface Lesson {
   id: string;
@@ -214,18 +233,27 @@ function CategorySection({
     <View style={styles.categoryContainer}>
       <PressableScale
         onPress={onToggle}
-        style={[styles.categoryHeader, { borderLeftColor: LEVEL_COLORS[category.difficulty] }]}
+        style={styles.categoryHeader}
         accessibilityLabel={`${category.label} lessons, ${completedInCategory} of ${category.lessons.length} completed. ${isExpanded ? 'Tap to collapse' : 'Tap to expand'}`}
         accessibilityRole="button"
         accessibilityState={{ expanded: isExpanded }}
       >
-        <View style={styles.categoryHeaderLeft}>
-          <Text style={styles.categoryLabel}>{category.label}</Text>
-          <Text style={styles.categoryCount}>
-            {completedInCategory}/{category.lessons.length}
-          </Text>
-        </View>
-        <Text style={styles.chevron}>{isExpanded ? '▾' : '▸'}</Text>
+        <View
+          style={[
+            styles.categoryDot,
+            { backgroundColor: LEVEL_COLORS[category.difficulty] },
+          ]}
+        />
+        <Text style={styles.categoryLabel}>{category.label}</Text>
+        <View style={styles.categoryRule} />
+        <Text style={styles.categoryCount}>
+          {completedInCategory}/{category.lessons.length}
+        </Text>
+        <Ionicons
+          name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+          size={15}
+          color={Colors.dark.muted}
+        />
       </PressableScale>
 
       {isExpanded && (
@@ -253,6 +281,8 @@ function LessonCard({
   completed: boolean;
   onPress: () => void;
 }) {
+  const levelColor = LEVEL_COLORS[lesson.difficulty];
+
   return (
     <PressableScale
       onPress={onPress}
@@ -260,16 +290,44 @@ function LessonCard({
       accessibilityLabel={`${lesson.title}. ${lesson.description}. Difficulty: ${lesson.difficulty}. ${completed ? 'Completed' : 'Not completed'}`}
       accessibilityRole="button"
     >
-      <View style={styles.lessonCardTop}>
-        <DifficultyDot difficulty={lesson.difficulty} />
+      <View
+        style={[
+          styles.lessonIconTile,
+          {
+            backgroundColor: `${levelColor}1F`,
+            borderColor: `${levelColor}40`,
+          },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name={LESSON_ICONS[lesson.id] ?? FALLBACK_ICON}
+          size={24}
+          color={levelColor}
+        />
+      </View>
+      <View style={styles.lessonBody}>
         <Text style={styles.lessonTitle} numberOfLines={1}>
           {lesson.title}
         </Text>
-        {completed && <Text style={styles.checkmark}>✓</Text>}
+        <Text style={styles.lessonDescription} numberOfLines={2}>
+          {lesson.description}
+        </Text>
       </View>
-      <Text style={styles.lessonDescription} numberOfLines={2}>
-        {lesson.description}
-      </Text>
+      {completed ? (
+        <Ionicons
+          name="checkmark-circle"
+          size={22}
+          color={Colors.success}
+          style={styles.lessonTrailing}
+        />
+      ) : (
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={Colors.dark.muted}
+          style={styles.lessonTrailing}
+        />
+      )}
     </PressableScale>
   );
 }
@@ -575,59 +633,69 @@ const styles = StyleSheet.create({
     color: Colors.dark.muted,
   },
   categoryContainer: {
-    marginBottom: Colors.spacing.md,
+    marginBottom: Colors.spacing.lg,
   },
   categoryHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.dark.card,
-    borderRadius: Colors.radius.md,
-    paddingVertical: Colors.spacing.md,
-    paddingHorizontal: Colors.spacing.md,
-    borderLeftWidth: 4,
-    borderWidth: 1,
-    borderColor: Colors.dark.cardBorder,
+    paddingVertical: Colors.spacing.sm,
+    paddingHorizontal: 2,
+    marginTop: Colors.spacing.xs,
   },
-  categoryHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  categoryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: Colors.spacing.sm,
   },
   categoryLabel: {
     fontSize: 17,
     fontWeight: '700',
     color: Colors.dark.text,
+    letterSpacing: 0.2,
+  },
+  categoryRule: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.dark.cardBorder,
+    marginHorizontal: Colors.spacing.md,
   },
   categoryCount: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.dark.muted,
-  },
-  chevron: {
-    fontSize: 18,
-    color: Colors.dark.muted,
+    marginRight: 6,
   },
   lessonList: {
     marginTop: Colors.spacing.sm,
     gap: Colors.spacing.sm,
   },
   lessonCard: {
-    backgroundColor: Colors.dark.surfaceElevated,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#232345',
     borderRadius: Colors.radius.md,
-    padding: Colors.spacing.md,
+    paddingVertical: Colors.spacing.md - 2,
+    paddingLeft: Colors.spacing.md - 2,
+    paddingRight: Colors.spacing.sm + 2,
     borderWidth: 1,
     borderColor: Colors.dark.cardBorder,
   },
   lessonCardCompleted: {
-    borderColor: Colors.success,
-    opacity: 0.85,
+    borderColor: `${Colors.success}66`,
+    opacity: 0.9,
   },
-  lessonCardTop: {
-    flexDirection: 'row',
+  lessonIconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: Colors.radius.md - 2,
+    borderWidth: 1,
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    justifyContent: 'center',
+    marginRight: Colors.spacing.md - 4,
+  },
+  lessonBody: {
+    flex: 1,
   },
   dot: {
     width: 8,
@@ -638,17 +706,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: Colors.dark.text,
-    flex: 1,
-  },
-  checkmark: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.success,
+    marginBottom: 2,
   },
   lessonDescription: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: Colors.dark.muted,
-    lineHeight: 18,
+    lineHeight: 17,
+  },
+  lessonTrailing: {
+    marginLeft: Colors.spacing.sm,
   },
   detailOverlay: {
     ...StyleSheet.absoluteFill,

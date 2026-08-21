@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
@@ -84,52 +85,79 @@ const FRET_COUNT = 5;
 
 function ChordDiagram({ chord, small }: { chord: Chord; small?: boolean }) {
   const color = Colors.dark;
-  const size = small ? 64 : 120;
-  const cellH = size / (FRET_COUNT + 1);
-  const cellW = size / (FRETBOARD_STRING_COUNT - 1);
-  const dotR = small ? 2.5 : 4.5;
+  // Finger-dot radius drives all other proportions.
+  const dotR = small ? 7 : 14;
+  const boardW = small ? 82 : 150;
+  const boardH = small ? 92 : 168;
+  const nutH = small ? 5 : 7;
+  const markerH = small ? 17 : 26; // X / O row above the nut
+  const lineW = small ? 1.5 : 2;
+  const cellH = boardH / FRET_COUNT;
+  const cellW = boardW / (FRETBOARD_STRING_COUNT - 1);
+  const pad = dotR + 1; // room for dots on the outer strings
+  const gridColor = color.muted;
+  const boardTop = markerH + nutH;
+  const openR = small ? 4.5 : 8;
 
   return (
-    <View style={{ width: size, height: size }}>
-      {[...Array(FRET_COUNT + 1)].map((_, fret) => (
+    <View style={{ width: boardW + pad * 2, height: boardTop + boardH + lineW }}>
+      {/* Nut — bold bar across the top */}
+      <View
+        style={{
+          position: 'absolute',
+          top: markerH,
+          left: pad - lineW,
+          width: boardW + lineW * 2,
+          height: nutH,
+          borderRadius: nutH / 3,
+          backgroundColor: color.tint,
+        }}
+      />
+      {/* Frets */}
+      {[...Array(FRET_COUNT)].map((_, i) => (
         <View
-          key={`fret-${fret}`}
+          key={`fret-${i}`}
           style={{
             position: 'absolute',
-            top: fret * cellH,
-            left: 0,
-            right: 0,
-            height: 1,
-            backgroundColor: fret === 0 ? (small ? '#888' : '#aaa') : color.muted + '40',
+            top: boardTop + (i + 1) * cellH - lineW,
+            left: pad,
+            width: boardW,
+            height: lineW,
+            backgroundColor: gridColor,
           }}
         />
       ))}
-      {[...Array(FRETBOARD_STRING_COUNT)].map((_, string) => (
+      {/* Strings */}
+      {[...Array(FRETBOARD_STRING_COUNT)].map((_, i) => (
         <View
-          key={`string-${string}`}
+          key={`string-${i}`}
           style={{
             position: 'absolute',
-            left: string * cellW,
-            top: 0,
-            bottom: 0,
-            width: 1,
-            backgroundColor: color.muted + '40',
+            left: pad + i * cellW - lineW / 2,
+            top: boardTop,
+            height: boardH,
+            width: lineW,
+            backgroundColor: gridColor,
           }}
         />
       ))}
       {chord.strings.map((fret, stringIdx) => {
-        const x = stringIdx * cellW;
+        const cx = pad + stringIdx * cellW;
         if (fret === -1) {
           return (
             <Text
               key={`x-${stringIdx}`}
               style={{
                 position: 'absolute',
-                left: x - (small ? 4 : 6),
-                top: -cellH * 0.6,
-                color: color.muted,
-                fontSize: small ? 6 : 10,
-                fontWeight: '600',
+                left: cx - dotR,
+                top: 0,
+                width: dotR * 2,
+                height: markerH,
+                lineHeight: markerH - (small ? 3 : 4),
+                textAlign: 'center',
+                color: color.text,
+                fontSize: small ? 12 : 18,
+                fontWeight: '800',
               }}
             >
               ×
@@ -142,31 +170,47 @@ function ChordDiagram({ chord, small }: { chord: Chord; small?: boolean }) {
               key={`open-${stringIdx}`}
               style={{
                 position: 'absolute',
-                left: x - dotR,
-                top: -cellH * 0.5 - dotR,
-                width: dotR * 2,
-                height: dotR * 2,
-                borderRadius: dotR,
-                borderWidth: 1,
-                borderColor: color.tint,
+                left: cx - openR,
+                top: (markerH - nutH) / 2 - openR,
+                width: openR * 2,
+                height: openR * 2,
+                borderRadius: openR,
+                borderWidth: small ? 1.5 : 2,
+                borderColor: color.text,
                 backgroundColor: 'transparent',
               }}
             />
           );
         }
+        const finger = chord.fingers[stringIdx];
         return (
           <View
-            key={`fret-${stringIdx}`}
+            key={`dot-${stringIdx}`}
             style={{
               position: 'absolute',
-              left: x - dotR,
-              top: fret * cellH - dotR + cellH / 2,
+              left: cx - dotR,
+              top: boardTop + (fret - 0.5) * cellH - dotR,
               width: dotR * 2,
               height: dotR * 2,
               borderRadius: dotR,
-              backgroundColor: color.tint,
+              backgroundColor: Colors.success,
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
-          />
+          >
+            {finger > 0 && (
+              <Text
+                style={{
+                  color: color.background,
+                  fontSize: small ? 10 : 15,
+                  fontWeight: '800',
+                  lineHeight: small ? 13 : 19,
+                }}
+              >
+                {finger}
+              </Text>
+            )}
+          </View>
         );
       })}
     </View>
@@ -190,15 +234,15 @@ function FilterButton({
       style={[
         styles.filterBtn,
         {
-          backgroundColor: active ? color.tint : color.surface,
-          borderColor: active ? color.tint : color.cardBorder,
+          backgroundColor: active ? Colors.success : color.surface,
+          borderColor: active ? Colors.success : color.cardBorder,
         },
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={`Filter by ${label}`}
     >
-      <Text style={[styles.filterText, { color: active ? '#000' : color.text }]}>
+      <Text style={[styles.filterText, { color: active ? '#fff' : color.text }]}>
         {label}
       </Text>
     </PressableScale>
@@ -295,7 +339,11 @@ export default function ChordsScreen() {
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null);
 
   const numColumns = width >= 600 ? 4 : width >= 400 ? 3 : 2;
-  const cardWidth = Math.floor(width / numColumns) - 16;
+  const gridGap = numColumns >= 4 ? 10 : 12;
+  // Full-bleed grid: subtract the list's horizontal padding (16 each side)
+  // and the inter-card gaps so the columns span the same width as the
+  // search bar above.
+  const cardWidth = Math.floor((width - 32 - gridGap * (numColumns - 1)) / numColumns);
 
   const filtered = useMemo(() => {
     let result = CHORDS;
@@ -334,7 +382,7 @@ export default function ChordsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: color.background }]} edges={[]}>
       <View style={[styles.searchWrap, { backgroundColor: color.surface, borderColor: color.cardBorder }]}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search" size={16} color={color.muted} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: color.text }]}
           placeholder="Search chords..."
@@ -346,7 +394,7 @@ export default function ChordsScreen() {
         />
         {search.length > 0 && (
           <Pressable onPress={() => setSearch('')} hitSlop={12}>
-            <Text style={[styles.clearBtn, { color: color.muted }]}>✕</Text>
+            <Ionicons name="close" size={18} color={color.muted} />
           </Pressable>
         )}
       </View>
@@ -354,6 +402,7 @@ export default function ChordsScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
         contentContainerStyle={styles.filterRow}
       >
         <FilterButton
@@ -373,7 +422,12 @@ export default function ChordsScreen() {
 
       {sections.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🎸</Text>
+          <MaterialCommunityIcons
+            name="guitar-acoustic"
+            size={48}
+            color={color.muted}
+            style={styles.emptyIcon}
+          />
           <Text style={[styles.emptyTitle, { color: color.text }]}>No chords found</Text>
           <Text style={[styles.emptySubtitle, { color: color.muted }]}>
             Try a different search
@@ -390,7 +444,7 @@ export default function ChordsScreen() {
               <Text style={[styles.sectionHeader, { color: color.muted }]}>
                 {CHORD_TYPE_LABELS[section.type]}
               </Text>
-              <View style={[styles.grid, { gap: numColumns >= 4 ? 10 : 12 }]}>
+              <View style={[styles.grid, { gap: gridGap }]}>
                 {section.data.map((chord, i) => (
                   <ChordCard
                     key={chord.name}
@@ -429,7 +483,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   searchIcon: {
-    fontSize: 14,
     marginRight: 8,
   },
   searchInput: {
@@ -437,24 +490,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 0,
   },
-  clearBtn: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+  filterScroll: {
+    flexGrow: 0,
+    marginBottom: 12,
   },
   filterRow: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
     gap: 8,
+    alignItems: 'center',
   },
   filterBtn: {
+    height: 36,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterText: {
     fontSize: 13,
+    lineHeight: 18,
     fontWeight: '600',
   },
   listContent: {
@@ -499,9 +554,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingBottom: 60,
   },
-  emptyEmoji: {
-    fontSize: 48,
+  emptyIcon: {
     marginBottom: 16,
+    opacity: 0.7,
   },
   emptyTitle: {
     fontSize: 18,

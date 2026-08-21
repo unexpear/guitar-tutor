@@ -1,11 +1,11 @@
 import { Tabs, useRouter } from 'expo-router';
-import { Pressable, Text } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import { ColorValue, Pressable } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
-  return (
-    <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
-  );
+type MCIName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+function TabIcon({ name, color }: { name: MCIName; color: ColorValue }) {
+  return <MaterialCommunityIcons name={name} size={24} color={color} />;
 }
 
 export default function TabLayout() {
@@ -26,6 +26,7 @@ export default function TabLayout() {
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#9ca3af',
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
       <Tabs.Screen
@@ -40,17 +41,17 @@ export default function TabLayout() {
               accessibilityLabel="Settings"
               accessibilityRole="button"
             >
-              <Text style={{ fontSize: 20 }}>⚙️</Text>
+              <Ionicons name="settings-outline" size={22} color="#9ca3af" />
             </Pressable>
           ),
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎵" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="tune-vertical" color={color} />,
         }}
       />
       <Tabs.Screen
         name="chords"
         options={{
           title: 'Chords',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎸" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="guitar-acoustic" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -58,7 +59,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Lessons',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📚" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="book-open-variant" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -66,7 +67,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Songs',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎶" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="music-note" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -74,7 +75,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Games',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎮" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="gamepad-variant" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -82,7 +83,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Metronome',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🥁" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="metronome" color={color} />,
         }}
       />
     </Tabs>

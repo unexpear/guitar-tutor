@@ -39,10 +39,11 @@ const SECTIONS = [
   },
 ];
 
-const NEEDLE_TRACK_WIDTH = 120;
+const NEEDLE_TRACK_WIDTH = 288;
+const GAUGE_TICKS = Array.from({ length: 21 }, (_, i) => i);
 
 export default function TunerScreen() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const [tuning, setTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
@@ -84,7 +85,7 @@ export default function TunerScreen() {
   const centsLabel = !hasPitch
     ? tuner.isActive
       ? 'Listening…'
-      : 'Tap to Tune'
+      : 'Ready'
     : Math.abs(displayCents) <= 5
     ? 'In Tune'
     : displayCents > 0
@@ -176,10 +177,6 @@ export default function TunerScreen() {
   }));
 
   const circleSize = Math.min(width * 0.12, 48);
-  const noteFontSize = Math.min(width * 0.28, 120);
-  const centsFontSize = Math.min(width * 0.06, 28);
-  const headstockHeight = Math.min(height * 0.28, 280);
-  const headstockWidth = headstockHeight * (200 / 320);
 
   return (
     <View style={styles.container}>
@@ -301,38 +298,63 @@ export default function TunerScreen() {
       </View>
 
       <View style={styles.centerDisplay}>
-        <Text
-          style={[styles.noteText, { color: noteColor, fontSize: noteFontSize }]}
-          accessibilityLabel={
-            hasPitch
-              ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents)} cents`
-              : tuner.isActive
-              ? 'Listening for a note'
-              : 'Tuner inactive'
-          }
+        <View
+          style={[
+            styles.noteCircle,
+            {
+              borderColor: hasPitch ? centsColor : Colors.dark.cardBorder,
+              backgroundColor: isTuned
+                ? 'rgba(76,175,80,0.12)'
+                : Colors.dark.surface,
+            },
+          ]}
         >
-          {displayNote}
-        </Text>
+          <Text
+            style={[styles.noteText, { color: noteColor }]}
+            accessibilityLabel={
+              hasPitch
+                ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents)} cents`
+                : tuner.isActive
+                ? 'Listening for a note'
+                : 'Tuner inactive'
+            }
+          >
+            {displayNote}
+          </Text>
+        </View>
 
-        <View style={styles.centsRow}>
-          <View style={styles.centsIndicatorContainer}>
-            <View style={styles.centsTrack}>
-              <View style={styles.centsCenterTick} />
-              <Animated.View
+        <View style={styles.gauge}>
+          <View style={styles.tickRow}>
+            {GAUGE_TICKS.map((i) => (
+              <View
+                key={i}
                 style={[
-                  styles.centsNeedle,
-                  { backgroundColor: centsColor },
-                  needleStyle,
+                  styles.tick,
+                  i % 5 === 0 && styles.tickMajor,
+                  i === 10 && styles.tickCenter,
                 ]}
               />
-            </View>
+            ))}
           </View>
-          <Text style={[styles.centsValue, { color: centsColor, fontSize: centsFontSize }]}>
+          <Animated.View
+            style={[
+              styles.gaugeNeedle,
+              { backgroundColor: centsColor },
+              needleStyle,
+            ]}
+          />
+        </View>
+        <View style={styles.gaugeScaleRow}>
+          <Text style={styles.gaugeScaleText}>-50</Text>
+          <Text style={styles.gaugeScaleText}>0</Text>
+          <Text style={styles.gaugeScaleText}>+50</Text>
+        </View>
+
+        <View style={styles.centsRow}>
+          <Text style={[styles.centsValue, { color: centsColor }]}>
             {centsDisplay}
           </Text>
-          <Text style={[styles.centsUnit, { fontSize: centsFontSize * 0.6 }]}>
-            cents
-          </Text>
+          <Text style={styles.centsUnit}>cents</Text>
         </View>
         <Text style={[styles.centsLabel, { color: centsColor }]}>
           {centsLabel}
@@ -467,11 +489,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   stringsArea: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
+    marginTop: 8,
   },
   stringColumn: {
     justifyContent: 'space-evenly',
@@ -492,61 +514,95 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   centerDisplay: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
   },
+  noteCircle: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
   noteText: {
+    fontSize: 40,
     fontWeight: '800',
-    letterSpacing: 2,
+    letterSpacing: 1,
+  },
+  gauge: {
+    width: NEEDLE_TRACK_WIDTH,
+    height: 44,
+    justifyContent: 'center',
+  },
+  tickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: '100%',
+  },
+  tick: {
+    width: 2,
+    height: 12,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  tickMajor: {
+    height: 22,
+    backgroundColor: 'rgba(255,255,255,0.32)',
+  },
+  tickCenter: {
+    width: 3,
+    height: 32,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  gaugeNeedle: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '50%',
+    marginLeft: -2,
+    width: 4,
+    borderRadius: 2,
+    ...CARD_SHADOW,
+  },
+  gaugeScaleRow: {
+    width: NEEDLE_TRACK_WIDTH,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  gaugeScaleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.dark.muted,
+    fontVariant: ['tabular-nums'],
   },
   centsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
+    alignItems: 'baseline',
+    marginTop: 14,
     gap: 6,
   },
-  centsIndicatorContainer: {
-    width: 120,
-    height: 4,
-    overflow: 'hidden',
-    borderRadius: 2,
-  },
-  centsTrack: {
-    flex: 1,
-    backgroundColor: Colors.dark.surfaceElevated,
-    borderRadius: 2,
-    position: 'relative',
-  },
-  centsNeedle: {
-    position: 'absolute',
-    top: -1,
-    left: '50%',
-    marginLeft: -1.5,
-    width: 3,
-    height: 6,
-    borderRadius: 1.5,
-  },
-  centsCenterTick: {
-    position: 'absolute',
-    left: '50%',
-    top: -3,
-    marginLeft: -0.5,
-    width: 1,
-    height: 10,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
   centsValue: {
-    fontWeight: '700',
-    minWidth: 36,
-    textAlign: 'right',
+    fontSize: 38,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
   centsUnit: {
+    fontSize: 14,
     color: Colors.dark.muted,
     fontWeight: '500',
   },
   centsLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
     marginTop: 2,
   },
   freqText: {
@@ -574,23 +630,23 @@ const styles = StyleSheet.create({
   },
   bottomArea: {
     alignItems: 'center',
-    paddingBottom: 24,
-    paddingTop: 8,
+    paddingBottom: 16,
+    paddingTop: 4,
   },
   buttonContainer: {
     width: '100%',
     alignItems: 'center',
   },
   tuneButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 32,
-    minWidth: 220,
+    paddingVertical: 13,
+    paddingHorizontal: 36,
+    borderRadius: 26,
+    minWidth: 176,
     alignItems: 'center',
     ...CARD_SHADOW,
   },
   tuneButtonText: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 1,
   },
