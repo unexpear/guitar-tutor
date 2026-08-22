@@ -53,3 +53,51 @@ Enroll in **Play App Signing** when creating the app: Google generates and holds
 ## New personal account gate
 
 Personal developer accounts created after 2023-11-13 must run a **closed test with 12 testers opted in continuously for 14 days** before production access can be requested. Plan for this: create the closed track, upload the AAB, recruit testers early, and don't let them opt out mid-window.
+
+## Closed test release — remaining manual steps
+
+Console state as of the branding release: app created, all App content
+declarations complete, store listing published with the branded icon,
+feature graphic and six screenshots, and the closed testing track
+("Closed testing - Alpha") targeted at 177 countries.
+
+Two things still need a human, because browser automation cannot do them:
+
+### 1. Upload the app bundle
+
+The AAB is ~82 MB, which is larger than the automation bridge allows, so it
+must be dragged in by hand.
+
+1. Download the `app-release-aab` artifact from the latest green CI run
+   (or use the copy already at `dist-play/app-release.aab`).
+2. Open the release: Test and release -> Testing -> Closed testing ->
+   Manage track -> Create new release.
+3. Drag the `.aab` onto the "App bundles" drop zone and wait for processing.
+4. Release name: `1 (1.0.0) - first closed test`
+5. Release notes (paste inside the existing `<en-US>` tags):
+
+```
+First closed test build of StandardTune.
+
+- Real-time tuner with 16 tunings and per-string in-tune indicators
+- Chord library with 29 chords, diagrams, and reference audio
+- Play-along practice drills that listen to your guitar
+- Beginner to advanced lessons with an interactive guitar anatomy quiz
+- Metronome with tap tempo and multiple time signatures
+
+Everything runs offline and audio never leaves your device. Please report
+anything that misbehaves, especially tuner accuracy on your instrument.
+```
+
+6. Save -> Next -> Send for review / start rollout.
+
+Note: Play refuses to save the release draft (name and notes included) until
+a bundle is attached, so do the upload first.
+
+### 2. Add testers
+
+Closed testing needs an email list, and production access needs **12 testers
+opted in continuously for 14 days**. In the track: Testers -> Create email
+list -> paste addresses -> save. Then share the opt-in link with them and
+make sure nobody opts out during the window; the clock restarts if the count
+drops below 12.
