@@ -11,6 +11,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 import { Colors } from '../constants/Colors';
+import { findBarres } from '../features/chords/data/barres';
 import { Chord } from '../features/chords/data/chords';
 
 const FRETBOARD_STRING_COUNT = 6;
@@ -19,6 +20,8 @@ const FRET_COUNT = 5;
 const STRING_LETTERS = ['E', 'A', 'D', 'G', 'B', 'e'];
 
 /** Flat, palette-native diagram colors (navy surface, slate lines, green accent). */
+/** A finger pressing two or more strings at one fret: draw it as a bar. */
+
 const STRING_COLOR = 'rgba(148, 158, 196, 0.75)';
 const FRET_COLOR = 'rgba(148, 158, 196, 0.32)';
 const NUT_COLOR = '#8f98c2';
@@ -42,6 +45,15 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
   const stringWeights = small
     ? [1.6, 1.5, 1.4, 1.3, 1.2, 1.1]
     : [2.4, 2.2, 2, 1.8, 1.6, 1.5];
+
+  const barres = findBarres(chord);
+  // Strings covered by a barre are drawn as part of the bar, not as loose dots.
+  const barredStrings = new Set<number>();
+  barres.forEach((b) => {
+    for (let i = b.from; i <= b.to; i++) {
+      if (chord.strings[i] === b.fret && chord.fingers[i] === b.finger) barredStrings.add(i);
+    }
+  });
 
   const width = boardW + pad * 2;
   const height = boardTop + boardH + labelH + 2;
@@ -119,6 +131,38 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
           fill={NUT_COLOR}
         />
 
+        {/* Barres: one rounded bar per finger that spans multiple strings */}
+        {barres.map((b) => {
+          const x1 = pad + b.from * cellW;
+          const x2 = pad + b.to * cellW;
+          const cy = boardTop + (b.fret - 0.5) * cellH;
+          const h = dotR * 2;
+          return (
+            <React.Fragment key={`barre-${b.finger}-${b.fret}`}>
+              <Rect
+                x={x1 - dotR}
+                y={cy - dotR}
+                width={x2 - x1 + dotR * 2}
+                height={h}
+                rx={dotR}
+                fill={Colors.success}
+                stroke="rgba(255,255,255,0.25)"
+                strokeWidth={small ? 1 : 1.2}
+              />
+              <SvgText
+                x={x1}
+                y={cy + (small ? 3.5 : 5.5)}
+                fontSize={small ? 10 : 15}
+                fontWeight="800"
+                fill="#fff"
+                textAnchor="middle"
+              >
+                {b.finger}
+              </SvgText>
+            </React.Fragment>
+          );
+        })}
+
         {/* Per-string markers: muted ×, open ○, or finger dot */}
         {chord.strings.map((fret, stringIdx) => {
           const cx = pad + stringIdx * cellW;
@@ -163,6 +207,7 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
               />
             );
           }
+          if (barredStrings.has(stringIdx)) return null;
           const finger = chord.fingers[stringIdx];
           const cy = boardTop + (fret - 0.5) * cellH;
           return (
@@ -210,3 +255,6 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
     </View>
   );
 }
+
+export { findBarres } from '../features/chords/data/barres';
+export type { Barre } from '../features/chords/data/barres';

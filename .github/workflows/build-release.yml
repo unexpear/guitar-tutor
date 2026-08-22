@@ -37,6 +37,12 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
       - name: Run Expo prebuild
         run: npx expo prebuild --platform android --clean
 

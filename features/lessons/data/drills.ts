@@ -10,6 +10,13 @@ export interface Drill {
   defaultMode: DetectionMode;
   /** Flow-mode seconds allowed per target (wait mode ignores this). */
   secondsPerTarget: number;
+  /**
+   * When set, the drill runs to a click track at this tempo and grades how
+   * close each strum lands to the beat. Only meaningful for strum drills.
+   */
+  bpm?: number;
+  /** Beats per bar for the click track. */
+  beatsPerBar?: number;
 }
 
 const note = (stringIndex: number, fret: number, label: string): Target => ({
@@ -71,7 +78,7 @@ export const DRILLS: Record<string, Drill> = {
     lessonId: 'beginner-basic-strumming',
     title: 'Strum Along',
     intro:
-      'Hold each chord and strum to the count - four strums per chord. Keep the strums even; the counter ticks down with every strum it hears.',
+      'Hold each chord and strum on every click - four strums per chord. A count-in leads you in, then the app grades how close each strum lands to the beat.',
     targets: [
       chord('Em', 4),
       chord('Am', 4),
@@ -82,6 +89,8 @@ export const DRILLS: Record<string, Drill> = {
     ],
     defaultMode: 'mono',
     secondsPerTarget: 10,
+    bpm: 70,
+    beatsPerBar: 4,
   },
 };
 

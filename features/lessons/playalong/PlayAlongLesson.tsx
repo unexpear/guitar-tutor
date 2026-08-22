@@ -15,8 +15,14 @@ import { Colors, CARD_SHADOW } from '../../../constants/Colors';
 import ChordDiagram from '../../../components/ChordDiagram';
 import PressableScale from '../../../components/PressableScale';
 import { getChord, NOTE_NAMES } from '../../chords/data/chords';
+import { useSettingsStore } from '../../store/settingsStore';
 import { Drill } from '../data/drills';
 import { TargetMatcher, Target, DetectionMode } from './matcher';
+import { createBeatClock, BeatClock, gradeTiming, TimingVerdict } from '../../timing/beatClock';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+
+const ACCENT_CLICK = require('../../../assets/audio/click-accent.wav');
+const REGULAR_CLICK = require('../../../assets/audio/click.wav');
 
 type Pace = 'wait' | 'flow';
 type TargetStatus = 'pending' | 'hit' | 'miss';
@@ -164,6 +170,15 @@ export default function PlayAlongLesson({
     target: [],
     heard: [],
   });
+  // Click-track state (only for drills that declare a bpm).
+  const hasClick = !!drill.bpm;
+  const [countIn, setCountIn] = useState<number | null>(null);
+  const [beatInBar, setBeatInBar] = useState<number | null>(null);
+  const [lastTiming, setLastTiming] = useState<TimingVerdict | null>(null);
+  const lastBeatAtRef = useRef<number>(0);
+  const clockRef = useRef<BeatClock | null>(null);
+  const accentRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
+  const clickRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
   const finished = idx >= drill.targets.length;
 
   const matcherRef = useRef<TargetMatcher | null>(null);
@@ -196,6 +211,19 @@ export default function PlayAlongLesson({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Click-track audio.
+  useEffect(() => {
+    if (!hasClick) return;
+    setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true }).catch(() => {});
+    accentRef.current = createAudioPlayer(ACCENT_CLICK);
+    clickRef.current = createAudioPlayer(REGULAR_CLICK);
+    return () => {
+      clockRef.current?.stop();
+      accentRef.current?.release();
+      clickRef.current?.release();
+    };
+  }, [hasClick]);
+
   const advance = useCallback(
     (status: TargetStatus) => {
       const current = idxRef.current;
@@ -215,6 +243,9 @@ export default function PlayAlongLesson({
   );
 
   const registerHit = useCallback(() => {
+    if (hasClick && lastBeatAtRef.current) {
+      setLastTiming(gradeTiming(Date.now() - lastBeatAtRef.current));
+    }
     const target = drill.targets[idxRef.current];
     const totalStrums = target.kind === 'chord' ? target.strums ?? 1 : 1;
 
@@ -239,7 +270,7 @@ export default function PlayAlongLesson({
       advance('hit');
       return 1;
     });
-  }, [advance, drill, zonePulse]);
+  }, [advance, drill, zonePulse, hasClick]);
 
   const registerWrong = useCallback(() => {
     setWrongCount((w) => w + 1);
@@ -296,6 +327,7 @@ export default function PlayAlongLesson({
     if (finished && !completedRef.current) {
       completedRef.current = true;
       stop();
+      clockRef.current?.stop();
       if (scorePercent >= PASS_PERCENT) onComplete(scorePercent);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -304,7 +336,33 @@ export default function PlayAlongLesson({
   const handleStart = useCallback(async () => {
     await start();
     setStarted(true);
-  }, [start]);
+
+    if (hasClick) {
+      clockRef.current?.stop();
+      clockRef.current = createBeatClock({
+        getBpm: () => drill.bpm ?? 70,
+        getBeatsPerBar: () => drill.beatsPerBar ?? 4,
+        countInBeats: drill.beatsPerBar ?? 4,
+        onCountIn: (remaining) => {
+          setCountIn(remaining);
+          const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+          if (!soundsEnabled) return;
+          const p = clickRef.current;
+          if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
+        },
+        onStart: () => setCountIn(null),
+        onBeat: (beat, scheduledAt) => {
+          lastBeatAtRef.current = scheduledAt;
+          setBeatInBar(beat);
+          const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+          if (!soundsEnabled) return;
+          const p = beat === 0 ? accentRef.current : clickRef.current;
+          if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
+        },
+      });
+      clockRef.current.start();
+    }
+  }, [start, hasClick, drill]);
 
   const conveyorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: conveyorX.value }],
@@ -542,6 +600,40 @@ export default function PlayAlongLesson({
                 ) : null}
               </View>
               <View style={styles.cardFooter}>
+                {hasClick && countIn !== null && (
+                  <Text style={styles.countIn}>{countIn}</Text>
+                )}
+                {hasClick && countIn === null && (
+                  <View style={styles.beatRow}>
+                    {Array.from({ length: drill.beatsPerBar ?? 4 }).map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.beatPip,
+                          i === 0 && styles.beatPipDownbeat,
+                          i === beatInBar && styles.beatPipActive,
+                        ]}
+                      />
+                    ))}
+                    {lastTiming && (
+                      <Text
+                        style={[
+                          styles.timingText,
+                          (lastTiming === 'perfect' || lastTiming === 'good') &&
+                            styles.timingGood,
+                        ]}
+                      >
+                        {lastTiming === 'perfect'
+                          ? 'On the beat'
+                          : lastTiming === 'good'
+                          ? 'Close'
+                          : lastTiming === 'early'
+                          ? 'Early'
+                          : 'Late'}
+                      </Text>
+                    )}
+                  </View>
+                )}
                 {target?.kind === 'chord' && mode === 'poly' && (
                   <PolyPips
                     targetClasses={heardState.target}
@@ -881,6 +973,47 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 2,
     textTransform: 'uppercase',
+    color: Colors.success,
+  },
+  countIn: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: '800',
+    color: Colors.warning,
+    fontVariant: ['tabular-nums'],
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  beatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 30,
+  },
+  beatPip: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.dark.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Colors.dark.cardBorder,
+  },
+  beatPipDownbeat: {
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+  },
+  beatPipActive: {
+    backgroundColor: Colors.success,
+    borderColor: Colors.success,
+  },
+  timingText: {
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.dark.muted,
+  },
+  timingGood: {
     color: Colors.success,
   },
   targetName: {

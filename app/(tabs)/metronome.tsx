@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Colors } from '../../constants/Colors';
 import { useSettingsStore } from '../../features/store/settingsStore';
+import { createBeatClock, BeatClock } from '../../features/timing/beatClock';
 
 type TimeSignature = '2/4' | '3/4' | '4/4' | '6/8';
 
@@ -92,7 +93,7 @@ export default function MetronomeScreen() {
   bpmRef.current = bpm;
   const beatCountRef = useRef(beatCount);
   beatCountRef.current = beatCount;
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clockRef = useRef<BeatClock | null>(null);
   const isPlayingRef = useRef(false);
 
   const accentPlayerRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
@@ -104,7 +105,7 @@ export default function MetronomeScreen() {
     clickPlayerRef.current = createAudioPlayer(REGULAR_CLICK);
     return () => {
       isPlayingRef.current = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
+      clockRef.current?.stop();
       accentPlayerRef.current?.release();
       clickPlayerRef.current?.release();
     };
@@ -123,33 +124,26 @@ export default function MetronomeScreen() {
   }, []);
 
   const startMetronome = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    clockRef.current?.stop();
     isPlayingRef.current = true;
     setIsPlaying(true);
 
-    let beat = 0;
-    // Drift-corrected scheduler: each tick is timed against the wall clock
-    // rather than chaining fixed intervals, so error doesn't accumulate.
-    let nextTickAt = Date.now();
-
-    const tick = () => {
-      if (!isPlayingRef.current) return;
-      playClick(beat);
-      setActiveBeat(beat);
-      beat = (beat + 1) % beatCountRef.current;
-      nextTickAt += (60 / bpmRef.current) * 1000;
-      const delay = Math.max(0, nextTickAt - Date.now());
-      timerRef.current = setTimeout(tick, delay);
-    };
-    tick();
+    // Shared drift-corrected clock: resyncs after a stall instead of firing
+    // the missed beats as a burst of clicks.
+    clockRef.current = createBeatClock({
+      getBpm: () => bpmRef.current,
+      getBeatsPerBar: () => beatCountRef.current,
+      onBeat: (beatInBar) => {
+        playClick(beatInBar);
+        setActiveBeat(beatInBar);
+      },
+    });
+    clockRef.current.start();
   }, [playClick]);
 
   const stopMetronome = useCallback(() => {
     isPlayingRef.current = false;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+    clockRef.current?.stop();
     setIsPlaying(false);
     setActiveBeat(null);
   }, []);
