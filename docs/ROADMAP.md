@@ -15,29 +15,14 @@ each other, not building new ones.
 | Area | State |
 |---|---|
 | Games tab | 6 cards, **1 game**. Chord Quiz is built; the other five are still cards, now dimmed and marked "Soon" rather than pretending. |
-| Play-along drills | **3 drills for 11 lessons**, all beginner. The other 8 lessons are text plus an honour-system "Mark as Complete". |
+| Play-along drills | **10 drills for 11 lessons.** Only Guitar Anatomy has none, and it has its own interactive diagram instead. |
 | Practice tracking | `practiceGoalMinutes` is set and persisted; `totalPracticeMinutes` and `currentStreak` are declared, persisted, and **never written by anything**. The goal you set in Settings is compared against nothing. |
 | Lesson scores | Stored per lesson, never displayed. The Lessons screen shows a tick and throws the number away. |
 | Bass and classical | The questionnaire offers both guitar types. There are no tunings and no anatomy diagram for either; they silently fall back to acoustic. |
 
 ## Worth building, in order
 
-### 1. Drills for the eight lessons that have none
-
-Every lesson without a drill is a page of text with a button that claims
-you learned something. The drill engine is the best code in the repo and
-it is used by three lessons.
-
-The data format is already there — `features/lessons/data/drills.ts` takes
-a list of note or chord targets, an optional tempo, and a detection mode.
-Adding a drill is writing a few lines of data, not writing code. The
-intermediate and advanced lessons (barre chords, scales, fingerpicking)
-map onto note targets almost directly.
-
-**Effort:** small per drill, mostly content. **Value:** high — it is the
-difference between a book and a teacher.
-
-### 2. Make practice tracking real
+### 1. Make practice tracking real
 
 Three persisted fields exist and nothing writes them. The pieces needed:
 increment `totalPracticeMinutes` when the tuner, metronome, or a drill is
@@ -50,7 +35,7 @@ also the smallest amount of code on this list.
 **Effort:** small. **Value:** high, and it makes an existing setting stop
 lying.
 
-### 3. Chord changes, not chords
+### 2. Chord changes, not chords
 
 The hardest thing for a beginner is not holding a shape, it is getting
 from one shape to the next in time. Nothing in the app drills that
@@ -66,7 +51,7 @@ this song that you keep fluffing*.
 **Effort:** medium. **Value:** high, and it is the exercise real teachers
 assign.
 
-### 4. Per-chord and per-song progress
+### 3. Per-chord and per-song progress
 
 `favoriteChords` now has a UI. Nothing tracks which chords a player can
 actually play, or which songs they have worked on. Both are cheap to store
@@ -75,7 +60,7 @@ making the user decide.
 
 **Effort:** small to medium. **Value:** medium, rising once drills exist.
 
-### 5. Bass and classical, or stop offering them
+### 4. Bass and classical, or stop offering them
 
 The questionnaire asks which of four instruments you play and then ignores
 two of the answers. Either add tunings and an anatomy diagram for bass and
@@ -127,5 +112,11 @@ For context on what has just landed, so this list is not re-proposing it:
   shapes. Asking someone to identify G7 next to G, B7 and Cmaj7 is a real
   question; next to Bdim it is not. The other five cards are now dimmed
   and labelled "Soon" instead of all showing the same alert.
-- 57 unit tests over the chord data, matcher, beat clock, fret window,
+- A drill for every lesson that can have one. Seven new ones, written to
+  the exercise each lesson already prescribes rather than invented: the
+  barre drill runs in full-chord mode because the point is whether every
+  string rings, the fingerpicking drill is the lesson's own p-i-m-a-m-i at
+  the 50 BPM it asks for, and the scale drills are checked by tests that
+  assert the notes really spell C major and A minor pentatonic.
+- 68 unit tests over the chord data, matcher, beat clock, fret window,
   song library, and quiz generation, running in CI.
