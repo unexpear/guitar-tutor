@@ -389,8 +389,10 @@ export default function GuitarAnatomy({ guitarType, onQuizPassed }: GuitarAnatom
   const [quiz, setQuiz] = useState<QuizState>({ phase: 'idle' });
   const [quizOrder, setQuizOrder] = useState<GuitarPart[]>([]);
 
+  // Classical shares the acoustic body and headstock closely enough to use
+  // the same diagram.
   const diagramStyle: 'acoustic' | 'electric' =
-    guitarType === 'electric' || guitarType === 'bass' ? 'electric' : 'acoustic';
+    guitarType === 'electric' ? 'electric' : 'acoustic';
 
   const visibleParts = useMemo(() => {
     const common = GUITAR_PARTS.filter((p) =>

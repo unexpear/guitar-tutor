@@ -17,8 +17,8 @@ each other, not building new ones.
 | Games tab | 7 cards, **2 games**. Chord Quiz and Chord Changes are built; the other five are dimmed and marked "Soon" rather than pretending. |
 | Play-along drills | **10 drills for 11 lessons.** Only Guitar Anatomy has none, and it has its own interactive diagram instead. |
 | Practice tracking | Done. Time at the instrument is logged per day, shown against the goal, and drives a streak. |
-| Lesson scores | Stored per lesson, never displayed. The Lessons screen shows a tick and throws the number away. |
-| Bass and classical | The questionnaire offers both guitar types. There are no tunings and no anatomy diagram for either; they silently fall back to acoustic. |
+| Lesson scores | Shown on the card when a drill produced them. |
+| Bass | Withdrawn from the questionnaire until it can be supported properly — see below. |
 
 ## Worth building, in order
 
@@ -31,25 +31,26 @@ making the user decide.
 
 **Effort:** small to medium. **Value:** medium, rising once drills exist.
 
-### 2. Bass and classical, or stop offering them
+### 2. Bass, properly
 
-The questionnaire asks which of four instruments you play and then ignores
-two of the answers. Either add tunings and an anatomy diagram for bass and
-classical, or take them out of the questionnaire. The current state
-promises support that does not exist.
+Bass used to be one of four answers in the questionnaire and then changed
+nothing: the app would hand a bassist a six-string tuner asking for E2 to
+E4, when a bass is four strings from E1 to G2. It is withdrawn for now, and
+anyone who had picked it is moved to electric.
 
-**Effort:** small to remove, medium to support properly.
+Supporting it for real is a genuine feature, not a toggle: string counts
+are assumed to be six in the tuner UI, the headstock SVG and the tunings
+data, the pitch floor needs to reach E1 at about 41 Hz, and the chord
+library does not apply at all. Worth doing, but as its own piece of work.
+
+**Effort:** medium. **Value:** medium — it opens the app to a new
+instrument, but every existing feature needs a bass-shaped answer first.
 
 ## Smaller cleanups
 
-- `features/audio/guitarSamples.ts` — a 49-entry sample table imported by
-  nothing. `useGuitarSound` has its own independent map. Delete it.
-- `userPreferencesStore` exports a whole lesson-navigation API
-  (`currentLessonIndex`, `nextLesson`, `previousLesson`) that no screen
-  uses; the Lessons screen keeps its own local state. Delete or adopt it.
-- `getGuitarTypeStrings()` in `tunings.ts` is exported and never imported.
-- `getLessonScore()` is defined and never called — see "lesson scores"
-  above; the fix is to use it, not to delete it.
+All done: the dead 49-entry sample table, the unused lesson-navigation API,
+and `getGuitarTypeStrings()` are deleted, and `getLessonScore()` is now
+used rather than merely defined.
 
 ## Deliberately not doing
 
@@ -104,5 +105,9 @@ For context on what has just landed, so this list is not re-proposing it:
   the changes off the live pitch stream. It defaults to full-chord
   detection so a muted change does not score, and keeps a best per pair.
   Still to do: a way to launch it straight from a song's chord list.
+- Dead code removed (a 49-entry sample table nothing imported, an unused
+  lesson-navigation API, an unused tuning helper), lesson scores shown
+  where they were previously stored and discarded, and Bass withdrawn from
+  the questionnaire rather than left as an answer that changed nothing.
 - 93 unit tests over the chord data, matcher, beat clock, fret window,
   song library, and quiz generation, running in CI.

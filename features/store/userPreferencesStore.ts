@@ -2,7 +2,14 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type GuitarType = 'acoustic' | 'electric' | 'classical' | 'bass';
+/**
+ * Bass is deliberately absent. Everything in the app assumes six strings in
+ * guitar range — the chord library, the diagrams, the tuner's string row —
+ * and a bass is four strings an octave below, so offering it produced
+ * confidently wrong tuning targets. Classical stays: it is standard tuning
+ * on nylon strings, which the acoustic material genuinely covers.
+ */
+export type GuitarType = 'acoustic' | 'electric' | 'classical';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 export type TuningPreference = 'standard' | 'drop_d' | 'open_g' | 'open_d' | 'dadgad';
 
@@ -11,7 +18,6 @@ export interface UserPreferences {
   experienceLevel: ExperienceLevel;
   tuningPreference: TuningPreference;
   hasCompletedQuestionnaire: boolean;
-  currentLessonIndex: number;
 }
 
 interface UserPreferencesState extends UserPreferences {
@@ -23,9 +29,6 @@ interface UserPreferencesState extends UserPreferences {
   setTuningPreference: (tuning: TuningPreference) => void;
   completeQuestionnaire: () => void;
   resetQuestionnaire: () => void;
-  setCurrentLessonIndex: (index: number) => void;
-  nextLesson: () => void;
-  previousLesson: () => void;
 }
 
 export const useUserPreferencesStore = create<UserPreferencesState>()(
@@ -35,7 +38,6 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       experienceLevel: 'beginner',
       tuningPreference: 'standard',
       hasCompletedQuestionnaire: false,
-      currentLessonIndex: 0,
       hasHydrated: false,
 
       setHasHydrated: (hydrated: boolean) => set({ hasHydrated: hydrated }),
@@ -46,11 +48,6 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       completeQuestionnaire: () => set({ hasCompletedQuestionnaire: true }),
       resetQuestionnaire: () => set({ hasCompletedQuestionnaire: false }),
       
-      setCurrentLessonIndex: (index: number) => set({ currentLessonIndex: index }),
-      nextLesson: () => set((state) => ({ currentLessonIndex: state.currentLessonIndex + 1 })),
-      previousLesson: () => set((state) => ({ 
-        currentLessonIndex: Math.max(0, state.currentLessonIndex - 1) 
-      })),
     }),
     {
       name: 'standardtune-user-preferences',
@@ -61,6 +58,11 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
         return rest;
       },
       onRehydrateStorage: () => (state) => {
+        // Anyone who picked Bass before it was withdrawn is moved to the
+        // closest thing the app actually supports.
+        if (state && !['acoustic', 'electric', 'classical'].includes(state.guitarType)) {
+          state.guitarType = 'electric';
+        }
         state?.setHasHydrated(true);
       },
     }

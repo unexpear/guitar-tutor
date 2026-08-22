@@ -23,7 +23,6 @@ const GUITAR_TYPES: { value: GuitarType; label: string; icon: string }[] = [
   { value: 'acoustic', label: 'Acoustic', icon: '🎸' },
   { value: 'electric', label: 'Electric', icon: '🎸' },
   { value: 'classical', label: 'Classical', icon: '🎸' },
-  { value: 'bass', label: 'Bass', icon: '🎸' },
 ];
 
 const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string; icon: string }[] = [

@@ -118,8 +118,3 @@ export function frequencyToNote(frequency: number): { note: string; cents: numbe
   const octave = Math.floor(roundedMidi / 12) - 1;
   return { note: NOTE_NAMES[noteIndex] + octave, cents };
 }
-
-export function getGuitarTypeStrings(guitarType: GuitarType): string[] {
-  const presets = TUNING_PRESETS.filter((p) => p.guitarType === guitarType);
-  return presets.length > 0 ? presets[0].strings : TUNING_PRESETS[0].strings;
-}

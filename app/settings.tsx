@@ -275,7 +275,6 @@ export default function SettingsScreen() {
       case 'acoustic': return 'Acoustic Guitar';
       case 'electric': return 'Electric Guitar';
       case 'classical': return 'Classical Guitar';
-      case 'bass': return 'Bass Guitar';
       default: return 'Not set';
     }
   };

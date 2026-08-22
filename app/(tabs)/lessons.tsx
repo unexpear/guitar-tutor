@@ -253,12 +253,14 @@ function CategorySection({
   isExpanded,
   onToggle,
   isLessonCompleted,
+  getLessonScore,
   onLessonTap,
 }: {
   category: LessonCategory;
   isExpanded: boolean;
   onToggle: () => void;
   isLessonCompleted: (id: string) => boolean;
+  getLessonScore: (id: string) => number;
   onLessonTap: (lesson: Lesson) => void;
 }) {
   const completedInCategory = category.lessons.filter((l) =>
@@ -299,6 +301,7 @@ function CategorySection({
               key={lesson.id}
               lesson={lesson}
               completed={isLessonCompleted(lesson.id)}
+              score={getLessonScore(lesson.id)}
               onPress={() => onLessonTap(lesson)}
             />
           ))}
@@ -311,19 +314,26 @@ function CategorySection({
 function LessonCard({
   lesson,
   completed,
+  score,
   onPress,
 }: {
   lesson: Lesson;
   completed: boolean;
+  score: number;
   onPress: () => void;
 }) {
   const levelColor = LEVEL_COLORS[lesson.difficulty];
+  // A drill scores what you actually played; "Mark as Complete" stores 100.
+  // Only the former is worth showing back.
+  const showScore = completed && score > 0 && score < 100;
 
   return (
     <PressableScale
       onPress={onPress}
       style={[styles.lessonCard, completed && styles.lessonCardCompleted]}
-      accessibilityLabel={`${lesson.title}. ${lesson.description}. Difficulty: ${lesson.difficulty}. ${completed ? 'Completed' : 'Not completed'}`}
+      accessibilityLabel={`${lesson.title}. ${lesson.description}. Difficulty: ${lesson.difficulty}. ${
+        completed ? `Completed${showScore ? `, best score ${score} percent` : ''}` : 'Not completed'
+      }`}
       accessibilityRole="button"
     >
       <View
@@ -350,12 +360,10 @@ function LessonCard({
         </Text>
       </View>
       {completed ? (
-        <Ionicons
-          name="checkmark-circle"
-          size={22}
-          color={Colors.success}
-          style={styles.lessonTrailing}
-        />
+        <View style={styles.lessonTrailing}>
+          <Ionicons name="checkmark-circle" size={22} color={Colors.success} />
+          {showScore && <Text style={styles.lessonScore}>{score}%</Text>}
+        </View>
       ) : (
         <Ionicons
           name="chevron-forward"
@@ -459,7 +467,7 @@ function GuitarAnatomyLessonContent({
 }
 
 export default function LessonsScreen() {
-  const { completedLessons, completeLesson, isLessonCompleted } =
+  const { completedLessons, completeLesson, isLessonCompleted, getLessonScore } =
     useProgressStore();
   const {
     hasCompletedQuestionnaire,
@@ -629,6 +637,7 @@ export default function LessonsScreen() {
             isExpanded={expandedCategories.has(category.id)}
             onToggle={() => toggleCategory(category.id)}
             isLessonCompleted={isLessonCompleted}
+            getLessonScore={getLessonScore}
             onLessonTap={handleLessonTap}
           />
         ))}
@@ -817,6 +826,12 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: Colors.dark.muted,
     lineHeight: 17,
+  },
+  lessonScore: {
+    marginTop: 2,
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.success,
   },
   lessonTrailing: {
     marginLeft: Colors.spacing.sm,
