@@ -65,8 +65,9 @@ Two things still need a human, because browser automation cannot do them:
 
 ### 1. Upload the app bundle
 
-The AAB is ~82 MB, which is larger than the automation bridge allows, so it
-must be dragged in by hand.
+Two ways. The second one is a one-time setup that removes this step forever.
+
+#### Option A - drag it in once (fastest right now)
 
 1. Download the `app-release-aab` artifact from the latest green CI run
    (or use the copy already at `dist-play/app-release.aab`).
@@ -93,6 +94,25 @@ anything that misbehaves, especially tuner accuracy on your instrument.
 
 Note: Play refuses to save the release draft (name and notes included) until
 a bundle is attached, so do the upload first.
+
+#### Option B - let CI upload it (recommended)
+
+`.github/workflows/build-release.yml` has a `publish` job that pushes the
+signed AAB to the closed-testing track on every `v*` tag. It stays dormant
+until you add one secret:
+
+1. In Google Cloud, create a service account and a JSON key for it.
+2. In Play Console: Users and permissions -> Invite new users -> paste the
+   service account email, grant it access to this app with the "Release to
+   testing tracks" permission.
+3. In GitHub: Settings -> Secrets and variables -> Actions -> new secret
+   `PLAY_SERVICE_ACCOUNT_JSON`, pasting the whole JSON key file.
+4. Tag a release: `git tag v1.0.0 && git push origin v1.0.0`.
+
+The job uploads as a **draft** release (review and roll out in the console).
+Change `status: draft` to `completed` in the workflow once you want tags to
+reach testers directly. Release notes come from
+`distribution/whatsnew/whatsnew-en-US`.
 
 ### 2. Add testers
 

@@ -134,3 +134,45 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Uploads the signed bundle straight to the Play closed-testing track, so
+  # the 80 MB+ AAB never has to be dragged into the console by hand.
+  # Requires a Play Developer API service account JSON in the
+  # PLAY_SERVICE_ACCOUNT_JSON secret (see docs/PLAY-SUBMISSION.md); without
+  # it every step no-ops and the workflow still succeeds.
+  publish:
+    name: Upload to Play (closed testing)
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    env:
+      HAS_PLAY_SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+
+    steps:
+      - name: Checkout repository
+        if: env.HAS_PLAY_SA == 'true'
+        uses: actions/checkout@v4
+
+      - name: Download release AAB
+        if: env.HAS_PLAY_SA == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-aab
+          path: aab
+
+      - name: Upload to Play closed testing track
+        if: env.HAS_PLAY_SA == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.standardtune.guitar
+          releaseFiles: aab/*.aab
+          track: alpha
+          # 'draft' stages the release for review in the console; switch to
+          # 'completed' once you want tags to roll out to testers directly.
+          status: draft
+          whatsNewDirectory: distribution/whatsnew
+
+      - name: Note when skipped
+        if: env.HAS_PLAY_SA != 'true'
+        run: echo "PLAY_SERVICE_ACCOUNT_JSON not set - skipping Play upload."
