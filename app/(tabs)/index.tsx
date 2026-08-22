@@ -27,6 +27,8 @@ import {
 import { Colors, CARD_SHADOW, centsToColor } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
+import { useProgressStore } from '../../features/store/progressStore';
+import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 
 const SECTIONS = [
   {
@@ -44,6 +46,9 @@ const GAUGE_TICKS = Array.from({ length: 21 }, (_, i) => i);
 
 export default function TunerScreen() {
   const { width } = useWindowDimensions();
+  const alternateTuning = useProgressStore((s) => s.alternateTuning);
+  const setAlternateTuning = useProgressStore((s) => s.setAlternateTuning);
+  const guitarType = useUserPreferencesStore((s) => s.guitarType);
   const [tuning, setTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
@@ -153,9 +158,24 @@ export default function TunerScreen() {
       setTuning(preset);
       setTunedStrings(new Set());
       setPickerVisible(false);
+      // Remember it, so Settings and the next launch agree with what is on
+      // screen here.
+      setAlternateTuning(preset.name);
     },
-    [],
+    [setAlternateTuning],
   );
+
+  // Adopt the saved tuning once the store rehydrates, and whenever it is
+  // changed from Settings. Several presets share a name across guitar types
+  // (Drop D exists for both), so prefer the one matching the player's guitar.
+  useEffect(() => {
+    if (!alternateTuning || alternateTuning === tuning.name) return;
+    const matches = TUNING_PRESETS.filter((p) => p.name === alternateTuning);
+    const preset = matches.find((p) => p.guitarType === guitarType) ?? matches[0];
+    if (!preset) return;
+    setTuning(preset);
+    setTunedStrings(new Set());
+  }, [alternateTuning, guitarType, tuning.name]);
 
   const prevActiveRef = React.useRef(false);
   useEffect(() => {

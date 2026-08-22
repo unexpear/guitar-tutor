@@ -58,8 +58,27 @@ const audioAssets: Record<string, any> = {
   'G#5': require('../../../assets/audio/G#5.wav'),
 };
 
+type Player = ReturnType<typeof createAudioPlayer>;
+
 export function useGuitarSound() {
-  const playerRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
+  const playerRef = useRef<Player | null>(null);
+  // A strum needs several samples ringing at once, so chord playback keeps
+  // its own set of players rather than sharing the single-note one.
+  const chordPlayersRef = useRef<Player[]>([]);
+  const chordTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const stopChord = useCallback(() => {
+    chordTimersRef.current.forEach(clearTimeout);
+    chordTimersRef.current = [];
+    chordPlayersRef.current.forEach((p) => {
+      try {
+        p.release();
+      } catch {
+        // already released
+      }
+    });
+    chordPlayersRef.current = [];
+  }, []);
 
   useEffect(() => {
     setAudioModeAsync({
@@ -71,8 +90,9 @@ export function useGuitarSound() {
 
     return () => {
       playerRef.current?.release();
+      stopChord();
     };
-  }, []);
+  }, [stopChord]);
 
   const playNote = useCallback(async (note: string) => {
     try {
@@ -96,5 +116,53 @@ export function useGuitarSound() {
     }
   }, []);
 
-  return { playNote };
+  /**
+   * Play the notes of a chord as a strum: one sample per sounding string,
+   * staggered so it sounds like a pick crossing the strings rather than a
+   * piano-style block chord.
+   */
+  const playChord = useCallback(
+    async (notes: string[], staggerMs = 55) => {
+      try {
+        const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+        if (!soundsEnabled) return;
+
+        stopChord();
+
+        const players = notes
+          .map((note) => {
+            const asset = audioAssets[note];
+            if (!asset) {
+              console.warn('No audio sample for note:', note);
+              return null;
+            }
+            const player = createAudioPlayer(asset);
+            player.volume = sampleVolume / 100;
+            return player;
+          })
+          .filter((p): p is Player => p !== null);
+
+        chordPlayersRef.current = players;
+
+        players.forEach((player, i) => {
+          const timer = setTimeout(() => {
+            // The strum can be cancelled mid-flight by a new one or by
+            // unmounting, which releases these players.
+            if (!chordPlayersRef.current.includes(player)) return;
+            try {
+              player.play();
+            } catch {
+              // released between scheduling and firing
+            }
+          }, i * staggerMs);
+          chordTimersRef.current.push(timer);
+        });
+      } catch (err) {
+        console.warn('Failed to play chord:', err);
+      }
+    },
+    [stopChord]
+  );
+
+  return { playNote, playChord, stopChord };
 }

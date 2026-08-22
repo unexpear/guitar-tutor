@@ -12,10 +12,11 @@ import Svg, {
 } from 'react-native-svg';
 import { Colors } from '../constants/Colors';
 import { findBarres } from '../features/chords/data/barres';
+import { chordFretWindow, DIAGRAM_FRET_COUNT } from '../features/chords/data/fretWindow';
 import { Chord } from '../features/chords/data/chords';
 
 const FRETBOARD_STRING_COUNT = 6;
-const FRET_COUNT = 5;
+const FRET_COUNT = DIAGRAM_FRET_COUNT;
 /** Standard-tuning string letters, low E on the left. */
 const STRING_LETTERS = ['E', 'A', 'D', 'G', 'B', 'e'];
 
@@ -28,6 +29,7 @@ const NUT_COLOR = '#8f98c2';
 
 export default function ChordDiagram({ chord, small }: { chord: Chord; small?: boolean }) {
   const color = Colors.dark;
+  const { startFret, showNut } = chordFretWindow(chord);
   // Finger-dot radius drives all other proportions.
   const dotR = small ? 7 : 15;
   const boardW = small ? 82 : 188;
@@ -37,7 +39,10 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
   const edge = small ? 3 : 5; // fretboard overhang past the outer strings
   const cellH = boardH / FRET_COUNT;
   const cellW = boardW / (FRETBOARD_STRING_COUNT - 1);
-  const pad = dotR + 2; // room for dots on the outer strings
+  const padBase = dotR + 2; // room for dots on the outer strings
+  // Shapes away from the nut carry a "5fr" position label on the left.
+  const posLabelW = showNut ? 0 : small ? 15 : 22;
+  const pad = padBase + posLabelW;
   const boardTop = markerH + nutH;
   const openR = small ? 4 : 6.5;
   const labelH = small ? 0 : 20;
@@ -55,11 +60,13 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
     }
   });
 
-  const width = boardW + pad * 2;
+  const width = boardW + pad + padBase;
   const height = boardTop + boardH + labelH + 2;
   const boardX = pad - edge;
   const boardWFull = boardW + edge * 2;
   const fretH = small ? 1.25 : 1.75;
+  /** Vertical centre of a fret cell, in the diagram's sliding window. */
+  const fretY = (fret: number) => boardTop + (fret - startFret + 0.5) * cellH;
 
   return (
     <View style={{ width, height }}>
@@ -121,21 +128,24 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
           );
         })}
 
-        {/* Nut — slim slate bar flush with the fretboard edges */}
+        {/* Nut — slim slate bar, only when the window sits at the nut.
+            Up the neck it becomes an ordinary fret and the position label
+            below tells you where you are. */}
         <Rect
           x={boardX}
           y={markerH}
           width={boardWFull}
-          height={nutH}
-          rx={nutH / 2}
-          fill={NUT_COLOR}
+          height={showNut ? nutH : fretH}
+          rx={showNut ? nutH / 2 : 0}
+          fill={showNut ? NUT_COLOR : FRET_COLOR}
         />
+
 
         {/* Barres: one rounded bar per finger that spans multiple strings */}
         {barres.map((b) => {
           const x1 = pad + b.from * cellW;
           const x2 = pad + b.to * cellW;
-          const cy = boardTop + (b.fret - 0.5) * cellH;
+          const cy = fretY(b.fret);
           const h = dotR * 2;
           return (
             <React.Fragment key={`barre-${b.finger}-${b.fret}`}>
@@ -162,6 +172,21 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
             </React.Fragment>
           );
         })}
+
+        {/* Position label for shapes away from the nut, e.g. "5fr". Drawn
+            after the barres and clear of the bar's rounded left end. */}
+        {!showNut && (
+          <SvgText
+            x={pad - dotR - 3}
+            y={fretY(startFret) + (small ? 3 : 4.5)}
+            fontSize={small ? 8 : 12}
+            fontWeight="700"
+            fill={color.muted}
+            textAnchor="end"
+          >
+            {`${startFret}fr`}
+          </SvgText>
+        )}
 
         {/* Per-string markers: muted ×, open ○, or finger dot */}
         {chord.strings.map((fret, stringIdx) => {
@@ -209,7 +234,7 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
           }
           if (barredStrings.has(stringIdx)) return null;
           const finger = chord.fingers[stringIdx];
-          const cy = boardTop + (fret - 0.5) * cellH;
+          const cy = fretY(fret);
           return (
             <React.Fragment key={`dot-${stringIdx}`}>
               <Circle

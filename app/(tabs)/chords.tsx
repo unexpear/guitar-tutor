@@ -15,7 +15,15 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import ChordDiagram from '../../components/ChordDiagram';
-import { CHORDS, Chord, ChordType } from '../../features/chords/data/chords';
+import {
+  CHORDS,
+  Chord,
+  ChordType,
+  chordMidiNotes,
+  midiToNoteName,
+} from '../../features/chords/data/chords';
+import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
+import { useProgressStore } from '../../features/store/progressStore';
 
 const CHORD_TYPE_LABELS: Record<ChordType, string> = {
   major: 'Major',
@@ -89,6 +97,15 @@ function ChordCard({
 function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
   const color = Colors.dark;
   const stringNames = ['E', 'A', 'D', 'G', 'B', 'e'];
+  const { playChord } = useGuitarSound();
+  const favoriteChords = useProgressStore((s) => s.favoriteChords);
+  const addFavoriteChord = useProgressStore((s) => s.addFavoriteChord);
+  const removeFavoriteChord = useProgressStore((s) => s.removeFavoriteChord);
+  const isFavorite = favoriteChords.includes(chord.name);
+
+  // Low string to high, so the strum runs in the direction of a downstroke.
+  const handlePlay = () =>
+    playChord(chordMidiNotes(chord).map(midiToNoteName));
 
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.detailOverlay}>
@@ -135,8 +152,37 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
           })}
         </View>
 
-        <PressableScale onPress={onClose} style={[styles.detailCloseBtn, { backgroundColor: color.tint }]}>
-          <Text style={styles.detailCloseText}>Close</Text>
+        <View style={styles.detailActions}>
+          <PressableScale
+            onPress={handlePlay}
+            style={[styles.detailPlayBtn, { backgroundColor: color.tint }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Hear ${chord.name}`}
+          >
+            <Ionicons name="play" size={18} color="#0f0f23" />
+            <Text style={styles.detailPlayText}>Hear it</Text>
+          </PressableScale>
+          <PressableScale
+            onPress={() =>
+              isFavorite ? removeFavoriteChord(chord.name) : addFavoriteChord(chord.name)
+            }
+            style={[styles.detailFavBtn, { borderColor: isFavorite ? color.tint : color.cardBorder }]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isFavorite }}
+            accessibilityLabel={
+              isFavorite ? `Remove ${chord.name} from favourites` : `Save ${chord.name} to favourites`
+            }
+          >
+            <Ionicons
+              name={isFavorite ? 'star' : 'star-outline'}
+              size={20}
+              color={isFavorite ? color.tint : color.muted}
+            />
+          </PressableScale>
+        </View>
+
+        <PressableScale onPress={onClose} style={styles.detailCloseBtn}>
+          <Text style={[styles.detailCloseText, { color: color.muted }]}>Close</Text>
         </PressableScale>
       </Animated.View>
     </Animated.View>
@@ -442,13 +488,39 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
   },
+  detailActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  detailPlayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 26,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  detailPlayText: {
+    color: '#0f0f23',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  detailFavBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   detailCloseBtn: {
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 12,
   },
   detailCloseText: {
-    color: '#000',
     fontSize: 15,
     fontWeight: '700',
   },
