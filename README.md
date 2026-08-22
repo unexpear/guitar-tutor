@@ -16,11 +16,14 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 
 - **Real-time tuner** powered by [react-native-tuner-engine](https://www.npmjs.com/package/react-native-tuner-engine) — a native C++ pitch-detection pipeline (YIN / PYIN / cepstrum ensemble) running on a dedicated audio thread
 - **16 tuning presets** — Standard, Drop D, Drop C, Open G, DADGAD, Half Step Down, and more, with tap-to-play reference notes
-- **Chord library** — 29 chords with finger positions, diagrams, and audio playback
-- **Metronome** — 40–200 BPM, tap tempo, accented downbeats, 2/4 · 3/4 · 4/4 · 6/8
-- **Lessons & games** — structured beginner-to-advanced lessons and practice mini-games
+- **Chord library** — 36 chords with finger positions, diagrams that draw barres and slide up the neck, and tap-to-hear playback
+- **Metronome** — 40–200 BPM, tap tempo, accented downbeats, 2/4 · 3/4 · 4/4 · 6/8, on a drift-corrected clock shared with the play-along drills
+- **Lessons** — 11 structured beginner-to-advanced lessons, including an interactive guitar-anatomy diagram and quiz
+- **Song library** — 15 songs with the chords each one needs, plus key and capo
 - **Play-along practice** — Guitar Hero-style drills that listen to your real guitar: pluck the directed string/fret or strum the directed chord, with an "any tone" beginner mode and a "full chord" mode that requires evidence of multiple chord tones before scoring a hit
 - Dark theme throughout
+
+The Games tab is a placeholder: the cards are there, the games are not. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Development
 
@@ -29,6 +32,14 @@ Requires Node 20+ and an Android development environment (JDK 17, Android SDK).
 ```sh
 npm install
 npx expo run:android
+```
+
+Logic that does not need a device — the chord data, the play-along matcher,
+the beat clock, the song library — is covered by unit tests:
+
+```sh
+npm test
+npm run typecheck
 ```
 
 > **Note:** the tuner uses a native Turbo Module, so the app must be built as a
