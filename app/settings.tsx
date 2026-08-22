@@ -312,18 +312,16 @@ export default function SettingsScreen() {
         </SectionCard>
 
         <SectionCard title="Appearance">
+          {/* There is only a dark palette, so this reports the theme rather
+              than offering a switch that cannot do anything. */}
           <SettingRow
-            label="Dark Theme"
-            accessibilityLabel="Dark theme is always enabled"
-            right={
-              <CustomSwitch
-                value={true}
-                onValueChange={() => {}}
-                accessibilityLabel="Dark theme (always on)"
-              />
-            }
+            label="Theme"
+            accessibilityLabel="Theme: dark"
+            right={<Text style={styles.staticValue}>Dark</Text>}
           />
-          <Text style={styles.hint}>Always dark for better visibility</Text>
+          <Text style={styles.hint}>
+            Dark only, so the screen stays readable in a dim room.
+          </Text>
         </SectionCard>
 
         <SectionCard title="Audio">
@@ -516,6 +514,11 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     fontSize: 16,
+    color: Colors.dark.muted,
+  },
+  staticValue: {
+    fontSize: 15,
+    fontWeight: '600',
     color: Colors.dark.muted,
   },
   hint: {

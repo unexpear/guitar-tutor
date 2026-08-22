@@ -4,41 +4,22 @@ import {
   Text,
   TextInput,
   FlatList,
+  ScrollView,
   StyleSheet,
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
-
-type Difficulty = 'Easy' | 'Medium' | 'Hard';
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  difficulty: Difficulty;
-  duration: string;
-  genre: string;
-}
-
-const SONGS: Song[] = [
-  { id: '1', title: "Knockin' on Heaven's Door", artist: 'Bob Dylan', difficulty: 'Easy', duration: '2:33', genre: 'Folk' },
-  { id: '2', title: 'Horse with No Name', artist: 'America', difficulty: 'Easy', duration: '4:10', genre: 'Folk' },
-  { id: '3', title: 'Love Me Do', artist: 'The Beatles', difficulty: 'Easy', duration: '2:23', genre: 'Classic Rock' },
-  { id: '4', title: 'Stand By Me', artist: 'Ben E. King', difficulty: 'Easy', duration: '2:58', genre: 'Pop' },
-  { id: '5', title: 'Riptide', artist: 'Vance Joy', difficulty: 'Easy', duration: '3:24', genre: 'Pop' },
-  { id: '6', title: 'Wonderwall', artist: 'Oasis', difficulty: 'Medium', duration: '4:18', genre: 'Classic Rock' },
-  { id: '7', title: 'Wish You Were Here', artist: 'Pink Floyd', difficulty: 'Medium', duration: '5:34', genre: 'Classic Rock' },
-  { id: '8', title: 'Let It Be', artist: 'The Beatles', difficulty: 'Medium', duration: '4:03', genre: 'Classic Rock' },
-  { id: '9', title: 'Hotel California', artist: 'Eagles', difficulty: 'Medium', duration: '6:30', genre: 'Classic Rock' },
-  { id: '10', title: 'Hey Jude', artist: 'The Beatles', difficulty: 'Medium', duration: '7:11', genre: 'Classic Rock' },
-  { id: '11', title: 'Nothing Else Matters', artist: 'Metallica', difficulty: 'Medium', duration: '6:28', genre: 'Classic Rock' },
-  { id: '12', title: 'Stairway to Heaven', artist: 'Led Zeppelin', difficulty: 'Hard', duration: '8:02', genre: 'Classic Rock' },
-  { id: '13', title: 'Comfortably Numb', artist: 'Pink Floyd', difficulty: 'Hard', duration: '6:24', genre: 'Classic Rock' },
-  { id: '14', title: 'Free Bird', artist: 'Lynyrd Skynyrd', difficulty: 'Hard', duration: '9:08', genre: 'Classic Rock' },
-  { id: '15', title: 'Bohemian Rhapsody', artist: 'Queen', difficulty: 'Hard', duration: '5:55', genre: 'Pop' },
-];
+import ChordDiagram from '../../components/ChordDiagram';
+import { SONGS, Song, Difficulty } from '../../features/songs/data/songs';
+import {
+  getChord,
+  chordMidiNotes,
+  midiToNoteName,
+} from '../../features/chords/data/chords';
+import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
 
 const DIFFICULTY_FILTERS: (Difficulty | 'All')[] = ['All', 'Easy', 'Medium', 'Hard'];
 
@@ -75,9 +56,107 @@ function initialsFor(artist: string) {
   return (first + second).toUpperCase();
 }
 
+function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
+  const color = Colors.dark;
+  const { playChord } = useGuitarSound();
+  const art = artForArtist(song.artist);
+
+  return (
+    <Animated.View entering={FadeIn.duration(200)} style={styles.detailOverlay}>
+      <Pressable
+        style={styles.detailBackdrop}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+      />
+      <Animated.View entering={FadeInDown.springify()} style={styles.detailSheet}>
+        <View style={styles.detailHandle} />
+
+        <View style={styles.detailHead}>
+          <View style={[styles.detailArt, { backgroundColor: art.bg }]}>
+            <Text style={[styles.artInitials, { color: art.fg }]}>
+              {initialsFor(song.artist)}
+            </Text>
+          </View>
+          <View style={styles.detailHeadText}>
+            <Text style={styles.detailTitle} numberOfLines={2}>
+              {song.title}
+            </Text>
+            <Text style={styles.detailArtist} numberOfLines={1}>
+              {song.artist}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.detailFacts}>
+          <View style={styles.detailFact}>
+            <Text style={styles.detailFactLabel}>KEY</Text>
+            <Text style={styles.detailFactValue}>{song.key}</Text>
+          </View>
+          <View style={styles.detailFact}>
+            <Text style={styles.detailFactLabel}>CAPO</Text>
+            <Text style={styles.detailFactValue}>
+              {song.capo ? `Fret ${song.capo}` : 'None'}
+            </Text>
+          </View>
+          <View style={styles.detailFact}>
+            <Text style={styles.detailFactLabel}>LEVEL</Text>
+            <Text
+              style={[
+                styles.detailFactValue,
+                { color: DIFFICULTY_COLORS[song.difficulty] },
+              ]}
+            >
+              {song.difficulty}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.detailNote}>{song.note}</Text>
+
+        <Text style={styles.detailSectionLabel}>
+          CHORDS YOU NEED · {song.chords.length}
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chordRow}
+        >
+          {song.chords.map((name) => {
+            const chord = getChord(name);
+            if (!chord) return null;
+            return (
+              <PressableScale
+                key={name}
+                style={styles.chordTile}
+                onPress={() => playChord(chordMidiNotes(chord).map(midiToNoteName))}
+                accessibilityRole="button"
+                accessibilityLabel={`Hear ${name}`}
+              >
+                <ChordDiagram chord={chord} small />
+                <Text style={styles.chordTileName}>{name}</Text>
+              </PressableScale>
+            );
+          })}
+        </ScrollView>
+
+        <Text style={styles.detailFinePrint}>
+          Chord reference only - tap a shape to hear it. Learn the arrangement
+          from the record.
+        </Text>
+
+        <PressableScale onPress={onClose} style={styles.detailCloseBtn}>
+          <Text style={[styles.detailCloseText, { color: color.muted }]}>Close</Text>
+        </PressableScale>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 export default function SongLibraryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<Difficulty | 'All'>('All');
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
   const filteredSongs = SONGS.filter((song) => {
     const matchesSearch =
@@ -92,8 +171,10 @@ export default function SongLibraryScreen() {
     return (
       <PressableScale
         style={styles.songCard}
+        onPress={() => setSelectedSong(item)}
         accessibilityRole="button"
-        accessibilityLabel={`${item.title} by ${item.artist}, difficulty ${item.difficulty}`}
+        accessibilityLabel={`${item.title} by ${item.artist}, difficulty ${item.difficulty}, ${item.chords.length} chords`}
+        accessibilityHint="Shows the chords this song uses"
       >
         <View style={[styles.artTile, { backgroundColor: art.bg }]}>
           <Ionicons
@@ -130,6 +211,8 @@ export default function SongLibraryScreen() {
             </Text>
             <Text style={styles.metaSeparator}>·</Text>
             <Text style={styles.songDuration}>{item.duration}</Text>
+            <Text style={styles.metaSeparator}>·</Text>
+            <Text style={styles.songDuration}>{item.chords.length} chords</Text>
           </View>
         </View>
         <Ionicons name="chevron-forward" size={16} color={Colors.dark.muted} />
@@ -203,11 +286,131 @@ export default function SongLibraryScreen() {
           </View>
         }
       />
+
+      {selectedSong && (
+        <SongDetail song={selectedSong} onClose={() => setSelectedSong(null)} />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  detailOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 100,
+    justifyContent: 'flex-end',
+  },
+  detailBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  detailSheet: {
+    backgroundColor: Colors.dark.surfaceElevated,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+    gap: 14,
+  },
+  detailHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.dark.cardBorder,
+  },
+  detailHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  detailArt: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailHeadText: {
+    flex: 1,
+  },
+  detailTitle: {
+    color: Colors.dark.text,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  detailArtist: {
+    color: Colors.dark.muted,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  detailFacts: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  detailFact: {
+    flex: 1,
+    backgroundColor: Colors.dark.surface,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  detailFactLabel: {
+    color: Colors.dark.muted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  detailFactValue: {
+    color: Colors.dark.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  detailNote: {
+    color: Colors.dark.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  detailSectionLabel: {
+    color: Colors.dark.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  chordRow: {
+    gap: 12,
+    paddingRight: 12,
+  },
+  chordTile: {
+    alignItems: 'center',
+    backgroundColor: Colors.dark.surface,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  chordTileName: {
+    color: Colors.dark.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  detailFinePrint: {
+    color: Colors.dark.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    opacity: 0.8,
+  },
+  detailCloseBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 10,
+  },
+  detailCloseText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
   container: {
     flex: 1,
     backgroundColor: '#0f0f23',
