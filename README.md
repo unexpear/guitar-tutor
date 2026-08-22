@@ -24,6 +24,8 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 - Dark theme throughout
 
 - **Chord Quiz** — name the shape, pick the shape, or name what you hear, with distractors chosen to be the chords people actually mix up
+- **Chord Changes** — the one-minute-changes exercise, counted off your actual playing
+- **Practice tracking** — time at the instrument, logged per day against a goal, with a streak
 
 Five of the six cards in the Games tab are not built yet; they are marked as such. See [docs/ROADMAP.md](docs/ROADMAP.md).
 

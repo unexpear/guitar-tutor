@@ -14,7 +14,7 @@ each other, not building new ones.
 
 | Area | State |
 |---|---|
-| Games tab | 6 cards, **1 game**. Chord Quiz is built; the other five are still cards, now dimmed and marked "Soon" rather than pretending. |
+| Games tab | 7 cards, **2 games**. Chord Quiz and Chord Changes are built; the other five are dimmed and marked "Soon" rather than pretending. |
 | Play-along drills | **10 drills for 11 lessons.** Only Guitar Anatomy has none, and it has its own interactive diagram instead. |
 | Practice tracking | Done. Time at the instrument is logged per day, shown against the goal, and drives a streak. |
 | Lesson scores | Stored per lesson, never displayed. The Lessons screen shows a tick and throws the number away. |
@@ -22,23 +22,7 @@ each other, not building new ones.
 
 ## Worth building, in order
 
-### 1. Chord changes, not chords
-
-The hardest thing for a beginner is not holding a shape, it is getting
-from one shape to the next in time. Nothing in the app drills that
-directly.
-
-A "chord change" drill — two chords, a metronome, count how many clean
-changes per minute — is the single most effective beginner exercise there
-is, and every piece needed already exists: the beat clock, the matcher's
-poly mode, the chord library. The song library now knows which chords each
-song uses, so this can be offered per song: *practise the two changes in
-this song that you keep fluffing*.
-
-**Effort:** medium. **Value:** high, and it is the exercise real teachers
-assign.
-
-### 2. Per-chord and per-song progress
+### 1. Per-chord and per-song progress
 
 `favoriteChords` now has a UI. Nothing tracks which chords a player can
 actually play, or which songs they have worked on. Both are cheap to store
@@ -47,7 +31,7 @@ making the user decide.
 
 **Effort:** small to medium. **Value:** medium, rising once drills exist.
 
-### 3. Bass and classical, or stop offering them
+### 2. Bass and classical, or stop offering them
 
 The questionnaire asks which of four instruments you play and then ignores
 two of the answers. Either add tunings and an anatomy diagram for bass and
@@ -114,5 +98,11 @@ For context on what has just landed, so this list is not re-proposing it:
 - The gear on the Lessons screen opened the questionnaire and wiped your
   answers on one stray tap. It opens Settings now, and the labelled
   Retake button in Settings asks first.
-- 84 unit tests over the chord data, matcher, beat clock, fret window,
+- **Chord Changes**: the one-minute-changes exercise, which is the single
+  most useful thing a beginner can drill, because the hard part of chords
+  was never holding one. Pick two chords, play for a minute, and it counts
+  the changes off the live pitch stream. It defaults to full-chord
+  detection so a muted change does not score, and keeps a best per pair.
+  Still to do: a way to launch it straight from a song's chord list.
+- 93 unit tests over the chord data, matcher, beat clock, fret window,
   song library, and quiz generation, running in CI.

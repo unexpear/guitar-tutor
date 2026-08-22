@@ -6,6 +6,9 @@ import { useProgressStore } from '../../features/store/progressStore';
 import ChordQuizGame, {
   CHORD_QUIZ_ID,
 } from '../../features/games/chordQuiz/ChordQuizGame';
+import ChordChangesGame, {
+  CHORD_CHANGES_ID,
+} from '../../features/games/chordChanges/ChordChangesGame';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -28,6 +31,15 @@ const GAMES: Game[] = [
     icon: '🧠',
     difficulty: 'Beginner',
     color: '#6C63FF',
+    playable: true,
+  },
+  {
+    id: CHORD_CHANGES_ID,
+    title: 'Chord Changes',
+    description: 'One minute, two chords, count the clean changes',
+    icon: '🔁',
+    difficulty: 'Beginner',
+    color: '#4CAF50',
     playable: true,
   },
   {
@@ -82,6 +94,19 @@ export default function PracticeGamesScreen() {
   const { width } = useWindowDimensions();
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const highScores = useProgressStore((s) => s.gameHighScores);
+
+  // Chord Changes keeps a best per chord pair, so the card shows the best of
+  // them rather than a single game-wide number.
+  const bestFor = useCallback(
+    (gameId: string) => {
+      if (gameId !== CHORD_CHANGES_ID) return highScores[gameId] ?? 0;
+      const pairs = Object.entries(highScores)
+        .filter(([key]) => key.startsWith(`${CHORD_CHANGES_ID}:`))
+        .map(([, value]) => value);
+      return pairs.length ? Math.max(...pairs) : 0;
+    },
+    [highScores]
+  );
   const cardGap = 14;
   const sidePadding = 20;
   const cardWidth = (width - sidePadding * 2 - cardGap) / 2;
@@ -127,8 +152,8 @@ export default function PracticeGamesScreen() {
           <Text style={styles.difficultyText}>{game.difficulty}</Text>
         </View>
         {game.playable ? (
-          highScores[game.id] > 0 && (
-            <Text style={styles.bestScore}>Best {highScores[game.id]}</Text>
+          bestFor(game.id) > 0 && (
+            <Text style={styles.bestScore}>Best {bestFor(game.id)}</Text>
           )
         ) : (
           <Text style={styles.soonLabel}>Soon</Text>
@@ -139,6 +164,9 @@ export default function PracticeGamesScreen() {
 
   if (activeGame === CHORD_QUIZ_ID) {
     return <ChordQuizGame onExit={() => setActiveGame(null)} />;
+  }
+  if (activeGame === CHORD_CHANGES_ID) {
+    return <ChordChangesGame onExit={() => setActiveGame(null)} />;
   }
 
   return (
