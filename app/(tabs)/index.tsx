@@ -28,6 +28,7 @@ import { Colors, CARD_SHADOW, centsToColor } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
 import { useProgressStore } from '../../features/store/progressStore';
+import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 
 const SECTIONS = [
@@ -56,6 +57,7 @@ export default function TunerScreen() {
   const needleX = useSharedValue(0);
 
   const tuner = useTuner(tuning);
+  usePracticeTimer(tuner.isActive);
   const { playNote } = useGuitarSound();
 
   // Peg labels follow the selected tuning (e.g. Drop D shows D A D G B E).

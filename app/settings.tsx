@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -14,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Colors, CARD_SHADOW } from '../constants/Colors';
 import PressableScale from '../components/PressableScale';
 import { useProgressStore } from '../features/store/progressStore';
+import { minutesFrom } from '../features/practice/streak';
 import * as Linking from 'expo-linking';
 import { useUserPreferencesStore } from '../features/store/userPreferencesStore';
 import { useSettingsStore } from '../features/store/settingsStore';
@@ -231,6 +233,13 @@ function TuningPicker({
 export default function SettingsScreen() {
   const router = useRouter();
   const { alternateTuning, setAlternateTuning } = useProgressStore();
+  const practiceLog = useProgressStore((s) => s.practiceLog);
+  const practiceSecondsToday = useProgressStore((s) => s.practiceSecondsToday);
+  const liveStreak = useProgressStore((s) => s.liveStreak);
+  // practiceLog is read so this recomputes when a session is logged.
+  void practiceLog;
+  const minutesToday = minutesFrom(practiceSecondsToday());
+  const streak = liveStreak();
   const { guitarType, experienceLevel, tuningPreference, resetQuestionnaire } =
     useUserPreferencesStore();
 
@@ -244,8 +253,21 @@ export default function SettingsScreen() {
   } = useSettingsStore();
 
   const handleRetakeQuestionnaire = () => {
-    resetQuestionnaire();
-    router.replace('/(tabs)/lessons');
+    Alert.alert(
+      'Retake the questionnaire?',
+      'Your guitar type, experience level and preferred tuning will be cleared and asked again. Lesson progress and practice history are kept.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Retake',
+          style: 'destructive',
+          onPress: () => {
+            resetQuestionnaire();
+            router.replace('/(tabs)/lessons');
+          },
+        },
+      ]
+    );
   };
 
   const getGuitarTypeLabel = () => {
@@ -378,6 +400,12 @@ export default function SettingsScreen() {
               </View>
             }
           />
+          <Text style={styles.hint}>
+            {minutesToday >= practiceGoalMinutes
+              ? `${minutesToday}m today - goal met.`
+              : `${minutesToday}m of ${practiceGoalMinutes}m today.`}
+            {streak > 1 ? ` ${streak}-day streak.` : ''}
+          </Text>
         </SectionCard>
 
         <SectionCard title="Personalization">

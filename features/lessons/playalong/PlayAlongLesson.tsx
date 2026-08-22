@@ -20,6 +20,7 @@ import { Drill } from '../data/drills';
 import { TargetMatcher, Target, DetectionMode } from './matcher';
 import { createBeatClock, BeatClock, gradeTiming, TimingVerdict } from '../../timing/beatClock';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { usePracticeTimer } from '../../practice/usePracticeTimer';
 
 const ACCENT_CLICK = require('../../../assets/audio/click-accent.wav');
 const REGULAR_CLICK = require('../../../assets/audio/click.wav');
@@ -147,6 +148,7 @@ export default function PlayAlongLesson({
     onsetDetection: true,
   });
   const { start, stop, latest, isRunning, error } = engine;
+  usePracticeTimer(isRunning);
 
   const hasChordTargets = useMemo(
     () => drill.targets.some((t) => t.kind === 'chord'),

@@ -11,6 +11,7 @@ import Animated, {
 import { Colors } from '../../constants/Colors';
 import { useSettingsStore } from '../../features/store/settingsStore';
 import { createBeatClock, BeatClock } from '../../features/timing/beatClock';
+import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
 
 type TimeSignature = '2/4' | '3/4' | '4/4' | '6/8';
 
@@ -84,6 +85,7 @@ function BeatDot({
 export default function MetronomeScreen() {
   const [bpm, setBpm] = useState(100);
   const [isPlaying, setIsPlaying] = useState(false);
+  usePracticeTimer(isPlaying);
   const [timeSignature, setTimeSignature] = useState<TimeSignature>('4/4');
   const [activeBeat, setActiveBeat] = useState<number | null>(null);
   const beatCount = TIME_SIGNATURE_MAP[timeSignature];

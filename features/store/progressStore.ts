@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  toDateKey,
+  nextStreak,
+  streakAsOf,
+  pruneLog,
+  minutesFrom,
+} from '../practice/streak';
 
 export interface LessonProgress {
   lessonId: string;
@@ -21,6 +28,11 @@ interface ProgressState {
   alternateTuning: string;
   /** Best score per game id, e.g. { 'chord-quiz': 180 }. */
   gameHighScores: Record<string, number>;
+  /** Seconds practised per local calendar day, YYYY-MM-DD keyed. */
+  practiceLog: Record<string, number>;
+  /** Local day of the most recent session, or null if there has never been one. */
+  lastPracticeDate: string | null;
+  longestStreak: number;
 
   completeLesson: (lessonId: string, score: number) => void;
   /** Records a score if it beats the stored best. Returns true if it did. */
@@ -30,6 +42,12 @@ interface ProgressState {
   removeFavoriteChord: (chordName: string) => void;
   setAlternateTuning: (tuning: string) => void;
   addPracticeTime: (minutes: number) => void;
+  /** Log time at the instrument. The only thing that moves the streak. */
+  recordPractice: (seconds: number, now?: Date) => void;
+  /** Seconds practised today. */
+  practiceSecondsToday: (now?: Date) => number;
+  /** The streak, but zero if it has already lapsed. */
+  liveStreak: (now?: Date) => number;
   getLessonScore: (lessonId: string) => number;
   isLessonCompleted: (lessonId: string) => boolean;
 }
@@ -43,6 +61,9 @@ export const useProgressStore = create<ProgressState>()(
       favoriteChords: [],
       alternateTuning: 'Standard E',
       gameHighScores: {},
+      practiceLog: {},
+      lastPracticeDate: null,
+      longestStreak: 0,
 
       completeLesson: (lessonId: string, score: number) =>
         set((state) => ({
@@ -84,6 +105,32 @@ export const useProgressStore = create<ProgressState>()(
         set((state) => ({
           totalPracticeMinutes: state.totalPracticeMinutes + minutes,
         })),
+
+      recordPractice: (seconds: number, now: Date = new Date()) => {
+        if (!Number.isFinite(seconds) || seconds <= 0) return;
+        const today = toDateKey(now);
+        set((state) => {
+          const log = pruneLog(
+            { ...state.practiceLog, [today]: (state.practiceLog[today] ?? 0) + seconds },
+            today
+          );
+          const streak = nextStreak(state.lastPracticeDate, state.currentStreak, today);
+          const totalSeconds = Object.values(log).reduce((a, b) => a + b, 0);
+          return {
+            practiceLog: log,
+            lastPracticeDate: today,
+            currentStreak: streak,
+            longestStreak: Math.max(state.longestStreak, streak),
+            totalPracticeMinutes: minutesFrom(totalSeconds),
+          };
+        });
+      },
+
+      practiceSecondsToday: (now: Date = new Date()) =>
+        get().practiceLog[toDateKey(now)] ?? 0,
+
+      liveStreak: (now: Date = new Date()) =>
+        streakAsOf(get().lastPracticeDate, get().currentStreak, toDateKey(now)),
 
       getLessonScore: (lessonId: string) =>
         get().completedLessons[lessonId]?.score ?? 0,

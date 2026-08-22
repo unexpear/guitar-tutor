@@ -12,9 +12,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import { useProgressStore } from '../../features/store/progressStore';
+import { useSettingsStore } from '../../features/store/settingsStore';
+import { minutesFrom } from '../../features/practice/streak';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 import Questionnaire from '../../components/Questionnaire';
 import GuitarAnatomy from '../../components/GuitarAnatomy';
@@ -209,6 +212,37 @@ function ProgressOverview({
         {completedCount === totalLessons
           ? 'All lessons complete — you rock!'
           : `${totalLessons - completedCount} lesson${totalLessons - completedCount === 1 ? '' : 's'} remaining`}
+      </Text>
+      <PracticeToday />
+    </View>
+  );
+}
+
+/**
+ * Time at the instrument today, against the goal set in Settings. Counts
+ * the tuner, the metronome and the drills — not time spent reading.
+ */
+function PracticeToday() {
+  const practiceLog = useProgressStore((s) => s.practiceLog);
+  const practiceSecondsToday = useProgressStore((s) => s.practiceSecondsToday);
+  const liveStreak = useProgressStore((s) => s.liveStreak);
+  const goal = useSettingsStore((s) => s.practiceGoalMinutes);
+  void practiceLog; // subscribe, so a logged session re-renders this
+
+  const minutes = minutesFrom(practiceSecondsToday());
+  const streak = liveStreak();
+  const fraction = goal > 0 ? Math.min(1, minutes / goal) : 0;
+
+  return (
+    <View style={styles.practiceRow}>
+      <View style={styles.practiceBarTrack}>
+        <View style={[styles.practiceBarFill, { width: `${fraction * 100}%` }]} />
+      </View>
+      <Text style={styles.practiceText}>
+        {minutes >= goal
+          ? `${minutes}m today · goal met`
+          : `${minutes}/${goal}m today`}
+        {streak > 1 ? ` · ${streak}-day streak` : ''}
       </Text>
     </View>
   );
@@ -435,6 +469,7 @@ export default function LessonsScreen() {
 
   // Derived from the store so "Retake Questionnaire" (here or in Settings)
   // works even while this tab stays mounted.
+  const router = useRouter();
   const showQuestionnaire = hasHydrated && !hasCompletedQuestionnaire;
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
@@ -511,9 +546,13 @@ export default function LessonsScreen() {
   // itself, which hides it here - onComplete needs no extra work.
   const handleQuestionnaireComplete = useCallback(() => {}, []);
 
-  const handleRetakeQuestionnaire = useCallback(() => {
-    resetQuestionnaire();
-  }, [resetQuestionnaire]);
+  // A gear icon means settings everywhere else in the app, and Settings
+  // already offers "Retake Questionnaire" behind a label. Wiring the gear
+  // straight to a reset threw away the player's answers on a single stray
+  // tap, with nothing to confirm and no way back.
+  const handleOpenSettings = useCallback(() => {
+    router.push('/settings');
+  }, [router]);
 
   // Wait for AsyncStorage rehydration so returning users don't see a
   // flash of the questionnaire on cold start.
@@ -569,8 +608,9 @@ export default function LessonsScreen() {
           <Text style={styles.header}>Guitar Lessons</Text>
           <TouchableOpacity
             style={styles.settingsButton}
-            onPress={handleRetakeQuestionnaire}
-            accessibilityLabel="Retake questionnaire"
+            onPress={handleOpenSettings}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
           >
             <Text style={styles.settingsButtonText}>⚙️</Text>
           </TouchableOpacity>
@@ -672,6 +712,26 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: Colors.success,
     borderRadius: 4,
+  },
+  practiceRow: {
+    marginTop: 14,
+    gap: 6,
+  },
+  practiceBarTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.dark.surfaceElevated,
+    overflow: 'hidden',
+  },
+  practiceBarFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: Colors.warning,
+  },
+  practiceText: {
+    fontSize: 12,
+    color: Colors.dark.muted,
+    fontWeight: '600',
   },
   progressHint: {
     fontSize: 13,
