@@ -14,7 +14,7 @@ each other, not building new ones.
 
 | Area | State |
 |---|---|
-| Games tab | 6 cards, **0 games**. Every card shows the same "coming soon" alert. |
+| Games tab | 6 cards, **1 game**. Chord Quiz is built; the other five are still cards, now dimmed and marked "Soon" rather than pretending. |
 | Play-along drills | **3 drills for 11 lessons**, all beginner. The other 8 lessons are text plus an honour-system "Mark as Complete". |
 | Practice tracking | `practiceGoalMinutes` is set and persisted; `totalPracticeMinutes` and `currentStreak` are declared, persisted, and **never written by anything**. The goal you set in Settings is compared against nothing. |
 | Lesson scores | Stored per lesson, never displayed. The Lessons screen shows a tick and throws the number away. |
@@ -22,21 +22,7 @@ each other, not building new ones.
 
 ## Worth building, in order
 
-### 1. Chord Quiz — the one game that is nearly free
-
-The Games tab needs one real game more than it needs six. Chord Quiz is the
-cheapest by a distance: it needs no new data and no new detection work.
-Show a diagram, ask for the name (or the reverse), score it. Everything it
-needs already exists — 36 chords, a diagram component, chord audio.
-
-The version worth building is the one that uses the tuner: show a chord
-name, listen, and score whether the player actually plays it. The matcher
-already does exactly this for drills; a game is a thin shell around it.
-
-**Effort:** small for the multiple-choice version, medium for the listening
-version. **Value:** removes the app's most visible piece of vapour.
-
-### 2. Drills for the eight lessons that have none
+### 1. Drills for the eight lessons that have none
 
 Every lesson without a drill is a page of text with a button that claims
 you learned something. The drill engine is the best code in the repo and
@@ -51,7 +37,7 @@ map onto note targets almost directly.
 **Effort:** small per drill, mostly content. **Value:** high — it is the
 difference between a book and a teacher.
 
-### 3. Make practice tracking real
+### 2. Make practice tracking real
 
 Three persisted fields exist and nothing writes them. The pieces needed:
 increment `totalPracticeMinutes` when the tuner, metronome, or a drill is
@@ -64,7 +50,7 @@ also the smallest amount of code on this list.
 **Effort:** small. **Value:** high, and it makes an existing setting stop
 lying.
 
-### 4. Chord changes, not chords
+### 3. Chord changes, not chords
 
 The hardest thing for a beginner is not holding a shape, it is getting
 from one shape to the next in time. Nothing in the app drills that
@@ -80,7 +66,7 @@ this song that you keep fluffing*.
 **Effort:** medium. **Value:** high, and it is the exercise real teachers
 assign.
 
-### 5. Per-chord and per-song progress
+### 4. Per-chord and per-song progress
 
 `favoriteChords` now has a UI. Nothing tracks which chords a player can
 actually play, or which songs they have worked on. Both are cheap to store
@@ -89,7 +75,7 @@ making the user decide.
 
 **Effort:** small to medium. **Value:** medium, rising once drills exist.
 
-### 6. Bass and classical, or stop offering them
+### 5. Bass and classical, or stop offering them
 
 The questionnaire asks which of four instruments you play and then ignores
 two of the answers. Either add tunings and an anatomy diagram for bass and
@@ -133,5 +119,13 @@ For context on what has just landed, so this list is not re-proposing it:
 - Chords play when tapped, and can be favourited.
 - The tuning chosen in Settings actually reaches the Tuner.
 - Songs list the chords they need, with diagrams you can hear.
-- 42 unit tests over the chord data, matcher, beat clock, fret window, and
-  song library, running in CI.
+- **Chord Quiz**, the Games tab's first real game. Three question types —
+  name the shape, pick the shape, name what you hear — over ten questions,
+  with a streak bonus and a persisted high score. The work that mattered
+  was the wrong answers: four chords drawn at random are trivial, so
+  distractors are chosen from the same root and the most hand-similar
+  shapes. Asking someone to identify G7 next to G, B7 and Cmaj7 is a real
+  question; next to Bdim it is not. The other five cards are now dimmed
+  and labelled "Soon" instead of all showing the same alert.
+- 57 unit tests over the chord data, matcher, beat clock, fret window,
+  song library, and quiz generation, running in CI.

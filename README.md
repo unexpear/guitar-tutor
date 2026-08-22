@@ -23,7 +23,9 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 - **Play-along practice** — Guitar Hero-style drills that listen to your real guitar: pluck the directed string/fret or strum the directed chord, with an "any tone" beginner mode and a "full chord" mode that requires evidence of multiple chord tones before scoring a hit
 - Dark theme throughout
 
-The Games tab is a placeholder: the cards are there, the games are not. See [docs/ROADMAP.md](docs/ROADMAP.md).
+- **Chord Quiz** — name the shape, pick the shape, or name what you hear, with distractors chosen to be the chords people actually mix up
+
+Five of the six cards in the Games tab are not built yet; they are marked as such. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Development
 

@@ -1,7 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, Alert, useWindowDimensions } from 'react-native';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
+import { useProgressStore } from '../../features/store/progressStore';
+import ChordQuizGame, {
+  CHORD_QUIZ_ID,
+} from '../../features/games/chordQuiz/ChordQuizGame';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -12,6 +16,8 @@ interface Game {
   icon: string;
   difficulty: Difficulty;
   color: string;
+  /** False while a game is still just a card. */
+  playable?: boolean;
 }
 
 const GAMES: Game[] = [
@@ -22,6 +28,7 @@ const GAMES: Game[] = [
     icon: '🧠',
     difficulty: 'Beginner',
     color: '#6C63FF',
+    playable: true,
   },
   {
     id: 'scale-sprint',
@@ -73,14 +80,20 @@ const DIFFICULTY_BADGE_COLORS: Record<Difficulty, string> = {
 
 export default function PracticeGamesScreen() {
   const { width } = useWindowDimensions();
+  const [activeGame, setActiveGame] = useState<string | null>(null);
+  const highScores = useProgressStore((s) => s.gameHighScores);
   const cardGap = 14;
   const sidePadding = 20;
   const cardWidth = (width - sidePadding * 2 - cardGap) / 2;
 
   const handleGamePress = useCallback((game: Game) => {
+    if (game.playable) {
+      setActiveGame(game.id);
+      return;
+    }
     Alert.alert(
       game.title,
-      'This game is coming soon! Stay tuned for updates.',
+      'This one is not built yet. Chord Quiz is - give it a go.',
       [{ text: 'OK' }],
     );
   }, []);
@@ -88,10 +101,12 @@ export default function PracticeGamesScreen() {
   const renderGameCard = (game: Game) => (
     <PressableScale
       key={game.id}
-      style={[styles.gameCard, { width: cardWidth }]}
+      style={[styles.gameCard, { width: cardWidth }, !game.playable && styles.gameCardSoon]}
       onPress={() => handleGamePress(game)}
       accessibilityRole="button"
-      accessibilityLabel={`${game.title}: ${game.description}. Difficulty ${game.difficulty}`}
+      accessibilityLabel={`${game.title}: ${game.description}. Difficulty ${game.difficulty}${
+        game.playable ? '' : '. Not built yet'
+      }`}
     >
       <View style={[styles.iconContainer, { backgroundColor: game.color + '20' }]}>
         <Text style={styles.gameIcon}>{game.icon}</Text>
@@ -102,16 +117,29 @@ export default function PracticeGamesScreen() {
       <Text style={styles.gameDescription} numberOfLines={2}>
         {game.description}
       </Text>
-      <View
-        style={[
-          styles.difficultyBadge,
-          { backgroundColor: DIFFICULTY_BADGE_COLORS[game.difficulty] },
-        ]}
-      >
-        <Text style={styles.difficultyText}>{game.difficulty}</Text>
+      <View style={styles.cardFooter}>
+        <View
+          style={[
+            styles.difficultyBadge,
+            { backgroundColor: DIFFICULTY_BADGE_COLORS[game.difficulty] },
+          ]}
+        >
+          <Text style={styles.difficultyText}>{game.difficulty}</Text>
+        </View>
+        {game.playable ? (
+          highScores[game.id] > 0 && (
+            <Text style={styles.bestScore}>Best {highScores[game.id]}</Text>
+          )
+        ) : (
+          <Text style={styles.soonLabel}>Soon</Text>
+        )}
       </View>
     </PressableScale>
   );
+
+  if (activeGame === CHORD_QUIZ_ID) {
+    return <ChordQuizGame onExit={() => setActiveGame(null)} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -158,6 +186,9 @@ const styles = StyleSheet.create({
     padding: 16,
     ...CARD_SHADOW,
   },
+  gameCardSoon: {
+    opacity: 0.55,
+  },
   iconContainer: {
     width: 48,
     height: 48,
@@ -180,6 +211,23 @@ const styles = StyleSheet.create({
     color: Colors.dark.muted,
     lineHeight: 17,
     marginBottom: 12,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  bestScore: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.success,
+  },
+  soonLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.dark.muted,
+    opacity: 0.7,
   },
   difficultyBadge: {
     alignSelf: 'flex-start',

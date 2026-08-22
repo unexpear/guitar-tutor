@@ -19,8 +19,13 @@ interface ProgressState {
   totalPracticeMinutes: number;
   favoriteChords: string[];
   alternateTuning: string;
+  /** Best score per game id, e.g. { 'chord-quiz': 180 }. */
+  gameHighScores: Record<string, number>;
 
   completeLesson: (lessonId: string, score: number) => void;
+  /** Records a score if it beats the stored best. Returns true if it did. */
+  recordGameScore: (gameId: string, score: number) => boolean;
+  getGameHighScore: (gameId: string) => number;
   addFavoriteChord: (chordName: string) => void;
   removeFavoriteChord: (chordName: string) => void;
   setAlternateTuning: (tuning: string) => void;
@@ -37,6 +42,7 @@ export const useProgressStore = create<ProgressState>()(
       totalPracticeMinutes: 0,
       favoriteChords: [],
       alternateTuning: 'Standard E',
+      gameHighScores: {},
 
       completeLesson: (lessonId: string, score: number) =>
         set((state) => ({
@@ -49,6 +55,17 @@ export const useProgressStore = create<ProgressState>()(
             },
           },
         })),
+
+      recordGameScore: (gameId: string, score: number) => {
+        const best = get().gameHighScores[gameId] ?? 0;
+        if (score <= best) return false;
+        set((state) => ({
+          gameHighScores: { ...state.gameHighScores, [gameId]: score },
+        }));
+        return true;
+      },
+
+      getGameHighScore: (gameId: string) => get().gameHighScores[gameId] ?? 0,
 
       addFavoriteChord: (chordName: string) =>
         set((state) => ({
