@@ -81,7 +81,7 @@ jobs:
       # Play Store requires an Android App Bundle; the keystore acts as the
       # Play App Signing upload key. Same signing config as the APK.
       - name: Build release AAB (Play Store)
-        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY == 'true'
         run: |
           cd android
           ./gradlew bundleRelease
@@ -100,8 +100,8 @@ jobs:
       - name: Verify APK output
         run: ls -la android/app/build/outputs/apk/release/ android/app/build/outputs/apk/debug/ 2>/dev/null || true
 
-      - name: Upload release APK artifact
-        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+      - name: Upload release APK artifact (signed)
+        if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
@@ -109,12 +109,34 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release AAB artifact
-        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
+
+      # Without signing secrets the APK carries the Android Debug certificate.
+      # It is fine for sideloading but Play will reject it, so label it plainly
+      # and never emit an AAB that looks uploadable.
+      - name: Upload UNSIGNED release APK artifact
+        if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk-DEBUG-SIGNED-not-for-play
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Warn that signing secrets are missing
+        if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY != 'true'
+        run: |
+          echo "::warning title=No signing key::KEYSTORE_BASE64 is not set, so this build is signed with the Android Debug certificate. No AAB was produced - Google Play rejects debug-signed uploads. See docs/KEYSTORE-CI.md."
+          {
+            echo "### :warning: Debug-signed build"
+            echo ""
+            echo "Signing secrets are not configured, so no Play-uploadable AAB was built."
+            echo "Add \`KEYSTORE_BASE64\`, \`KEYSTORE_PASSWORD\`, \`KEY_ALIAS\` and \`KEY_PASSWORD\`, then re-run."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload debug APK artifact
         if: github.event_name == 'pull_request'
