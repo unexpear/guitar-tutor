@@ -51,3 +51,6 @@ app-release.apk
 docs/KEYSTORE-BASE64.txt
 keystore-base64.txt
 *.keystore
+
+# downloaded build artifacts
+dist-play/
