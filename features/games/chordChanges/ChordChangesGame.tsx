@@ -23,7 +23,14 @@ export const CHORD_CHANGES_ID = 'chord-changes';
 
 type Phase = 'setup' | 'running' | 'done';
 
-export default function ChordChangesGame({ onExit }: { onExit: () => void }) {
+export default function ChordChangesGame({
+  onExit,
+  initialPair,
+}: {
+  onExit: () => void;
+  /** Prefill, e.g. when arriving from a song's chord list. */
+  initialPair?: [string, string];
+}) {
   const engine = useTunerEngine({
     instrument: 'guitar',
     a4: 440,
@@ -42,7 +49,10 @@ export default function ChordChangesGame({ onExit }: { onExit: () => void }) {
 
   const [phase, setPhase] = useState<Phase>('setup');
   const [mode, setMode] = useState<DetectionMode>('poly');
-  const [names, setNames] = useState<[string, string]>(['Em', 'Am']);
+  const [names, setNames] = useState<[string, string]>(() => {
+    const [a, b] = initialPair ?? [];
+    return a && b && a !== b && getChord(a) && getChord(b) ? [a, b] : ['Em', 'Am'];
+  });
   const [editing, setEditing] = useState<0 | 1 | null>(null);
   const [count, setCount] = useState(0);
   const [current, setCurrent] = useState(0); // index into `names`

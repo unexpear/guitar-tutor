@@ -104,7 +104,8 @@ For context on what has just landed, so this list is not re-proposing it:
   was never holding one. Pick two chords, play for a minute, and it counts
   the changes off the live pitch stream. It defaults to full-chord
   detection so a muted change does not score, and keeps a best per pair.
-  Still to do: a way to launch it straight from a song's chord list.
+  A song's sheet has a "Drill G ↔ D" button that opens it prefilled with
+  the two chords that song opens on.
 - Dead code removed (a 49-entry sample table nothing imported, an unused
   lesson-navigation API, an unused tuning helper), lesson scores shown
   where they were previously stored and discarded, and Bass withdrawn from

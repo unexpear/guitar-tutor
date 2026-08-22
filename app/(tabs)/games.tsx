@@ -1,7 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert, useWindowDimensions } from 'react-native';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useProgressStore } from '../../features/store/progressStore';
 import ChordQuizGame, {
   CHORD_QUIZ_ID,
@@ -92,7 +93,21 @@ const DIFFICULTY_BADGE_COLORS: Record<Difficulty, string> = {
 
 export default function PracticeGamesScreen() {
   const { width } = useWindowDimensions();
+  const router = useRouter();
+  // Another screen can deep-link straight into a game, e.g. the Songs tab
+  // sending you to practise the changes in a song.
+  const params = useLocalSearchParams<{ game?: string; a?: string; b?: string }>();
   const [activeGame, setActiveGame] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (params.game) setActiveGame(params.game);
+  }, [params.game]);
+
+  const closeGame = useCallback(() => {
+    setActiveGame(null);
+    // Otherwise the param would reopen the game the moment the tab renders.
+    if (params.game) router.setParams({ game: undefined, a: undefined, b: undefined });
+  }, [params.game, router]);
   const highScores = useProgressStore((s) => s.gameHighScores);
 
   // Chord Changes keeps a best per chord pair, so the card shows the best of
@@ -163,10 +178,15 @@ export default function PracticeGamesScreen() {
   );
 
   if (activeGame === CHORD_QUIZ_ID) {
-    return <ChordQuizGame onExit={() => setActiveGame(null)} />;
+    return <ChordQuizGame onExit={closeGame} />;
   }
   if (activeGame === CHORD_CHANGES_ID) {
-    return <ChordChangesGame onExit={() => setActiveGame(null)} />;
+    return (
+      <ChordChangesGame
+        onExit={closeGame}
+        initialPair={params.a && params.b ? [params.a, params.b] : undefined}
+      />
+    );
   }
 
   return (

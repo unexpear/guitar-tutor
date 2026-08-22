@@ -20,6 +20,7 @@ import {
   midiToNoteName,
 } from '../../features/chords/data/chords';
 import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
+import { useRouter } from 'expo-router';
 
 const DIFFICULTY_FILTERS: (Difficulty | 'All')[] = ['All', 'Easy', 'Medium', 'Hard'];
 
@@ -59,7 +60,13 @@ function initialsFor(artist: string) {
 function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
   const color = Colors.dark;
   const { playChord } = useGuitarSound();
+  const router = useRouter();
   const art = artForArtist(song.artist);
+
+  // The two chords a song opens on are the change you will hit first and
+  // most often, so that is the pair worth drilling.
+  const practisePair = song.chords.slice(0, 2);
+  const canPractise = practisePair.length === 2;
 
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.detailOverlay}>
@@ -139,6 +146,27 @@ function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
             );
           })}
         </ScrollView>
+
+        {canPractise && (
+          <PressableScale
+            style={styles.practiseBtn}
+            onPress={() => {
+              onClose();
+              router.push(
+                `/(tabs)/games?game=chord-changes&a=${encodeURIComponent(
+                  practisePair[0]
+                )}&b=${encodeURIComponent(practisePair[1])}`
+              );
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Practise changing between ${practisePair[0]} and ${practisePair[1]}`}
+          >
+            <Ionicons name="repeat" size={18} color="#0b2410" />
+            <Text style={styles.practiseBtnText}>
+              Drill {practisePair[0]} ↔ {practisePair[1]}
+            </Text>
+          </PressableScale>
+        )}
 
         <Text style={styles.detailFinePrint}>
           Chord reference only - tap a shape to hear it. Learn the arrangement
@@ -395,6 +423,20 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     fontSize: 13,
     fontWeight: '700',
+  },
+  practiseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.success,
+    paddingVertical: 13,
+    borderRadius: 12,
+  },
+  practiseBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0b2410',
   },
   detailFinePrint: {
     color: Colors.dark.muted,
