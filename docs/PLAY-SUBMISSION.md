@@ -46,6 +46,24 @@ If analytics, crash reporting, or any network feature is ever added, this form A
 - `RECORD_AUDIO`: core functionality — real-time guitar pitch detection for the tuner and play-along lessons; requested in context, foreground only, audio never leaves the device.
 - No sensitive/restricted permissions are used. `SYSTEM_ALERT_WINDOW` is explicitly stripped from the manifest at build time.
 
+## Version codes
+
+`android/` is gitignored and CI regenerates it with `expo prebuild --clean`,
+so **`expo.android.versionCode` in `app.json` is the only thing that sets
+it**. It was unset for the first release, which meant Expo defaulted it to 1
+- and once a version-code-1 bundle is on Play, every later upload with the
+same code is rejected as a duplicate.
+
+Bump `versionCode` by one for every build you intend to upload, in the same
+commit as the change. `expo.version` (the name testers see, e.g. "1.0.1") is
+separate and can move at its own pace. `tests/appConfig.test.ts` fails the
+build if the code goes missing or drops back to 1.
+
+| Uploaded | versionCode | version |
+|---|---|---|
+| 2026-08-22, closed testing | 1 | 1.0.0 |
+| next | 2 | 1.0.0 |
+
 ## Signing
 
 Enroll in **Play App Signing** when creating the app: Google generates and holds the app signing key; the existing keystore (see `docs/KEYSTORE-CI.md`) becomes the **upload key** that signs the AAB.
