@@ -115,22 +115,44 @@ a bundle is attached, so do the upload first.
 
 #### Option B - let CI upload it (recommended)
 
-`.github/workflows/build-release.yml` has a `publish` job that pushes the
-signed AAB to the closed-testing track on every `v*` tag. It stays dormant
-until you add one secret:
+Once set up, shipping a build is one command:
 
-1. In Google Cloud, create a service account and a JSON key for it.
-2. In Play Console: Users and permissions -> Invite new users -> paste the
-   service account email, grant it access to this app with the "Release to
-   testing tracks" permission.
-3. In GitHub: Settings -> Secrets and variables -> Actions -> new secret
-   `PLAY_SERVICE_ACCOUNT_JSON`, pasting the whole JSON key file.
-4. Tag a release: `git tag v1.0.0 && git push origin v1.0.0`.
+```sh
+npm run release
+```
 
-The job uploads as a **draft** release (review and roll out in the console).
-Change `status: draft` to `completed` in the workflow once you want tags to
-reach testers directly. Release notes come from
-`distribution/whatsnew/whatsnew-en-US`.
+That bumps `versionCode`, commits, tags, and pushes. CI builds the signed
+AAB and uploads it straight to the closed testing track, with the notes from
+`distribution/whatsnew/whatsnew-en-US`. Pass a version to change the name
+testers see (`npm run release -- 1.0.1`), or `--dry-run` to see what it
+would do first.
+
+It refuses to run on a dirty tree, off `main`, on a duplicate tag, or with
+release notes over Play's 500-character limit — all things that otherwise
+fail slowly, in CI or at the console.
+
+**The one-time setup** is a service account, because Google will not let CI
+authenticate any other way:
+
+1. In Google Cloud, in the project linked to your Play account:
+   IAM & Admin -> Service Accounts -> Create. Then Keys -> Add key -> JSON.
+   A key file downloads.
+2. In Play Console: Users and permissions -> Invite new user -> paste the
+   service account's email -> grant it **Release to testing tracks** on this
+   app.
+3. Add the key to GitHub without it passing through your clipboard:
+
+   ```sh
+   gh secret set PLAY_SERVICE_ACCOUNT_JSON < ~/Downloads/your-key.json
+   ```
+
+Until that secret exists the publish job skips with a warning and the signed
+AAB is still attached to the run as the `app-release-aab` artifact, so you
+can always fall back to Option A.
+
+The upload uses `status: completed`, so a tag reaches testers directly. Set
+it to `draft` in `.github/workflows/build-release.yml` if you ever want to
+review in the console first.
 
 ### 2. Add testers
 

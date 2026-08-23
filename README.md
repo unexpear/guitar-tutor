@@ -46,6 +46,16 @@ npm test
 npm run typecheck
 ```
 
+Shipping a build to the closed testers is one command, which bumps the
+Android version code, tags, and lets CI build and upload it:
+
+```sh
+npm run release
+```
+
+See [docs/PLAY-SUBMISSION.md](docs/PLAY-SUBMISSION.md) for the one-time
+service-account setup that the upload step needs.
+
 > **Note:** the tuner uses a native Turbo Module, so the app must be built as a
 > development build — it will not work in Expo Go.
 

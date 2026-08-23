@@ -196,11 +196,16 @@ jobs:
           packageName: com.standardtune.guitar
           releaseFiles: aab/*.aab
           track: alpha
-          # 'draft' stages the release for review in the console; switch to
-          # 'completed' once you want tags to roll out to testers directly.
-          status: draft
+          # 'completed' rolls straight out to the closed testers. The point
+          # of tagging is not to then go and click a button in the console;
+          # switch to 'draft' if you ever want a human gate before testers
+          # get a build.
+          status: completed
           whatsNewDirectory: distribution/whatsnew
 
-      - name: Note when skipped
+      - name: Explain why the upload was skipped
         if: env.HAS_PLAY_SA != 'true'
-        run: echo "PLAY_SERVICE_ACCOUNT_JSON not set - skipping Play upload."
+        run: |
+          echo "::warning::Tag built, but no Play upload: PLAY_SERVICE_ACCOUNT_JSON is not set."
+          echo "The signed AAB is attached to this run as the 'app-release-aab' artifact."
+          echo "To automate uploads, see docs/PLAY-SUBMISSION.md (one-time setup)."

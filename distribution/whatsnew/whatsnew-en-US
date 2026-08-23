@@ -1,10 +1,8 @@
-First closed test build of StandardTune.
-
-- Real-time tuner with 16 tunings and per-string in-tune indicators
-- Chord library with 29 chords, diagrams, and reference audio
-- Play-along practice drills that listen to your guitar
-- Beginner to advanced lessons with an interactive guitar anatomy quiz
-- Metronome with tap tempo and multiple time signatures
-
-Everything runs offline and audio never leaves your device. Please report
-anything that misbehaves, especially tuner accuracy on your instrument.
+- Chord Quiz and Chord Changes: two practice games that listen to you play
+- A drill for every lesson, not just three
+- Practice tracking: time played, a daily goal, and a streak
+- Chord diagrams now draw barres and shapes up the neck; 36 chords
+- Songs list the chords they need, with diagrams you can hear
+- Per-chord progress, so you can see what needs work
+- Fixes: the tuner now tells you when mic permission is denied, and the
+  mic is released when you leave the screen
