@@ -390,9 +390,13 @@ export default function TunerScreen() {
 
       <View style={styles.bottomArea}>
         {tuner.error && (
-          <Text style={styles.tunerError} accessibilityRole="alert">
-            Microphone unavailable: {tuner.error.message}. Check the app&apos;s
-            mic permission in your device settings, then try again.
+          <Text
+            style={styles.tunerError}
+            accessibilityRole="alert"
+            numberOfLines={2}
+          >
+            {tuner.error.message.replace(/[.\s]+$/, '')}. Enable the mic in your
+            device settings.
           </Text>
         )}
         <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
@@ -545,6 +549,11 @@ const styles = StyleSheet.create({
   },
   centerDisplay: {
     flex: 1,
+    // Without a floor the readout is squeezed by anything that appears
+    // below it (the mic-permission message) and its fixed-height children
+    // spill over the text underneath instead of the column reflowing.
+    minHeight: 0,
+    flexShrink: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
@@ -669,7 +678,7 @@ const styles = StyleSheet.create({
   },
   tunerError: {
     marginHorizontal: 24,
-    marginBottom: 12,
+    marginBottom: 8,
     fontSize: 13,
     lineHeight: 18,
     color: Colors.danger,
