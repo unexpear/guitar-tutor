@@ -92,21 +92,29 @@ export function useTuner(
   const windowRef = useRef<number[]>([]);
   const [smoothHz, setSmoothHz] = useState(0);
 
+  // Depend on the number, never on `latest` itself. The engine hands back a
+  // fresh object every render, so an object dependency here re-ran the
+  // effect on its own state update and span into "Maximum update depth
+  // exceeded" the moment a pitch arrived.
+  const rawHz = latest?.hasPitch ? latest.frequency : 0;
+
   useEffect(() => {
-    if (!isRunning || !latest || !latest.hasPitch) {
+    if (!isRunning || rawHz <= 0) {
       windowRef.current = [];
       setSmoothHz(0);
       return;
     }
-    windowRef.current = pushWindow(windowRef.current, latest.frequency);
+    windowRef.current = pushWindow(windowRef.current, rawHz);
     setSmoothHz(median(windowRef.current));
-  }, [latest, isRunning]);
+  }, [rawHz, isRunning]);
 
   // A new target means the old readings describe a different string.
+  // Keyed on the tuning's name rather than the object, for the same reason.
+  const tuningName = tuning.name;
   useEffect(() => {
     windowRef.current = [];
     setSmoothHz(0);
-  }, [targetStringIndex, tuning]);
+  }, [targetStringIndex, tuningName]);
 
   const state: TunerState = useMemo(() => {
     if (!isRunning) return IDLE_STATE;
