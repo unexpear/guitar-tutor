@@ -21,6 +21,7 @@ import { TargetMatcher, Target, DetectionMode } from './matcher';
 import { createBeatClock, BeatClock, gradeTiming, TimingVerdict } from '../../timing/beatClock';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { usePracticeTimer } from '../../practice/usePracticeTimer';
+import { useProgressStore } from '../../store/progressStore';
 import { useMicReleaseOnLeave } from '../../audio/useMicReleaseOnLeave';
 
 const ACCENT_CLICK = require('../../../assets/audio/click-accent.wav');
@@ -150,6 +151,7 @@ export default function PlayAlongLesson({
   });
   const { start, stop, latest, isRunning, error } = engine;
   usePracticeTimer(isRunning);
+  const recordChordAttempt = useProgressStore((s) => s.recordChordAttempt);
   useMicReleaseOnLeave(stop, isRunning);
 
   const hasChordTargets = useMemo(
@@ -251,6 +253,7 @@ export default function PlayAlongLesson({
       setLastTiming(gradeTiming(Date.now() - lastBeatAtRef.current));
     }
     const target = drill.targets[idxRef.current];
+    if (target.kind === 'chord') recordChordAttempt(target.chordName, true);
     const totalStrums = target.kind === 'chord' ? target.strums ?? 1 : 1;
 
     zonePulse.value = withSequence(
@@ -277,6 +280,8 @@ export default function PlayAlongLesson({
   }, [advance, drill, zonePulse, hasClick]);
 
   const registerWrong = useCallback(() => {
+    const missed = drill.targets[idxRef.current];
+    if (missed?.kind === 'chord') recordChordAttempt(missed.chordName, false);
     setWrongCount((w) => w + 1);
     setStreak(0);
     cooldownUntilRef.current = Date.now() + WRONG_COOLDOWN_MS;

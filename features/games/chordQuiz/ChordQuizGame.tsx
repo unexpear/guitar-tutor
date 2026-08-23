@@ -32,6 +32,7 @@ const PROMPTS: Record<QuizQuestion['mode'], string> = {
 export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
   const { playChord } = useGuitarSound();
   const recordGameScore = useProgressStore((s) => s.recordGameScore);
+  const recordChordAttempt = useProgressStore((s) => s.recordChordAttempt);
   const highScore = useProgressStore((s) => s.gameHighScores[CHORD_QUIZ_ID] ?? 0);
   const soundsEnabled = useSettingsStore((s) => s.soundsEnabled);
 
@@ -85,6 +86,7 @@ export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
     setPicked(option.name);
 
     const right = option.name === question.answer.name;
+    recordChordAttempt(question.answer.name, right);
     if (right) {
       setScore((s) => s + scoreForAnswer(streak));
       setCorrect((c) => c + 1);

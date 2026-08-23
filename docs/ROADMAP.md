@@ -22,16 +22,7 @@ each other, not building new ones.
 
 ## Worth building, in order
 
-### 1. Per-chord and per-song progress
-
-`favoriteChords` now has a UI. Nothing tracks which chords a player can
-actually play, or which songs they have worked on. Both are cheap to store
-and would let the app answer "what should I practise today" instead of
-making the user decide.
-
-**Effort:** small to medium. **Value:** medium, rising once drills exist.
-
-### 2. Bass, properly
+### 1. Bass, properly
 
 Bass used to be one of four answers in the questionnaire and then changed
 nothing: the app would hand a bassist a six-string tuner asking for E2 to
@@ -110,5 +101,17 @@ For context on what has just landed, so this list is not re-proposing it:
   lesson-navigation API, an unused tuning helper), lesson scores shown
   where they were previously stored and discarded, and Bass withdrawn from
   the questionnaire rather than left as an answer that changed nothing.
-- 93 unit tests over the chord data, matcher, beat clock, fret window,
+- Per-chord progress. Every judged attempt — a quiz answer, a drill target
+  hit or missed, a change that landed — is recorded against that chord, and
+  the chord sheet says whether it is solid, shaky, or not practised yet. A
+  "Needs work" filter collects the ones under 75%. Merely looking at a
+  diagram does not count, or every chord you browsed would read as
+  mastered, and fewer than four attempts reads as "learning" rather than
+  convicting you on one bad guess.
+- An audit pass for errors and holes: the tuner used to swallow mic errors
+  (a denied permission left the main button silently dead), nothing
+  released the mic when you left a screen, and Chord Quiz served silent
+  listening questions when sounds were off. Favourites, longest streak,
+  total practice time and song genre were all stored and never shown.
+- 106 unit tests over the chord data, matcher, beat clock, fret window,
   song library, and quiz generation, running in CI.

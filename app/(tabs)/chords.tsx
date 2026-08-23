@@ -24,6 +24,25 @@ import {
 } from '../../features/chords/data/chords';
 import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
 import { useProgressStore } from '../../features/store/progressStore';
+import {
+  accuracy,
+  verdictFor,
+  ChordVerdict,
+} from '../../features/practice/chordStats';
+
+const VERDICT_LABELS: Record<ChordVerdict, string> = {
+  untried: 'Not practised yet',
+  learning: 'Learning',
+  shaky: 'Needs work',
+  solid: 'Solid',
+};
+
+const VERDICT_COLORS: Record<ChordVerdict, string> = {
+  untried: Colors.dark.muted,
+  learning: Colors.dark.muted,
+  shaky: Colors.warning,
+  solid: Colors.success,
+};
 
 const CHORD_TYPE_LABELS: Record<ChordType, string> = {
   major: 'Major',
@@ -102,6 +121,9 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
   const addFavoriteChord = useProgressStore((s) => s.addFavoriteChord);
   const removeFavoriteChord = useProgressStore((s) => s.removeFavoriteChord);
   const isFavorite = favoriteChords.includes(chord.name);
+  const stat = useProgressStore((s) => s.chordStats[chord.name]);
+  const verdict = verdictFor(stat);
+  const acc = accuracy(stat);
 
   // Low string to high, so the strum runs in the direction of a downstroke.
   const handlePlay = () =>
@@ -118,6 +140,13 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
         <Text style={[styles.detailName, { color: color.text }]}>{chord.name}</Text>
         <Text style={[styles.detailType, { color: color.muted }]}>
           {CHORD_TYPE_LABELS[chord.type]}
+        </Text>
+        <Text style={[styles.detailStat, { color: VERDICT_COLORS[verdict] }]}>
+          {verdict === 'untried'
+            ? 'Not practised yet'
+            : verdict === 'learning'
+            ? `${stat?.attempts} ${stat?.attempts === 1 ? 'try' : 'tries'} so far`
+            : `${VERDICT_LABELS[verdict]} · ${acc}% of ${stat?.attempts}`}
         </Text>
 
         <View style={styles.detailDiagramWrap}>
@@ -196,8 +225,15 @@ export default function ChordsScreen() {
   const [activeFilter, setActiveFilter] = useState<ChordType | null>(null);
   // Favourites are a filter rather than a type, since a chord can be both.
   const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const [needsWorkOnly, setNeedsWorkOnly] = useState(false);
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null);
   const favoriteChords = useProgressStore((s) => s.favoriteChords);
+  const chordStats = useProgressStore((s) => s.chordStats);
+  const shakyChords = useMemo(
+    () => CHORDS.filter((c) => verdictFor(chordStats[c.name]) === 'shaky'),
+    [chordStats]
+  );
+  const showNeedsWork = needsWorkOnly && shakyChords.length > 0;
   // Unstarring the last favourite hides the chip, so the filter must fall
   // back to off on its own or the user is stranded on an empty list with no
   // control left to switch it back.
@@ -215,6 +251,9 @@ export default function ChordsScreen() {
     if (showFavourites) {
       result = result.filter((c) => favoriteChords.includes(c.name));
     }
+    if (showNeedsWork) {
+      result = result.filter((c) => shakyChords.some((x) => x.name === c.name));
+    }
     if (activeFilter) {
       result = result.filter((c) => c.type === activeFilter);
     }
@@ -227,7 +266,7 @@ export default function ChordsScreen() {
       );
     }
     return result;
-  }, [search, activeFilter, showFavourites, favoriteChords]);
+  }, [search, activeFilter, showFavourites, favoriteChords, showNeedsWork, shakyChords]);
 
   const grouped = useMemo(() => {
     const map = new Map<ChordType, Chord[]>();
@@ -275,12 +314,20 @@ export default function ChordsScreen() {
       >
         <FilterButton
           label="All"
-          active={activeFilter === null && !showFavourites}
+          active={activeFilter === null && !showFavourites && !showNeedsWork}
           onPress={() => {
             setActiveFilter(null);
             setFavouritesOnly(false);
+            setNeedsWorkOnly(false);
           }}
         />
+        {shakyChords.length > 0 && (
+          <FilterButton
+            label={`Needs work (${shakyChords.length})`}
+            active={showNeedsWork}
+            onPress={() => setNeedsWorkOnly((v) => !v)}
+          />
+        )}
         {favoriteChords.length > 0 && (
           <FilterButton
             label={`★ Saved (${favoriteChords.length})`}
@@ -307,7 +354,11 @@ export default function ChordsScreen() {
             style={styles.emptyIcon}
           />
           <Text style={[styles.emptyTitle, { color: color.text }]}>
-            {showFavourites ? 'No saved chords yet' : 'No chords found'}
+            {showFavourites
+              ? 'No saved chords yet'
+              : showNeedsWork
+              ? 'Nothing needs work'
+              : 'No chords found'}
           </Text>
           <Text style={[styles.emptySubtitle, { color: color.muted }]}>
             Try a different search
@@ -478,6 +529,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginTop: 2,
     marginBottom: 24,
+  },
+  detailStat: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
   },
   detailDiagramWrap: {
     alignItems: 'center',

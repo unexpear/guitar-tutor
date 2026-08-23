@@ -47,6 +47,7 @@ export default function ChordChangesGame({
   useMicReleaseOnLeave(stop, isRunning);
 
   const recordGameScore = useProgressStore((s) => s.recordGameScore);
+  const recordChordAttempt = useProgressStore((s) => s.recordChordAttempt);
   const highScores = useProgressStore((s) => s.gameHighScores);
 
   const [phase, setPhase] = useState<Phase>('setup');
@@ -138,6 +139,8 @@ export default function ChordChangesGame({
     });
 
     if (event === 'hit') {
+      // The chord that was just heard is the one that was due.
+      recordChordAttempt(names[currentRef.current], true);
       countRef.current += 1;
       setCount(countRef.current);
       const next = currentRef.current === 0 ? 1 : 0;

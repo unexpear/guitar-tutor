@@ -8,6 +8,7 @@ import {
   pruneLog,
   minutesFrom,
 } from '../practice/streak';
+import { ChordStats, recordAttempt } from '../practice/chordStats';
 
 export interface LessonProgress {
   lessonId: string;
@@ -28,6 +29,8 @@ interface ProgressState {
   /** Local day of the most recent session, or null if there has never been one. */
   lastPracticeDate: string | null;
   longestStreak: number;
+  /** How each chord is going, keyed by chord name. */
+  chordStats: ChordStats;
 
   completeLesson: (lessonId: string, score: number) => void;
   /** Records a score if it beats the stored best. Returns true if it did. */
@@ -37,6 +40,12 @@ interface ProgressState {
   setAlternateTuning: (tuning: string) => void;
   /** Log time at the instrument. The only thing that moves the streak. */
   recordPractice: (seconds: number, now?: Date) => void;
+  /**
+   * Record a judged attempt at a chord — a quiz answer, a drill target, a
+   * change that did or did not land. Only call this where something was
+   * actually assessed.
+   */
+  recordChordAttempt: (chordName: string, correct: boolean, now?: Date) => void;
   /** Seconds practised today. */
   practiceSecondsToday: (now?: Date) => number;
   /** The streak, but zero if it has already lapsed. */
@@ -57,6 +66,7 @@ export const useProgressStore = create<ProgressState>()(
       practiceLog: {},
       lastPracticeDate: null,
       longestStreak: 0,
+      chordStats: {},
 
       completeLesson: (lessonId: string, score: number) =>
         set((state) => ({
@@ -111,6 +121,11 @@ export const useProgressStore = create<ProgressState>()(
           };
         });
       },
+
+      recordChordAttempt: (chordName: string, correct: boolean, now: Date = new Date()) =>
+        set((state) => ({
+          chordStats: recordAttempt(state.chordStats, chordName, correct, now),
+        })),
 
       practiceSecondsToday: (now: Date = new Date()) =>
         get().practiceLog[toDateKey(now)] ?? 0,
