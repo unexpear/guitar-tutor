@@ -9,6 +9,32 @@ export interface LessonSection {
  * intentionally has no entry here.
  */
 export const LESSON_CONTENT: Record<string, LessonSection[]> = {
+  'beginner-reading-diagrams': [
+    {
+      heading: 'The grid is your guitar, stood upright',
+      body: 'Imagine standing the guitar up and looking at the neck head-on. The six vertical lines are the strings: thickest low E on the far left, thinnest high e on the far right - the same order as the letters printed under every diagram. The horizontal lines are the metal frets. The thick bar across the top is the nut, where the strings leave the headstock.',
+    },
+    {
+      heading: 'Dots are fingers, numbers say which one',
+      body: 'A dot means press that string down just behind that fret - not on the metal, and not in the middle of the gap. The number inside is which finger: 1 is your index, 2 your middle, 3 your ring, 4 your little finger. The frets are numbered down the left edge, so a dot on row 2 means the second fret.',
+    },
+    {
+      heading: 'Above the nut: circles and crosses',
+      body: 'A circle above a string means play it open - let it ring without pressing anything. A cross means do not play that string at all; either skip it or deaden it by resting a finger against it. Getting the crosses right is what stops a chord sounding muddy.',
+    },
+    {
+      heading: 'One finger, several strings',
+      body: 'When a chord needs one finger flattened across several strings you will see a solid bar with a single number on it instead of separate dots. That is a barre. Lay the finger flat and roll it slightly onto its bony side; the fleshy middle swallows the strings.',
+    },
+    {
+      heading: 'Shapes further up the neck',
+      body: 'Most shapes sit at the nut, so the numbers down the side start at 1. When a chord lives higher up, the numbers start wherever the shape does - a diagram numbered 4, 5, 6 is played at the fourth fret and up. Check that column before you put your hand down.',
+    },
+    {
+      heading: 'Try it',
+      body: 'Open the Chords tab and find Em. Two dots, both on fret 2, fingers 2 and 3, four open circles and no crosses - so you strum all six strings. Then look at F: a bar across fret 1, which is the same idea with one finger doing more work. Tap "Hear it" on each to check what you play matches.',
+    },
+  ],
   'beginner-basic-strumming': [
     {
       heading: 'Hold the pick loosely',

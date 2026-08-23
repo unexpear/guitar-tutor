@@ -40,9 +40,12 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
   const cellH = boardH / FRET_COUNT;
   const cellW = boardW / (FRETBOARD_STRING_COUNT - 1);
   const padBase = dotR + 2; // room for dots on the outer strings
-  // Shapes away from the nut carry a "5fr" position label on the left.
-  const posLabelW = showNut ? 0 : small ? 15 : 22;
-  const pad = padBase + posLabelW;
+  // The large diagram numbers its frets down the left edge; the thumbnail
+  // has no room and keeps the compact "4fr" tag instead. Both share one
+  // gutter rather than fighting for the same space.
+  const showFretNumbers = !small;
+  const gutterW = small ? (showNut ? 0 : 13) : 22;
+  const pad = padBase + gutterW;
   const boardTop = markerH + nutH;
   const openR = small ? 4 : 6.5;
   const labelH = small ? 0 : 20;
@@ -173,13 +176,32 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
           );
         })}
 
-        {/* Position label for shapes away from the nut, e.g. "5fr". Drawn
-            after the barres and clear of the bar's rounded left end. */}
-        {!showNut && (
+        {/* Fret numbers down the left edge. For a shape up the neck these
+            are the real fret numbers, which is what the old "4fr" tag was
+            trying to say with a single label. */}
+        {showFretNumbers &&
+          [...Array(FRET_COUNT)].map((_, i) => (
+            <SvgText
+              key={`fretnum-${i}`}
+              x={pad - dotR - 5}
+              y={fretY(startFret + i) + 4}
+              fontSize={10}
+              fontWeight="700"
+              fill={color.muted}
+              textAnchor="end"
+              opacity={0.75}
+            >
+              {startFret + i}
+            </SvgText>
+          ))}
+
+        {/* Thumbnails have no room to number every fret, so they keep the
+            compact position tag when the shape is away from the nut. */}
+        {!showFretNumbers && !showNut && (
           <SvgText
             x={pad - dotR - 3}
-            y={fretY(startFret) + (small ? 3 : 4.5)}
-            fontSize={small ? 8 : 12}
+            y={fretY(startFret) + 3}
+            fontSize={8}
             fontWeight="700"
             fill={color.muted}
             textAnchor="end"

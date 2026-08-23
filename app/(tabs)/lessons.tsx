@@ -82,10 +82,17 @@ const LESSON_DATA: LessonCategory[] = [
         component: 'guitar-anatomy',
       },
       {
-        id: 'beginner-basic-strumming',
-        title: 'Basic Strumming',
+        id: 'beginner-reading-diagrams',
+        title: 'Reading Chord Diagrams',
         description:
-          'Master fundamental strumming patterns using downstrokes and upstrokes with consistent rhythm.',
+          'What the dots, numbers, crosses and circles mean, so every chord in the app tells you exactly where your fingers go.',
+        difficulty: 'beginner',
+      },
+      {
+        id: 'beginner-reading-tabs',
+        title: 'Reading Tabs',
+        description:
+          'Read tablature and pluck your first single notes, one string at a time.',
         difficulty: 'beginner',
       },
       {
@@ -96,10 +103,10 @@ const LESSON_DATA: LessonCategory[] = [
         difficulty: 'beginner',
       },
       {
-        id: 'beginner-reading-tabs',
-        title: 'Reading Tabs',
+        id: 'beginner-basic-strumming',
+        title: 'Basic Strumming',
         description:
-          'Understand guitar tablature notation so you can learn any song from written tabs.',
+          'Master fundamental strumming patterns using downstrokes and upstrokes with consistent rhythm.',
         difficulty: 'beginner',
       },
     ],

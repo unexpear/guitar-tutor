@@ -181,6 +181,13 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
           })}
         </View>
 
+        <Text style={styles.detailLegend}>
+          1 index · 2 middle · 3 ring · 4 pinky
+        </Text>
+        <Text style={styles.detailLegend}>
+          ○ play open · ✕ don&apos;t play · numbers down the side are frets
+        </Text>
+
         <View style={styles.detailActions}>
           <PressableScale
             onPress={handlePlay}
@@ -565,6 +572,11 @@ const styles = StyleSheet.create({
   detailFingerLabel: {
     fontSize: 10,
     fontWeight: '500',
+  },
+  detailLegend: {
+    fontSize: 11,
+    color: Colors.dark.muted,
+    textAlign: 'center',
   },
   detailActions: {
     flexDirection: 'row',

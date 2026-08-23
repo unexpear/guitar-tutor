@@ -135,3 +135,43 @@ test('a barre never spans strings that are not on its fret', () => {
     }
   }
 });
+
+test('one finger is never on two different frets at once', () => {
+  for (const c of all) {
+    const frets = new Map<number, Set<number>>();
+    c.strings.forEach((fret, i) => {
+      const finger = c.fingers[i];
+      if (fret > 0 && finger > 0) {
+        if (!frets.has(finger)) frets.set(finger, new Set());
+        frets.get(finger)!.add(fret);
+      }
+    });
+    for (const [finger, set] of frets) {
+      assert.equal(
+        set.size,
+        1,
+        `${c.name}: finger ${finger} is on frets ${[...set].join(' and ')}`
+      );
+    }
+  }
+});
+
+test('no shape asks for a stretch wider than a hand', () => {
+  // Four frets is the practical limit; beyond that the shape is a typo.
+  for (const c of all) {
+    const fretted = c.strings.filter((f) => f > 0);
+    if (fretted.length < 2) continue;
+    const span = Math.max(...fretted) - Math.min(...fretted) + 1;
+    assert.ok(span <= 4, `${c.name}: spans ${span} frets`);
+  }
+});
+
+test('a chord never asks for more than four fingers', () => {
+  for (const c of all) {
+    const used = new Set(c.fingers.filter((f) => f > 0));
+    assert.ok(used.size <= 4, `${c.name}: uses ${used.size} fingers`);
+    for (const f of used) {
+      assert.ok(f >= 1 && f <= 4, `${c.name}: finger ${f} does not exist`);
+    }
+  }
+});

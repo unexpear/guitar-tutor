@@ -16,8 +16,9 @@ test('every drill is keyed by the lesson it belongs to', () => {
 });
 
 test('the lessons that should have a drill have one', () => {
-  // Guitar Anatomy is the deliberate exception: it has its own interactive
-  // diagram and quiz instead, and nothing to play.
+  // Two deliberate exceptions, both because there is nothing to play:
+  // Guitar Anatomy has its own interactive diagram and quiz, and Reading
+  // Chord Diagrams teaches notation and sends you to the Chords tab.
   const expected = [
     'beginner-reading-tabs',
     'beginner-open-chords',
@@ -34,6 +35,7 @@ test('the lessons that should have a drill have one', () => {
     assert.ok(getDrill(id), `${id} has no drill`);
   }
   assert.equal(getDrill('beginner-guitar-anatomy'), undefined);
+  assert.equal(getDrill('beginner-reading-diagrams'), undefined);
 });
 
 test('every drill has enough targets to be worth starting', () => {
