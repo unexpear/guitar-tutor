@@ -10,6 +10,7 @@ import { Chord, getChord } from '../../chords/data/chords';
 import { TargetMatcher, DetectionMode } from '../../lessons/playalong/matcher';
 import { useProgressStore } from '../../store/progressStore';
 import { usePracticeTimer } from '../../practice/usePracticeTimer';
+import { useMicReleaseOnLeave } from '../../audio/useMicReleaseOnLeave';
 import {
   ROUND_SECONDS,
   SUGGESTED_PAIRS,
@@ -43,6 +44,7 @@ export default function ChordChangesGame({
   });
   const { start, stop, latest, isRunning, error } = engine;
   usePracticeTimer(isRunning);
+  useMicReleaseOnLeave(stop, isRunning);
 
   const recordGameScore = useProgressStore((s) => s.recordGameScore);
   const highScores = useProgressStore((s) => s.gameHighScores);

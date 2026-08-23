@@ -52,6 +52,7 @@ export function useTuner(tuning: TuningPreset = TUNING_PRESETS[0]) {
     if (error) console.warn('Tuner engine error:', error.message);
   }, [error]);
 
+
   // Precompute target frequencies for the current tuning.
   const stringFrequencies = useMemo(
     () => tuning.strings.map((n) => noteToFrequency(n)),
@@ -106,6 +107,9 @@ export function useTuner(tuning: TuningPreset = TUNING_PRESETS[0]) {
 
   return {
     ...state,
+    // Surfaced, not just logged: a denied mic permission used to leave the
+    // tune button looking alive and doing nothing at all.
+    error,
     startListening: start,
     stopListening: stop,
     toggleListening,

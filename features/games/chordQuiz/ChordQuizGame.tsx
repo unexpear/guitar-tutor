@@ -8,11 +8,14 @@ import ChordDiagram from '../../../components/ChordDiagram';
 import { Chord, chordMidiNotes, midiToNoteName } from '../../chords/data/chords';
 import { useGuitarSound } from '../../audio/hooks/useGuitarSound';
 import { useProgressStore } from '../../store/progressStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import {
   buildQuiz,
   scoreForAnswer,
   QuizLevel,
   QuizQuestion,
+  QuizMode,
+  QUIZ_MODES,
 } from './quiz';
 
 export const CHORD_QUIZ_ID = 'chord-quiz';
@@ -30,6 +33,13 @@ export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
   const { playChord } = useGuitarSound();
   const recordGameScore = useProgressStore((s) => s.recordGameScore);
   const highScore = useProgressStore((s) => s.gameHighScores[CHORD_QUIZ_ID] ?? 0);
+  const soundsEnabled = useSettingsStore((s) => s.soundsEnabled);
+
+  // "Which chord did you hear?" is unanswerable with sounds switched off, so
+  // drop that mode rather than serving a question that plays silence.
+  const modes: QuizMode[] = soundsEnabled
+    ? QUIZ_MODES
+    : QUIZ_MODES.filter((m) => m !== 'name-from-sound');
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [level, setLevel] = useState<QuizLevel>('beginner');
@@ -59,7 +69,7 @@ export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
 
   const start = (chosen: QuizLevel) => {
     setLevel(chosen);
-    setQuestions(buildQuiz(ROUND_LENGTH, chosen));
+    setQuestions(buildQuiz(ROUND_LENGTH, chosen, Math.random, modes));
     setIndex(0);
     setScore(0);
     setCorrect(0);
@@ -115,6 +125,12 @@ export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
           </Text>
           {highScore > 0 && (
             <Text style={styles.introBest}>Best so far: {highScore}</Text>
+          )}
+          {!soundsEnabled && (
+            <Text style={styles.introNote}>
+              Play Sounds is off in Settings, so the listening questions are
+              skipped this round.
+            </Text>
           )}
 
           <Text style={styles.introLabel}>CHOOSE A LEVEL</Text>
@@ -371,6 +387,7 @@ const styles = StyleSheet.create({
   introBody: { paddingHorizontal: 20, paddingBottom: 120, gap: 12 },
   introLead: { fontSize: 15, lineHeight: 22, color: Colors.dark.muted },
   introBest: { fontSize: 14, fontWeight: '700', color: Colors.success },
+  introNote: { fontSize: 13, lineHeight: 19, color: Colors.warning },
   introLabel: {
     fontSize: 11,
     fontWeight: '700',

@@ -107,6 +107,12 @@ function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
             </Text>
           </View>
           <View style={styles.detailFact}>
+            <Text style={styles.detailFactLabel}>GENRE</Text>
+            <Text style={styles.detailFactValue} numberOfLines={1}>
+              {song.genre}
+            </Text>
+          </View>
+          <View style={styles.detailFact}>
             <Text style={styles.detailFactLabel}>LEVEL</Text>
             <Text
               style={[
@@ -187,9 +193,13 @@ export default function SongLibraryScreen() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
   const filteredSongs = SONGS.filter((song) => {
+    const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
-      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.artist.toLowerCase().includes(searchQuery.toLowerCase());
+      !q ||
+      song.title.toLowerCase().includes(q) ||
+      song.artist.toLowerCase().includes(q) ||
+      song.genre.toLowerCase().includes(q) ||
+      song.chords.some((c) => c.toLowerCase() === q);
     const matchesFilter = activeFilter === 'All' || song.difficulty === activeFilter;
     return matchesSearch && matchesFilter;
   });
@@ -259,7 +269,7 @@ export default function SongLibraryScreen() {
         <Ionicons name="search" size={18} color={Colors.dark.muted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search songs or artists..."
+          placeholder="Search songs, artists, genres, chords..."
           placeholderTextColor={Colors.dark.muted}
           value={searchQuery}
           onChangeText={setSearchQuery}

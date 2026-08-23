@@ -109,12 +109,3 @@ export function noteToFrequency(note: string): number {
   return 440 * Math.pow(2, (midiNote - 69) / 12);
 }
 
-export function frequencyToNote(frequency: number): { note: string; cents: number } {
-  if (frequency <= 0) return { note: '--', cents: 0 };
-  const midiNote = 69 + 12 * Math.log2(frequency / 440);
-  const roundedMidi = Math.round(midiNote);
-  const cents = Math.round((midiNote - roundedMidi) * 100);
-  const noteIndex = ((roundedMidi % 12) + 12) % 12;
-  const octave = Math.floor(roundedMidi / 12) - 1;
-  return { note: NOTE_NAMES[noteIndex] + octave, cents };
-}

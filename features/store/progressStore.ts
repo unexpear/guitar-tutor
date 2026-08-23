@@ -15,11 +15,6 @@ export interface LessonProgress {
   score: number;
 }
 
-export interface ChordFavorite {
-  chordName: string;
-  addedAt: number;
-}
-
 interface ProgressState {
   completedLessons: Record<string, LessonProgress>;
   currentStreak: number;
@@ -37,11 +32,9 @@ interface ProgressState {
   completeLesson: (lessonId: string, score: number) => void;
   /** Records a score if it beats the stored best. Returns true if it did. */
   recordGameScore: (gameId: string, score: number) => boolean;
-  getGameHighScore: (gameId: string) => number;
   addFavoriteChord: (chordName: string) => void;
   removeFavoriteChord: (chordName: string) => void;
   setAlternateTuning: (tuning: string) => void;
-  addPracticeTime: (minutes: number) => void;
   /** Log time at the instrument. The only thing that moves the streak. */
   recordPractice: (seconds: number, now?: Date) => void;
   /** Seconds practised today. */
@@ -86,8 +79,6 @@ export const useProgressStore = create<ProgressState>()(
         return true;
       },
 
-      getGameHighScore: (gameId: string) => get().gameHighScores[gameId] ?? 0,
-
       addFavoriteChord: (chordName: string) =>
         set((state) => ({
           favoriteChords: [...state.favoriteChords, chordName],
@@ -100,11 +91,6 @@ export const useProgressStore = create<ProgressState>()(
 
       setAlternateTuning: (tuning: string) =>
         set({ alternateTuning: tuning }),
-
-      addPracticeTime: (minutes: number) =>
-        set((state) => ({
-          totalPracticeMinutes: state.totalPracticeMinutes + minutes,
-        })),
 
       recordPractice: (seconds: number, now: Date = new Date()) => {
         if (!Number.isFinite(seconds) || seconds <= 0) return;

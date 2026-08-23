@@ -29,6 +29,7 @@ import PressableScale from '../../components/PressableScale';
 import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
 import { useProgressStore } from '../../features/store/progressStore';
 import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
+import { useMicReleaseOnLeave } from '../../features/audio/useMicReleaseOnLeave';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 
 const SECTIONS = [
@@ -58,6 +59,7 @@ export default function TunerScreen() {
 
   const tuner = useTuner(tuning);
   usePracticeTimer(tuner.isActive);
+  useMicReleaseOnLeave(tuner.stopListening, tuner.isActive);
   const { playNote } = useGuitarSound();
 
   // Peg labels follow the selected tuning (e.g. Drop D shows D A D G B E).
@@ -387,6 +389,12 @@ export default function TunerScreen() {
       </View>
 
       <View style={styles.bottomArea}>
+        {tuner.error && (
+          <Text style={styles.tunerError} accessibilityRole="alert">
+            Microphone unavailable: {tuner.error.message}. Check the app&apos;s
+            mic permission in your device settings, then try again.
+          </Text>
+        )}
         <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
           <PressableScale
             onPress={handleToggleTuning}
@@ -409,7 +417,7 @@ export default function TunerScreen() {
                 { color: tuner.isActive ? Colors.dark.text : '#fff' },
               ]}
             >
-              {tuner.isActive ? 'Stop' : 'Tap to Tune'}
+              {tuner.isActive ? 'Stop' : tuner.error ? 'Try Again' : 'Tap to Tune'}
             </Text>
           </PressableScale>
         </Animated.View>
@@ -658,6 +666,14 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     alignItems: 'center',
+  },
+  tunerError: {
+    marginHorizontal: 24,
+    marginBottom: 12,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.danger,
+    textAlign: 'center',
   },
   tuneButton: {
     paddingVertical: 13,

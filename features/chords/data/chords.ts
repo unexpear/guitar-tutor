@@ -78,10 +78,6 @@ export function midiToNoteName(midi: number): string {
   return `${NOTE_NAMES[((midi % 12) + 12) % 12]}${Math.floor(midi / 12) - 1}`;
 }
 
-export function midiToFrequency(midi: number): number {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
 /** MIDI note sounded by a string/fret in standard tuning. */
 export function stringFretToMidi(stringIndex: number, fret: number): number {
   return OPEN_STRING_MIDI[stringIndex] + fret;

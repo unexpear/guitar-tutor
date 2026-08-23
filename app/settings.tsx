@@ -22,6 +22,14 @@ import { useSettingsStore } from '../features/store/settingsStore';
 import { TUNING_PRESETS } from '../features/tuner/data/tunings';
 
 const ACCENT = Colors.success;
+
+/** 95 -> "1h 35m", 40 -> "40m". */
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
 const UNIQUE_TUNING_NAMES = [...new Set(TUNING_PRESETS.map((p) => p.name))];
 
 function SectionCard({
@@ -234,6 +242,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { alternateTuning, setAlternateTuning } = useProgressStore();
   const practiceLog = useProgressStore((s) => s.practiceLog);
+  const totalPracticeMinutes = useProgressStore((s) => s.totalPracticeMinutes);
+  const longestStreak = useProgressStore((s) => s.longestStreak);
   const practiceSecondsToday = useProgressStore((s) => s.practiceSecondsToday);
   const liveStreak = useProgressStore((s) => s.liveStreak);
   // practiceLog is read so this recomputes when a session is logged.
@@ -405,6 +415,24 @@ export default function SettingsScreen() {
               : `${minutesToday}m of ${practiceGoalMinutes}m today.`}
             {streak > 1 ? ` ${streak}-day streak.` : ''}
           </Text>
+          {totalPracticeMinutes > 0 && (
+            <SettingRow
+              label="Time played"
+              accessibilityLabel={`Total time played: ${formatDuration(totalPracticeMinutes)}`}
+              right={
+                <Text style={styles.staticValue}>
+                  {formatDuration(totalPracticeMinutes)}
+                </Text>
+              }
+            />
+          )}
+          {longestStreak > 1 && (
+            <SettingRow
+              label="Best streak"
+              accessibilityLabel={`Best streak: ${longestStreak} days`}
+              right={<Text style={styles.staticValue}>{longestStreak} days</Text>}
+            />
+          )}
         </SectionCard>
 
         <SectionCard title="Personalization">

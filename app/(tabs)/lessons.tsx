@@ -25,7 +25,6 @@ import { LESSON_CONTENT } from '../../features/lessons/data/lessonContent';
 import { getDrill } from '../../features/lessons/data/drills';
 import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
 
-const TOTAL_LESSONS = 11;
 
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
@@ -169,6 +168,9 @@ const LESSON_DATA: LessonCategory[] = [
     ],
   },
 ];
+
+/** Derived, not hardcoded: adding a lesson used to silently skew the bar. */
+const TOTAL_LESSONS = LESSON_DATA.reduce((n, c) => n + c.lessons.length, 0);
 
 function DifficultyDot({ difficulty }: { difficulty: Difficulty }) {
   return (

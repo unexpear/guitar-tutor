@@ -194,7 +194,14 @@ export default function ChordsScreen() {
   const color = Colors.dark;
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChordType | null>(null);
+  // Favourites are a filter rather than a type, since a chord can be both.
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [selectedChord, setSelectedChord] = useState<Chord | null>(null);
+  const favoriteChords = useProgressStore((s) => s.favoriteChords);
+  // Unstarring the last favourite hides the chip, so the filter must fall
+  // back to off on its own or the user is stranded on an empty list with no
+  // control left to switch it back.
+  const showFavourites = favouritesOnly && favoriteChords.length > 0;
 
   const numColumns = width >= 600 ? 4 : width >= 400 ? 3 : 2;
   const gridGap = numColumns >= 4 ? 10 : 12;
@@ -204,7 +211,10 @@ export default function ChordsScreen() {
   const cardWidth = Math.floor((width - 32 - gridGap * (numColumns - 1)) / numColumns);
 
   const filtered = useMemo(() => {
-    let result = CHORDS;
+    let result: Chord[] = CHORDS;
+    if (showFavourites) {
+      result = result.filter((c) => favoriteChords.includes(c.name));
+    }
     if (activeFilter) {
       result = result.filter((c) => c.type === activeFilter);
     }
@@ -217,7 +227,7 @@ export default function ChordsScreen() {
       );
     }
     return result;
-  }, [search, activeFilter]);
+  }, [search, activeFilter, showFavourites, favoriteChords]);
 
   const grouped = useMemo(() => {
     const map = new Map<ChordType, Chord[]>();
@@ -265,9 +275,19 @@ export default function ChordsScreen() {
       >
         <FilterButton
           label="All"
-          active={activeFilter === null}
-          onPress={() => setActiveFilter(null)}
+          active={activeFilter === null && !showFavourites}
+          onPress={() => {
+            setActiveFilter(null);
+            setFavouritesOnly(false);
+          }}
         />
+        {favoriteChords.length > 0 && (
+          <FilterButton
+            label={`★ Saved (${favoriteChords.length})`}
+            active={showFavourites}
+            onPress={() => setFavouritesOnly((v) => !v)}
+          />
+        )}
         {CHORD_TYPE_ORDER.map((t) => (
           <FilterButton
             key={t}
@@ -286,7 +306,9 @@ export default function ChordsScreen() {
             color={color.muted}
             style={styles.emptyIcon}
           />
-          <Text style={[styles.emptyTitle, { color: color.text }]}>No chords found</Text>
+          <Text style={[styles.emptyTitle, { color: color.text }]}>
+            {showFavourites ? 'No saved chords yet' : 'No chords found'}
+          </Text>
           <Text style={[styles.emptySubtitle, { color: color.muted }]}>
             Try a different search
           </Text>

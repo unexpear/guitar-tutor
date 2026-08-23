@@ -145,6 +145,8 @@ export function buildQuiz(
   rand: () => number = Math.random,
   modes: QuizMode[] = QUIZ_MODES
 ): QuizQuestion[] {
+  // A round with no playable modes would be an infinite loop of nothing.
+  if (modes.length === 0) return [];
   const pool = poolForLevel(level);
   if (pool.length < OPTIONS_PER_QUESTION) return [];
 
