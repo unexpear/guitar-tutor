@@ -74,6 +74,20 @@ const LESSON_DATA: LessonCategory[] = [
     difficulty: 'beginner',
     lessons: [
       {
+        id: 'beginner-holding-the-guitar',
+        title: 'Holding the Guitar',
+        description:
+          'Sit with it properly, work out which hand does what, and hold a pick. Start here if you have never picked one up.',
+        difficulty: 'beginner',
+      },
+      {
+        id: 'beginner-tuning-up',
+        title: 'Tuning Up',
+        description:
+          'A guitar out of a box is always out of tune, and nothing sounds right until you fix it. Do this before every practice.',
+        difficulty: 'beginner',
+      },
+      {
         id: 'beginner-guitar-anatomy',
         title: 'Guitar Anatomy',
         description:
@@ -86,6 +100,13 @@ const LESSON_DATA: LessonCategory[] = [
         title: 'Reading Chord Diagrams',
         description:
           'What the dots, numbers, crosses and circles mean, so every chord in the app tells you exactly where your fingers go.',
+        difficulty: 'beginner',
+      },
+      {
+        id: 'beginner-fretting-notes',
+        title: 'Fretting Clean Notes',
+        description:
+          'Where to put your fingertip, where your thumb goes, and the four reasons a string buzzes. The lesson that stops chords sounding dead.',
         difficulty: 'beginner',
       },
       {

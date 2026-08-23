@@ -9,6 +9,72 @@ export interface LessonSection {
  * intentionally has no entry here.
  */
 export const LESSON_CONTENT: Record<string, LessonSection[]> = {
+  'beginner-holding-the-guitar': [
+    {
+      heading: 'Sit down and get it settled',
+      body: 'Sit forward on a chair with no arms, both feet flat. Rest the narrow waist of the guitar on your right thigh if you are right handed, left thigh if you are left handed. The neck points away from you and slightly upward - never down at the floor. Pull the body gently back against your chest with your forearm so it stops sliding. You should be able to let go with your fretting hand and the guitar stays put. If you are holding it up with your fretting hand, you cannot use that hand to play.',
+    },
+    {
+      heading: 'What each hand does',
+      body: 'The hand nearest the neck presses the strings - that is the fretting hand. The hand over the body plays them - that is the strumming or picking hand. Right handed players fret with the left and strum with the right. If you are left handed and the guitar is strung for it, mirror everything in these lessons.',
+    },
+    {
+      heading: 'Holding a pick',
+      body: 'A pick is the small plastic triangle that came with the guitar. Curl your index finger as if holding a mug, lay the pick flat across it with the point sticking out about half a centimetre, then press your thumb down on top. Hold it firmly enough that it does not fall, loosely enough that someone could pull it out. Too much sticking out gives a floppy, weak sound; too little and you catch your fingers on the strings.',
+    },
+    {
+      heading: 'You can use your thumb instead',
+      body: 'None of this course requires a pick. If it feels hopeless at first, brush the strings with the side of your thumb and come back to the pick later. Plenty of players never use one.',
+    },
+    {
+      heading: 'Your fingers will hurt, and then they will not',
+      body: 'Pressing steel strings hurts for the first week or two. That is normal and it is not damage - the skin on your fingertips thickens into calluses and the pain stops. Fifteen minutes a day beats an hour once a week, both for your fingers and for how fast you learn. Stop when the tips feel raw and come back tomorrow.',
+    },
+  ],
+  'beginner-tuning-up': [
+    {
+      heading: 'Do this before you play anything',
+      body: 'A guitar that has been in a box or a cupboard is always out of tune, and often badly. This matters more than it sounds: if the guitar is out of tune, everything you play sounds wrong even when your fingers are in exactly the right place, and the practice drills in this app will tell you that you missed when you did not. Tune first, every time you pick it up.',
+    },
+    {
+      heading: 'The six strings and their names',
+      body: 'Held in playing position, the thickest string is nearest your face and the thinnest is nearest the floor. From thickest to thinnest they are E, A, D, G, B and E again. The thick one is the 6th string, the thin one is the 1st. Guitarists count them backwards like that, so "the 6th" always means the fat low one.',
+    },
+    {
+      heading: 'Using the tuner in this app',
+      body: 'Open the Tuner tab. Tap the string you want on screen - start with the thick E on the left - then pluck that same string on the guitar and let it ring. The app listens and tells you what to do. Green means it is right. Amber means you are close. Red means keep turning.',
+    },
+    {
+      heading: 'Which way to turn the peg',
+      body: 'Tightening a string raises its pitch, loosening lowers it. If the app says you are flat, the string is too loose - tighten it. If it says sharp, it is too tight - loosen it. Turn the peg slowly, a little at a time, and keep plucking as you go so you can hear it move. If a string is very loose it can read as a completely different note, so tighten gently until the app starts reacting.',
+    },
+    {
+      heading: 'Go through all six',
+      body: 'Work from the thick E across to the thin one. Tuning one string can pull the others slightly out, so go round twice. New strings drift a lot for the first few days - that is the strings stretching, not you doing it wrong. When all six show green you are ready.',
+    },
+  ],
+  'beginner-fretting-notes': [
+    {
+      heading: 'Press just behind the fret',
+      body: 'The frets are the metal strips across the neck. To play the third fret you press the string down in the gap between the second and third fret, right up close behind the third one - not on top of the metal, and not in the middle of the gap. On the metal gives a dead thud. In the middle of the gap makes you press twice as hard for a buzzy note. Close behind the fret takes almost no pressure at all.',
+    },
+    {
+      heading: 'Fingertips, not the flats of your fingers',
+      body: 'Curl your fingers so you are pressing with the very tip, coming down onto the string almost straight from above. Flat fingers lie across their neighbours and silence them, which is why a chord can sound like two notes instead of six. Keep your fingernails on that hand short - if a nail hits the fretboard before the fingertip does, you cannot press hard enough no matter how you try.',
+    },
+    {
+      heading: 'Thumb behind the neck',
+      body: 'Put the pad of your thumb flat on the back of the neck, roughly behind your middle finger, pointing up toward the ceiling rather than along the neck. Your fingers and thumb then pinch the neck between them and the pressure comes from that pinch, not from squeezing with your whole arm. If your thumb is hooked over the top of the neck your fingers cannot curl, and everything buzzes.',
+    },
+    {
+      heading: 'Fixing a buzz',
+      body: 'A buzzing or muted string has one of four causes, and they are quick to check. One: your finger is too far from the fret - slide it forward. Two: you are not pressing hard enough - press a little more, but only a little. Three: a neighbouring finger is lying across the string - curl it up onto its tip. Four: your strumming hand is catching a string the chord says not to play. Pluck the strings one at a time to find which one is wrong instead of strumming and guessing.',
+    },
+    {
+      heading: 'Try it',
+      body: 'Start the practice drill below. It asks for one note at a time on the two thickest strings, open and fretted, and listens to check each one actually rang. Take as long as you like on each - the drill waits for you. If a note will not register, it is almost always cause one or three above.',
+    },
+  ],
   'beginner-reading-diagrams': [
     {
       heading: 'The grid is your guitar, stood upright',
@@ -24,7 +90,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'One finger, several strings',
-      body: 'When a chord needs one finger flattened across several strings you will see a solid bar with a single number on it instead of separate dots. That is a barre. Lay the finger flat and roll it slightly onto its bony side; the fleshy middle swallows the strings.',
+      body: 'Sometimes you will see a solid bar with one number on it instead of separate dots. That means one finger lies flat across several strings at once, and it is called a barre. You do not need one yet - every chord in the beginner lessons uses separate fingers - but now you know what the bar means when you meet it in the Chords tab.',
     },
     {
       heading: 'Shapes further up the neck',
@@ -32,7 +98,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Try it',
-      body: 'Open the Chords tab and find Em. Two dots, both on fret 2, fingers 2 and 3, four open circles and no crosses - so you strum all six strings. Then look at F: a bar across fret 1, which is the same idea with one finger doing more work. Tap "Hear it" on each to check what you play matches.',
+      body: 'Open the Chords tab and find Em. Two dots, both on fret 2, fingers 2 and 3, four open circles and no crosses - so you play all six strings. Now find A: three dots side by side on fret 2, one cross on the thickest string, so that one stays silent. Tap "Hear it" on each so you know what you are aiming for.',
     },
   ],
   'beginner-basic-strumming': [
@@ -46,7 +112,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Downstrokes on the beat',
-      body: 'Set the metronome tab to 60 BPM. Mute the strings lightly with your fretting hand and play one downstroke per click: down, down, down, down. Stay exactly on the click for a full minute before speeding up.',
+      body: 'Set the metronome tab to 70 BPM, the same tempo the practice drill uses. Mute the strings lightly with your fretting hand and play one downstroke per click: down, down, down, down. Stay exactly on the click for a full minute before speeding up.',
     },
     {
       heading: 'Add upstrokes',
@@ -64,11 +130,11 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Practice changes, not chords',
-      body: 'The hard part is switching. Pick two chords (G to C is a great start) and switch back and forth slowly, strumming once per chord. Do 20 clean changes. Look for shared fingers or short paths - keep your fingers close to the strings.',
+      body: 'The hard part is switching. Pick two chords (Em to Am is the easiest start - they share a finger shape) and switch back and forth slowly, strumming once per chord. Do 20 clean changes. Look for shared fingers or short paths - keep your fingers close to the strings.',
     },
     {
       heading: 'One-minute changes',
-      body: 'Time yourself: how many clean G-to-C changes can you make in 60 seconds? Track your number each day. When you pass 30, add D and cycle G - C - D. You are now playing real progressions.',
+      body: 'Time yourself: how many clean G-to-C changes can you make in 60 seconds? Track your number each day. Five in a minute is a real start, twenty is fluent, and when you pass 30, add D and cycle G - C - D. You are now playing real progressions.',
     },
   ],
   'beginner-reading-tabs': [
@@ -81,12 +147,8 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
       body: 'Numbers in sequence are played one after another. Numbers stacked vertically are played together as a chord. Tab usually does not tell you the rhythm - listen to the song to get the timing.',
     },
     {
-      heading: 'Common symbols',
-      body: 'h = hammer-on (5h7: pick fret 5, hammer your finger onto 7). p = pull-off. Slashes are slides. b = bend the string. x = mute the string with light finger pressure. PM means palm mute near the bridge.',
-    },
-    {
       heading: 'Try it',
-      body: 'Play the E minor pentatonic scale from tab, string by string: low E frets 0 and 3, A frets 0 and 2, D frets 0 and 2, G frets 0 and 2, B frets 0 and 3, high e frets 0 and 3. Ascend then descend until it flows.',
+      body: 'Play these notes from tab, one string at a time: low E frets 0 and 3, A frets 0 and 2, D frets 0 and 2, G frets 0 and 2, B frets 0 and 3, high e frets 0 and 3. Ascend then descend until it flows.',
     },
   ],
   'intermediate-barre-chords': [

@@ -16,10 +16,12 @@ test('every drill is keyed by the lesson it belongs to', () => {
 });
 
 test('the lessons that should have a drill have one', () => {
-  // Two deliberate exceptions, both because there is nothing to play:
-  // Guitar Anatomy has its own interactive diagram and quiz, and Reading
-  // Chord Diagrams teaches notation and sends you to the Chords tab.
+  // Four deliberate exceptions, all because there is nothing to play into a
+  // mic: Holding the Guitar and Tuning Up come before the first note (tuning
+  // is verified by the Tuner tab, not the matcher), Guitar Anatomy has its
+  // own diagram and quiz, and Reading Chord Diagrams teaches notation.
   const expected = [
+    'beginner-fretting-notes',
     'beginner-reading-tabs',
     'beginner-open-chords',
     'beginner-basic-strumming',
@@ -36,6 +38,8 @@ test('the lessons that should have a drill have one', () => {
   }
   assert.equal(getDrill('beginner-guitar-anatomy'), undefined);
   assert.equal(getDrill('beginner-reading-diagrams'), undefined);
+  assert.equal(getDrill('beginner-holding-the-guitar'), undefined);
+  assert.equal(getDrill('beginner-tuning-up'), undefined);
 });
 
 test('every drill has enough targets to be worth starting', () => {
@@ -156,5 +160,25 @@ test('the barre drill only asks for barre chords, in full-chord mode', () => {
   for (const t of d.targets) {
     if (t.kind !== 'chord') continue;
     assert.ok(!OPEN.has(t.chordName), `${t.chordName} is an open chord`);
+  }
+});
+
+test('the open-chord drill checks the whole chord, not one lucky string', () => {
+  // In mono mode any single chord tone scores a hit, so a learner who frets
+  // nothing and plucks one open string passes Em, Am, G, C and D. That would
+  // certify a beginner as having played chords they never formed.
+  const d = getDrill('beginner-open-chords');
+  if (!d) throw new Error('open chords drill missing');
+  assert.equal(d.defaultMode, 'poly');
+});
+
+test('the first fretting drill asks for single notes a beginner can reach', () => {
+  const d = getDrill('beginner-fretting-notes');
+  if (!d) throw new Error('fretting drill missing');
+  for (const t of d.targets) {
+    assert.equal(t.kind, 'note', 'this drill is one note at a time');
+    if (t.kind !== 'note') continue;
+    assert.ok(t.stringIndex <= 1, 'stay on the two thickest strings');
+    assert.ok(t.fret <= 3, `fret ${t.fret} is a stretch for a first lesson`);
   }
 });

@@ -34,6 +34,24 @@ const chord = (chordName: string, strums = 1): Target => ({
 });
 
 export const DRILLS: Record<string, Drill> = {
+  'beginner-fretting-notes': {
+    lessonId: 'beginner-fretting-notes',
+    title: 'One Note at a Time',
+    intro:
+      'One note per target, on the two thickest strings. The app listens for the note actually ringing, so a buzzed or muted string will not count - which is the point. It waits for you, so take as long as you need.',
+    targets: [
+      note(0, 0, 'E open'),
+      note(0, 1, 'E fret 1'),
+      note(0, 3, 'E fret 3'),
+      note(1, 0, 'A open'),
+      note(1, 2, 'A fret 2'),
+      note(1, 3, 'A fret 3'),
+      note(0, 0, 'E open'),
+      note(1, 2, 'A fret 2'),
+    ],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
   'beginner-reading-tabs': {
     lessonId: 'beginner-reading-tabs',
     title: 'First Notes',
@@ -58,7 +76,7 @@ export const DRILLS: Record<string, Drill> = {
     lessonId: 'beginner-open-chords',
     title: 'Chord Changes',
     intro:
-      'Form each chord with the diagram and strum once. In Easy mode any chord tone counts; Full chord mode listens for several strings of the chord.',
+      'Form each chord with the diagram and strum once. Full chord mode is on, because it is the only setting that checks the whole chord rang - in Easy mode a single open string counts as a hit, and you would pass without fretting anything. Switch to Easy only if a chord is genuinely beyond you today.',
     targets: [
       chord('Em'),
       chord('Am'),
@@ -71,7 +89,7 @@ export const DRILLS: Record<string, Drill> = {
       chord('C'),
       chord('Em'),
     ],
-    defaultMode: 'mono',
+    defaultMode: 'poly',
     secondsPerTarget: 6,
   },
   'beginner-basic-strumming': {
