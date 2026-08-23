@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.standardtune.guitar",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundImage": "./assets/android-icon-background.png",
         "foregroundImage": "./assets/android-icon-foreground.png",
