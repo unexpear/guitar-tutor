@@ -57,9 +57,3 @@ export const CARD_SHADOW = {
   elevation: 4,
 };
 
-export function centsToColor(cents: number): string {
-  const abs = Math.abs(cents);
-  if (abs <= 5) return Colors.success;
-  if (abs <= 15) return Colors.warning;
-  return Colors.danger;
-}

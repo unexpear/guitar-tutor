@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTuner as useTunerEngine } from 'react-native-tuner-engine';
 import { TUNING_PRESETS, TuningPreset, noteToFrequency } from '../data/tunings';
+import {
+  centsBetween,
+  median,
+  pushWindow,
+  nearestStringIndex,
+  verdictForCents,
+  TuneVerdict,
+} from '../pitch';
 
 export interface TunerState {
   note: string;
@@ -14,10 +22,9 @@ export interface TunerState {
   nearestTarget: string | null;
   /** Deviation from the matched string's target pitch, or null when no string matched. */
   targetCents: number | null;
+  /** In tune, close, or off — against the string being aimed at. */
+  verdict: TuneVerdict | null;
 }
-
-/** Max distance (in cents) from a string's target pitch to still highlight it. */
-const STRING_MATCH_CENTS = 250;
 
 const IDLE_STATE: TunerState = {
   note: '--',
@@ -29,6 +36,7 @@ const IDLE_STATE: TunerState = {
   stringIndex: null,
   nearestTarget: null,
   targetCents: null,
+  verdict: null,
 };
 
 /**
@@ -36,7 +44,15 @@ const IDLE_STATE: TunerState = {
  * Pitch detection runs natively (YIN/PYIN/cepstrum ensemble on a C++ audio
  * thread); this hook maps the pitch stream onto the selected tuning's strings.
  */
-export function useTuner(tuning: TuningPreset = TUNING_PRESETS[0]) {
+export function useTuner(
+  tuning: TuningPreset = TUNING_PRESETS[0],
+  /**
+   * Aim at one string instead of guessing. Without this the tuner snaps to
+   * whichever string is nearest, so a badly flat string reads as the string
+   * below it and the needle jumps between the two.
+   */
+  targetStringIndex: number | null = null
+) {
   const engine = useTunerEngine({
     instrument: 'guitar',
     a4: 440,
@@ -70,40 +86,56 @@ export function useTuner(tuning: TuningPreset = TUNING_PRESETS[0]) {
     }
   }, [start, stop]);
 
+  // Rolling window of recent frequencies. The raw stream is jittery enough
+  // that the needle twitches on a perfectly steady note, so the reading is
+  // taken from the median of the last few frames rather than the last one.
+  const windowRef = useRef<number[]>([]);
+  const [smoothHz, setSmoothHz] = useState(0);
+
+  useEffect(() => {
+    if (!isRunning || !latest || !latest.hasPitch) {
+      windowRef.current = [];
+      setSmoothHz(0);
+      return;
+    }
+    windowRef.current = pushWindow(windowRef.current, latest.frequency);
+    setSmoothHz(median(windowRef.current));
+  }, [latest, isRunning]);
+
+  // A new target means the old readings describe a different string.
+  useEffect(() => {
+    windowRef.current = [];
+    setSmoothHz(0);
+  }, [targetStringIndex, tuning]);
+
   const state: TunerState = useMemo(() => {
     if (!isRunning) return IDLE_STATE;
-    if (!latest || !latest.hasPitch) {
+    if (!latest || !latest.hasPitch || smoothHz <= 0) {
       return { ...IDLE_STATE, isActive: true };
     }
 
-    // Find the tuning string closest to the detected pitch (in cents).
-    let nearestIdx: number | null = null;
-    let nearestSignedCents = 0;
-    let nearestAbsCents = Infinity;
-    for (let i = 0; i < stringFrequencies.length; i++) {
-      const target = stringFrequencies[i];
-      if (target <= 0) continue;
-      const signed = 1200 * Math.log2(latest.frequency / target);
-      if (Math.abs(signed) < nearestAbsCents) {
-        nearestAbsCents = Math.abs(signed);
-        nearestSignedCents = signed;
-        nearestIdx = i;
-      }
-    }
-    const withinRange = nearestIdx !== null && nearestAbsCents <= STRING_MATCH_CENTS;
+    // Aimed at a string, or free to pick whichever is nearest.
+    const idx =
+      targetStringIndex !== null
+        ? targetStringIndex
+        : nearestStringIndex(smoothHz, stringFrequencies);
+
+    const target = idx !== null ? stringFrequencies[idx] : 0;
+    const signed = target > 0 ? centsBetween(smoothHz, target) : null;
 
     return {
       note: latest.noteName,
       octave: latest.octave,
       cents: Math.round(latest.cents),
-      frequency: latest.frequency,
+      frequency: smoothHz,
       confidence: latest.confidence,
       isActive: true,
-      stringIndex: withinRange ? nearestIdx : null,
-      nearestTarget: withinRange && nearestIdx !== null ? tuning.strings[nearestIdx] : null,
-      targetCents: withinRange ? Math.round(nearestSignedCents) : null,
+      stringIndex: idx,
+      nearestTarget: idx !== null ? tuning.strings[idx] : null,
+      targetCents: signed === null ? null : Math.round(signed),
+      verdict: signed === null ? null : verdictForCents(signed),
     };
-  }, [latest, isRunning, stringFrequencies, tuning]);
+  }, [latest, isRunning, smoothHz, stringFrequencies, tuning, targetStringIndex]);
 
   return {
     ...state,

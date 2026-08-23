@@ -24,9 +24,10 @@ import {
   TUNING_PRESETS,
   TuningPreset,
 } from '../../features/tuner/data/tunings';
-import { Colors, CARD_SHADOW, centsToColor } from '../../constants/Colors';
+import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
+import { TuneVerdict } from '../../features/tuner/pitch';
 import { useProgressStore } from '../../features/store/progressStore';
 import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
 import { useMicReleaseOnLeave } from '../../features/audio/useMicReleaseOnLeave';
@@ -46,6 +47,89 @@ const SECTIONS = [
 const NEEDLE_TRACK_WIDTH = 288;
 const GAUGE_TICKS = Array.from({ length: 21 }, (_, i) => i);
 
+const VERDICT_COLORS: Record<TuneVerdict, string> = {
+  'in-tune': Colors.success,
+  close: Colors.warning,
+  off: Colors.danger,
+};
+
+/**
+ * One string button. Tapping picks the string to tune; while it is the one
+ * being aimed at, it carries the verdict colour so you can watch it go green
+ * without looking away from the fretboard.
+ */
+function StringChip({
+  index,
+  label,
+  note,
+  size,
+  selected,
+  aimed,
+  verdict,
+  tuned,
+  onPress,
+}: {
+  index: number;
+  label: string;
+  note: string;
+  size: number;
+  selected: boolean;
+  aimed: boolean;
+  verdict: TuneVerdict | null;
+  tuned: boolean;
+  onPress: (index: number, note: string) => void;
+}) {
+  const live = aimed && verdict ? VERDICT_COLORS[verdict] : null;
+  const background = live ?? (selected ? Colors.dark.surfaceElevated : Colors.dark.surfaceElevated);
+  const border = live ?? (selected ? Colors.dark.text : 'transparent');
+  const labelColor = live ? '#0b1020' : tuned ? Colors.success : Colors.dark.muted;
+
+  return (
+    <PressableScale
+      onPress={() => onPress(index, note)}
+      style={[
+        styles.stringCircle,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: background,
+          borderWidth: selected || live ? 2.5 : 0,
+          borderColor: border,
+        },
+        (selected || !!live) && CARD_SHADOW,
+      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`String ${index + 1}, ${label}${
+        selected ? ', selected for tuning' : ''
+      }${
+        live
+          ? verdict === 'in-tune'
+            ? ', in tune'
+            : verdict === 'close'
+            ? ', nearly there'
+            : ', out of tune'
+          : ''
+      }${tuned ? ', tuned this session' : ''}. Tap to tune this string.`}
+    >
+      <Text
+        style={[
+          styles.stringLabel,
+          { color: labelColor, fontSize: size * 0.38 },
+        ]}
+      >
+        {label}
+      </Text>
+      {tuned && !live && (
+        <View style={styles.tunedBadge}>
+          <Text style={styles.tunedBadgeText}>{'✓'}</Text>
+        </View>
+      )}
+    </PressableScale>
+  );
+}
+
 export default function TunerScreen() {
   const { width } = useWindowDimensions();
   const alternateTuning = useProgressStore((s) => s.alternateTuning);
@@ -54,10 +138,12 @@ export default function TunerScreen() {
   const [tuning, setTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
+  /** The string the user picked, or null to let the tuner guess. */
+  const [selectedString, setSelectedString] = useState<number | null>(null);
   const pulseValue = useSharedValue(1);
   const needleX = useSharedValue(0);
 
-  const tuner = useTuner(tuning);
+  const tuner = useTuner(tuning, selectedString);
   usePracticeTimer(tuner.isActive);
   useMicReleaseOnLeave(tuner.stopListening, tuner.isActive);
   const { playNote } = useGuitarSound();
@@ -81,9 +167,13 @@ export default function TunerScreen() {
     ? tuner.nearestTarget.replace(/\d/g, '')
     : tuner.note;
 
-  const isTuned = hasPitch && tuner.stringIndex !== null && Math.abs(displayCents) <= 5;
+  const isTuned = hasPitch && tuner.verdict === 'in-tune';
 
-  const centsColor = hasPitch ? centsToColor(displayCents) : Colors.dark.muted;
+  // One rule for every colour on this screen: green only at dead on, amber
+  // within nine cents, red past ten. The old ±5 green disagreed with the
+  // number printed underneath it.
+  const centsColor =
+    hasPitch && tuner.verdict ? VERDICT_COLORS[tuner.verdict] : Colors.dark.muted;
   const noteColor = isTuned ? Colors.success : Colors.dark.text;
 
   const centsDisplay = hasPitch
@@ -202,6 +292,23 @@ export default function TunerScreen() {
 
   const circleSize = Math.min(width * 0.12, 48);
 
+  // Whichever string the readout currently describes: the chosen one, or
+  // the detector's guess when nothing is chosen.
+  const aimedString = selectedString ?? tuner.stringIndex;
+  const aimedColor =
+    aimedString !== null && tuner.verdict
+      ? VERDICT_COLORS[tuner.verdict]
+      : Colors.success;
+
+  const handleSelectString = useCallback(
+    (index: number, note: string) => {
+      // Tapping the chosen string again hands control back to auto-detect.
+      setSelectedString((prev) => (prev === index ? null : index));
+      handlePlayReference(note);
+    },
+    [handlePlayReference]
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.topArea}>
@@ -216,108 +323,53 @@ export default function TunerScreen() {
         </PressableScale>
       </View>
 
+      <Text style={styles.aimHint} numberOfLines={1}>
+        {selectedString !== null
+          ? `Tuning ${stringLabels[selectedString]} · tap it again for auto`
+          : 'Tap a string to tune it on its own'}
+      </Text>
+
       <View style={styles.stringsArea}>
         <View style={styles.stringColumn}>
-          {stringLabels.slice(0, 3).map((label, i) => {
-            const isHighlighted = tuner.stringIndex === i;
-            return (
-              <PressableScale
-                key={`left-${i}`}
-                onPress={() => handlePlayReference(tuning.strings[i])}
-                style={[
-                  styles.stringCircle,
-                  {
-                    width: circleSize,
-                    height: circleSize,
-                    borderRadius: circleSize / 2,
-                    backgroundColor: isHighlighted
-                      ? Colors.success
-                      : Colors.dark.surfaceElevated,
-                  },
-                  isHighlighted && CARD_SHADOW,
-                ]}
-                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}${tunedStrings.has(i) ? ', in tune' : ''}. Tap to hear reference.`}
-                accessibilityRole="button"
-              >
-                <Text
-                  style={[
-                    styles.stringLabel,
-                    {
-                      color: isHighlighted
-                        ? '#fff'
-                        : tunedStrings.has(i)
-                        ? Colors.success
-                        : Colors.dark.muted,
-                      fontSize: circleSize * 0.38,
-                    },
-                  ]}
-                >
-                  {label}
-                </Text>
-                {tunedStrings.has(i) && (
-                  <View style={styles.tunedBadge}>
-                    <Text style={styles.tunedBadgeText}>{'✓'}</Text>
-                  </View>
-                )}
-              </PressableScale>
-            );
-          })}
+          {[0, 1, 2].map((i) => (
+            <StringChip
+              key={`left-${i}`}
+              index={i}
+              label={stringLabels[i]}
+              note={tuning.strings[i]}
+              size={circleSize}
+              selected={selectedString === i}
+              aimed={aimedString === i}
+              verdict={aimedString === i ? tuner.verdict : null}
+              tuned={tunedStrings.has(i)}
+              onPress={handleSelectString}
+            />
+          ))}
         </View>
 
         <View style={styles.headstockArea}>
           <HeadstockSvg
             guitarType={tuning.guitarType}
-            highlightColor={Colors.success}
-            highlightedPeg={tuner.stringIndex ?? undefined}
+            highlightColor={aimedColor}
+            highlightedPeg={aimedString ?? undefined}
           />
         </View>
 
         <View style={styles.stringColumn}>
-          {stringLabels.slice(3).map((label, iRel) => {
-            const i = iRel + 3;
-            const isHighlighted = tuner.stringIndex === i;
-            return (
-              <PressableScale
-                key={`right-${i}`}
-                onPress={() => handlePlayReference(tuning.strings[i])}
-                style={[
-                  styles.stringCircle,
-                  {
-                    width: circleSize,
-                    height: circleSize,
-                    borderRadius: circleSize / 2,
-                    backgroundColor: isHighlighted
-                      ? Colors.success
-                      : Colors.dark.surfaceElevated,
-                  },
-                  isHighlighted && CARD_SHADOW,
-                ]}
-                accessibilityLabel={`String ${i + 1}: ${label}${isHighlighted ? ', detected' : ''}${tunedStrings.has(i) ? ', in tune' : ''}. Tap to hear reference.`}
-                accessibilityRole="button"
-              >
-                <Text
-                  style={[
-                    styles.stringLabel,
-                    {
-                      color: isHighlighted
-                        ? '#fff'
-                        : tunedStrings.has(i)
-                        ? Colors.success
-                        : Colors.dark.muted,
-                      fontSize: circleSize * 0.38,
-                    },
-                  ]}
-                >
-                  {label}
-                </Text>
-                {tunedStrings.has(i) && (
-                  <View style={styles.tunedBadge}>
-                    <Text style={styles.tunedBadgeText}>{'✓'}</Text>
-                  </View>
-                )}
-              </PressableScale>
-            );
-          })}
+          {[3, 4, 5].map((i) => (
+            <StringChip
+              key={`right-${i}`}
+              index={i}
+              label={stringLabels[i]}
+              note={tuning.strings[i]}
+              size={circleSize}
+              selected={selectedString === i}
+              aimed={aimedString === i}
+              verdict={aimedString === i ? tuner.verdict : null}
+              tuned={tunedStrings.has(i)}
+              onPress={handleSelectString}
+            />
+          ))}
         </View>
       </View>
 
@@ -675,6 +727,13 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     alignItems: 'center',
+  },
+  aimHint: {
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.dark.muted,
+    marginBottom: 6,
   },
   tunerError: {
     marginHorizontal: 24,

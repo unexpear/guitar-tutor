@@ -15,7 +15,8 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 ## Features
 
 - **Real-time tuner** powered by [react-native-tuner-engine](https://www.npmjs.com/package/react-native-tuner-engine) — a native C++ pitch-detection pipeline (YIN / PYIN / cepstrum ensemble) running on a dedicated audio thread
-- **16 tuning presets** — Standard, Drop D, Drop C, Open G, DADGAD, Half Step Down, and more, with tap-to-play reference notes
+- **16 tuning presets** — Standard, Drop D, Drop C, Open G, DADGAD, Half Step Down, and more
+- **Single-string tuning** — tap a string to aim at it; green means dead on, amber within nine cents, red past ten
 - **Chord library** — 36 chords with finger positions, diagrams that draw barres and slide up the neck, and tap-to-hear playback
 - **Metronome** — 40–200 BPM, tap tempo, accented downbeats, 2/4 · 3/4 · 4/4 · 6/8, on a drift-corrected clock shared with the play-along drills
 - **Lessons** — 11 structured beginner-to-advanced lessons, including an interactive guitar-anatomy diagram and quiz
