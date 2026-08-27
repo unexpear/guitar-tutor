@@ -61,8 +61,9 @@ build if the code goes missing or drops back to 1.
 
 | Uploaded | versionCode | version |
 |---|---|---|
-| 2026-08-22, closed testing | 1 | 1.0.0 |
-| next | 2 | 1.0.0 |
+| 2026-08-22, first closed test | 1 | 1.0.0 |
+| latest (tag `v1.0.0-4`) | 4 | 1.0.0 |
+| next | 5 | 1.0.0 |
 
 ## Signing
 
@@ -92,14 +93,14 @@ Two ways. The second one is a one-time setup that removes this step forever.
 2. Open the release: Test and release -> Testing -> Closed testing ->
    Manage track -> Create new release.
 3. Drag the `.aab` onto the "App bundles" drop zone and wait for processing.
-4. Release name: `1 (1.0.0) - first closed test`
+4. Release name: `5 (1.0.0) - next closed test`
 5. Release notes (paste inside the existing `<en-US>` tags):
 
 ```
 First closed test build of StandardTune.
 
 - Real-time tuner with 16 tunings and per-string in-tune indicators
-- Chord library with 29 chords, diagrams, and reference audio
+- Chord library with 36 chords, diagrams, and reference audio
 - Play-along practice drills that listen to your guitar
 - Beginner to advanced lessons with an interactive guitar anatomy quiz
 - Metronome with tap tempo and multiple time signatures

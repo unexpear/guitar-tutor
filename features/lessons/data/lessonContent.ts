@@ -180,7 +180,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'The universal pattern',
-      body: 'Learn p-i-m-a-m-i (bass, G, B, e, B, G) as a rolling six-note arpeggio. Play it over Em, then C, then G, then D, letting every note ring into the next. Slow and even beats fast and lumpy - use the metronome at 50 BPM, one note per click.',
+      body: 'Learn p-i-m-a-m-i (bass, G, B, e, B, G) as a rolling six-note arpeggio. Play it over Em, then C, then G, then D, letting every note ring into the next. Slow and even beats fast and lumpy - use the metronome at 50 BPM, one note per click. When the notes stay even, open this lesson’s p-i-m-a-m-i practice drill: it plays the same six-note pattern over Em then C and checks each string really rang.',
     },
     {
       heading: 'Travis picking',
@@ -194,7 +194,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'One octave, one position',
-      body: 'Play C major starting at the A-string 3rd fret: A string frets 3-5-7, D string frets 3-5-7, G string frets 4-5. Say the note names aloud as you play. Then play it descending. Use one finger per fret - the index covers the lowest fret in the position.',
+      body: 'Play C major starting at the A-string 3rd fret: A string frets 3-5-7, D string frets 3-5-7, G string frets 4-5. Say the note names aloud as you play. Then play it descending. Use one finger per fret - the index covers the lowest fret in the position. Lock it in with this lesson’s C Major practice drill, which asks the same notes and tells you whether each one actually sounded.',
     },
     {
       heading: 'The minor pentatonic',
@@ -216,7 +216,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Keys and the chord family',
-      body: 'Harmonizing the major scale gives seven chords that all sound good together. In C: C, Dm, Em, F, G, Am, Bdim. The pattern (major, minor, minor, major, major, minor, diminished) is identical in every key. Musicians label the positions with Roman numerals: I, ii, iii, IV, V, vi, vii.',
+      body: 'Harmonizing the major scale gives seven chords that all sound good together. In C: C, Dm, Em, F, G, Am, Bdim. The pattern (major, minor, minor, major, major, minor, diminished) is identical in every key. Musicians label the positions with Roman numerals: I, ii, iii, IV, V, vi, vii. To hear a key rather than label it, run this lesson’s Family of G practice drill: the six chords of the G family in order, each one checked that it rang.',
     },
     {
       heading: 'Progressions you already know',
@@ -262,7 +262,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
   'advanced-songwriting': [
     {
       heading: 'Start with a constraint',
-      body: 'A blank page is the enemy. Pick a key, a tempo, and four chords from that key’s family before you write anything else. Limitation breeds ideas: hundreds of great songs are I-V-vi-IV with a strong melody on top.',
+      body: 'A blank page is the enemy. Pick a key, a tempo, and four chords from that key’s family before you write anything else. Limitation breeds ideas: hundreds of great songs are I-V-vi-IV with a strong melody on top. When you have your four chords, play them in both orders of this lesson’s Four Chords practice drill - I-V-vi-IV, then the same four starting on the vi - and hear how much of the mood is just order.',
     },
     {
       heading: 'Melody before lyrics',

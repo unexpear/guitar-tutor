@@ -15,7 +15,7 @@ each other, not building new ones.
 | Area | State |
 |---|---|
 | Games tab | 7 cards, **2 games**. Chord Quiz and Chord Changes are built; the other five are dimmed and marked "Soon" rather than pretending. |
-| Play-along drills | **10 drills for 11 lessons.** Only Guitar Anatomy has none, and it has its own interactive diagram instead. |
+| Play-along drills | **11 drills for 11 lessons.** Every lesson that can support a drill has one: the holding, tuning-up and reading-diagrams lessons are at-your-own-pace reading, and Guitar Anatomy has its own interactive diagram instead. |
 | Practice tracking | Done. Time at the instrument is logged per day, shown against the goal, and drives a streak. |
 | Lesson scores | Shown on the card when a drill produced them. |
 | Bass | Withdrawn from the questionnaire until it can be supported properly — see below. |

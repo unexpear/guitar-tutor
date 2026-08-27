@@ -19,7 +19,7 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 - **Single-string tuning** — tap a string to aim at it; green means dead on, amber within nine cents, red past ten
 - **Chord library** — 36 chords with finger positions, diagrams that draw barres and slide up the neck, and tap-to-hear playback
 - **Metronome** — 40–200 BPM, tap tempo, accented downbeats, 2/4 · 3/4 · 4/4 · 6/8, on a drift-corrected clock shared with the play-along drills
-- **Lessons** — 12 structured beginner-to-advanced lessons, including an interactive guitar-anatomy diagram and quiz
+- **Lessons** — 15 structured beginner-to-advanced lessons (14 with full instructional text, plus an interactive guitar-anatomy diagram and quiz)
 - **Song library** — 15 songs with the chords each one needs, plus key and capo
 - **Play-along practice** — Guitar Hero-style drills that listen to your real guitar: pluck the directed string/fret or strum the directed chord, with an "any tone" beginner mode and a "full chord" mode that requires evidence of multiple chord tones before scoring a hit
 - Dark theme throughout
@@ -28,7 +28,9 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 - **Chord Changes** — the one-minute-changes exercise, counted off your actual playing
 - **Practice tracking** — time at the instrument, logged per day against a goal, with a streak
 
-Five of the six cards in the Games tab are not built yet; they are marked as such. See [docs/ROADMAP.md](docs/ROADMAP.md).
+Five of the seven cards in the Games tab are not built yet; they are dimmed
+and marked "Soon". The two that are built — Chord Quiz and Chord Changes — are
+playable now. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Development
 

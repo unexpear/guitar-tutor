@@ -73,17 +73,11 @@ test('the lessons that have a drill also have prose to support them', () => {
 });
 
 test('drill-bearing lessons point their learners at the drill', () => {
-  // A drill a lesson never mentions is one a learner will never find. These
-  // four are the known gaps: their prose teaches the idea (fingerpicking
-  // patterns, scale boxes, chord progressions, songwriting) but never says
-  // "open the drill". This is an intentional, reviewed list — any new lesson
-  // that forgets its drill will fail this test.
-  const NEVER_MENTIONS_DRILL = [
-    'intermediate-fingerpicking',
-    'intermediate-scales-101',
-    'intermediate-music-theory',
-    'advanced-songwriting',
-  ];
+  // A drill a lesson never mentions is one a learner will never find. The
+  // four known gaps had their prose fixed to say "open the drill"; the list
+  // is now empty and stays that way — any new lesson that forgets its drill
+  // will fail this test.
+  const NEVER_MENTIONS_DRILL: string[] = [];
   const mentionsDrill: string[] = [];
   for (const [id, sections] of Object.entries(LESSON_CONTENT)) {
     if (!getDrill(id)) continue;

@@ -1,48 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTuner as useTunerEngine } from 'react-native-tuner-engine';
-import { TUNING_PRESETS, TuningPreset, noteToFrequency } from '../data/tunings';
+import { TUNING_PRESETS, TuningPreset } from '../data/tunings';
+import { median, pushWindow } from '../pitch';
 import {
-  centsBetween,
-  median,
-  pushWindow,
-  nearestStringIndex,
-  verdictForCents,
-  TuneVerdict,
-} from '../pitch';
+  mapTunerReading,
+  targetFrequenciesFor,
+  TUNER_ENGINE_OPTIONS,
+  TunerState,
+} from '../tunerReading';
 
-export interface TunerState {
-  note: string;
-  octave: number;
-  /** Deviation from the nearest chromatic note, -50..+50. */
-  cents: number;
-  frequency: number;
-  confidence: number;
-  isActive: boolean;
-  stringIndex: number | null;
-  nearestTarget: string | null;
-  /** Deviation from the matched string's target pitch, or null when no string matched. */
-  targetCents: number | null;
-  /** In tune, close, or off — against the string being aimed at. */
-  verdict: TuneVerdict | null;
-}
-
-const IDLE_STATE: TunerState = {
-  note: '--',
-  octave: 0,
-  cents: 0,
-  frequency: 0,
-  confidence: 0,
-  isActive: false,
-  stringIndex: null,
-  nearestTarget: null,
-  targetCents: null,
-  verdict: null,
-};
+export type { TunerState };
 
 /**
  * Real-time guitar tuner backed by react-native-tuner-engine.
  * Pitch detection runs natively (YIN/PYIN/cepstrum ensemble on a C++ audio
- * thread); this hook maps the pitch stream onto the selected tuning's strings.
+ * thread) with the configuration in TUNER_ENGINE_OPTIONS; the JS side maps
+ * the pitch stream onto the selected tuning's strings. All of that mapping
+ * lives in the pure mapTunerReading so the tuner contract is testable.
  */
 export function useTuner(
   tuning: TuningPreset = TUNING_PRESETS[0],
@@ -53,25 +27,16 @@ export function useTuner(
    */
   targetStringIndex: number | null = null
 ) {
-  const engine = useTunerEngine({
-    instrument: 'guitar',
-    a4: 440,
-    minFrequency: 60,
-    maxFrequency: 1400,
-    confidenceThreshold: 0.75,
-    noiseGateDb: -55,
-    onsetDetection: true,
-  });
+  const engine = useTunerEngine(TUNER_ENGINE_OPTIONS);
   const { start, stop, latest, isRunning, error } = engine;
 
   useEffect(() => {
     if (error) console.warn('Tuner engine error:', error.message);
   }, [error]);
 
-
   // Precompute target frequencies for the current tuning.
   const stringFrequencies = useMemo(
-    () => tuning.strings.map((n) => noteToFrequency(n)),
+    () => targetFrequenciesFor(tuning),
     [tuning],
   );
 
@@ -99,7 +64,7 @@ export function useTuner(
   const rawHz = latest?.hasPitch ? latest.frequency : 0;
 
   useEffect(() => {
-    if (!isRunning || rawHz <= 0) {
+    if (!isRunning || rawHz <= 0 || !Number.isFinite(rawHz)) {
       windowRef.current = [];
       setSmoothHz(0);
       return;
@@ -116,34 +81,17 @@ export function useTuner(
     setSmoothHz(0);
   }, [targetStringIndex, tuningName]);
 
-  const state: TunerState = useMemo(() => {
-    if (!isRunning) return IDLE_STATE;
-    if (!latest || !latest.hasPitch || smoothHz <= 0) {
-      return { ...IDLE_STATE, isActive: true };
-    }
-
-    // Aimed at a string, or free to pick whichever is nearest.
-    const idx =
-      targetStringIndex !== null
-        ? targetStringIndex
-        : nearestStringIndex(smoothHz, stringFrequencies);
-
-    const target = idx !== null ? stringFrequencies[idx] : 0;
-    const signed = target > 0 ? centsBetween(smoothHz, target) : null;
-
-    return {
-      note: latest.noteName,
-      octave: latest.octave,
-      cents: Math.round(latest.cents),
-      frequency: smoothHz,
-      confidence: latest.confidence,
-      isActive: true,
-      stringIndex: idx,
-      nearestTarget: idx !== null ? tuning.strings[idx] : null,
-      targetCents: signed === null ? null : Math.round(signed),
-      verdict: signed === null ? null : verdictForCents(signed),
-    };
-  }, [latest, isRunning, smoothHz, stringFrequencies, tuning, targetStringIndex]);
+  const state: TunerState = useMemo(
+    () =>
+      mapTunerReading(latest, {
+        isRunning,
+        smoothHz,
+        targetStringIndex,
+        tuning,
+        stringFrequencies,
+      }),
+    [latest, isRunning, smoothHz, stringFrequencies, tuning, targetStringIndex],
+  );
 
   return {
     ...state,

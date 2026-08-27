@@ -8,8 +8,14 @@
 /** How many recent readings the median is taken over. */
 export const SMOOTH_WINDOW = 5;
 
-/** Cents from `target` to `frequency`. Negative is flat, positive is sharp. */
+/**
+ * Cents from `target` to `frequency`. Negative is flat, positive is sharp.
+ * Non-finite or non-positive inputs resolve to 0, so a malformed native
+ * frame can never read as a real deviation (or tip the verdict toward
+ * "close").
+ */
 export function centsBetween(frequency: number, target: number): number {
+  if (!Number.isFinite(frequency) || !Number.isFinite(target)) return 0;
   if (frequency <= 0 || target <= 0) return 0;
   return 1200 * Math.log2(frequency / target);
 }
