@@ -114,7 +114,13 @@ export const useProgressStore = create<ProgressState>()(
           const totalSeconds = Object.values(log).reduce((a, b) => a + b, 0);
           return {
             practiceLog: log,
-            lastPracticeDate: today,
+            // Out-of-order sessions (a clock that jumped) must not drag the
+            // anchor backwards: liveStreak compares today against this, so a
+            // regressed anchor would wrongly kill a live streak.
+            lastPracticeDate:
+              state.lastPracticeDate !== null && today < state.lastPracticeDate
+                ? state.lastPracticeDate
+                : today,
             currentStreak: streak,
             longestStreak: Math.max(state.longestStreak, streak),
             totalPracticeMinutes: minutesFrom(totalSeconds),
