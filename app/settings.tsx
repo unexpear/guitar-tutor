@@ -487,6 +487,32 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </SectionCard>
 
+        {__DEV__ && (
+          <SectionCard title="Developer">
+            <PressableScale
+              onPress={() => router.push('/bass-spike')}
+              style={{
+                backgroundColor: Colors.warning,
+                borderRadius: 10,
+                paddingVertical: 12,
+                alignItems: 'center',
+                marginTop: 4,
+              }}
+              accessibilityLabel="Open bass tuner feasibility harness (E1 gate)"
+              accessibilityRole="button"
+            >
+              <Text style={{ color: '#111', fontWeight: '800', letterSpacing: 0.5 }}>
+                Bass Spike · E1 Gate (dev only)
+              </Text>
+            </PressableScale>
+            <Text style={[styles.hint, { marginTop: 8 }]}>
+              Temporary harness that drives the engine with bass config (min 40 Hz, HPF 30 Hz,
+              high-accuracy). Does not change the production tuner. See the screen for the test
+              protocol.
+            </Text>
+          </SectionCard>
+        )}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </View>

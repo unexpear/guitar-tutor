@@ -8,6 +8,10 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen
+          name="bass-spike"
+          options={{ headerShown: false, presentation: 'card', title: 'Bass Spike' }}
+        />
       </Stack>
     </>
   );
