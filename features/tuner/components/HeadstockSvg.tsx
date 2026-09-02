@@ -10,9 +10,11 @@ import Svg, {
   LinearGradient,
   Stop,
 } from 'react-native-svg';
+import type { GuitarDesign } from '../../progression/guitarDesigns';
 
 interface HeadstockProps {
   guitarType?: 'acoustic' | 'electric';
+  design?: GuitarDesign;
   highlightColor?: string;
   highlightedPeg?: number;
   width?: number;
@@ -68,6 +70,23 @@ interface FinishColors {
   nutShadow: string;
   woundString: string;
   plainString: string;
+}
+
+function finishFromDesign(design: GuitarDesign): FinishColors {
+  return {
+    idPrefix: design.id.replace(/[^a-z0-9]/gi, ''),
+    faceTop: design.faceTop,
+    faceMid: design.faceMid,
+    faceBottom: design.faceBottom,
+    faceRim: design.rim,
+    grain: design.grain,
+    fretboardTop: design.fretboardTop,
+    fretboardBottom: design.fretboardBottom,
+    nut: design.nut,
+    nutShadow: design.faceBottom,
+    woundString: design.string,
+    plainString: design.string,
+  };
 }
 
 function HeadstockBase({
@@ -298,8 +317,8 @@ const ELECTRIC_FINISH: FinishColors = {
 export function AcousticHeadstock(props: HeadstockProps) {
   return (
     <HeadstockBase
-      colors={ACOUSTIC_FINISH}
-      label="Acoustic guitar headstock"
+      colors={props.design ? finishFromDesign(props.design) : ACOUSTIC_FINISH}
+      label={`${props.design?.name ?? 'Acoustic'} guitar headstock`}
       highlightColor={props.highlightColor}
       highlightedPeg={props.highlightedPeg}
       width={props.width}
@@ -311,8 +330,8 @@ export function AcousticHeadstock(props: HeadstockProps) {
 export function ElectricHeadstock(props: HeadstockProps) {
   return (
     <HeadstockBase
-      colors={ELECTRIC_FINISH}
-      label="Electric guitar headstock"
+      colors={props.design ? finishFromDesign(props.design) : ELECTRIC_FINISH}
+      label={`${props.design?.name ?? 'Electric'} guitar headstock`}
       highlightColor={props.highlightColor}
       highlightedPeg={props.highlightedPeg}
       width={props.width}

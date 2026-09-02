@@ -94,11 +94,11 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
   'beginner-reading-diagrams': [
     {
       heading: 'The grid is your guitar, stood upright',
-      body: 'Imagine standing the guitar up and looking at the neck head-on. The six vertical lines are the strings: thickest low E on the far left, thinnest high e on the far right - the same order as the letters printed under every diagram. The horizontal lines are the metal frets. The thick bar across the top is the nut, where the strings leave the headstock.',
+      body: 'Imagine standing the guitar up and looking at the neck head-on. In the standard view, the six vertical lines run from the thick low E on the far left to the thin high e on the far right. Left-handed view mirrors that order. The letters printed underneath are always the safest check. The horizontal lines are the metal frets, and the thick bar across the top is the nut.',
     },
     {
       heading: 'Dots are fingers, numbers say which one',
-      body: 'A dot means press that string down just behind that fret - not on the metal, and not in the middle of the gap. The number inside is which finger: 1 is your index, 2 your middle, 3 your ring, 4 your little finger. The frets are numbered down the left edge, so a dot on row 2 means the second fret.',
+      body: 'A dot means press that string down just behind that fret - not on the metal, and not in the middle of the gap. The number inside is which finger: 1 is your index, 2 your middle, 3 your ring, 4 your little finger. Read the actual fret number printed down the side; a dot in the row labelled 2 belongs at the second fret.',
     },
     {
       heading: 'Above the nut: circles and crosses',

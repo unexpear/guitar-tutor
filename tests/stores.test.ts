@@ -51,6 +51,9 @@ function resetProgress() {
     favoriteChords: [],
     alternateTuning: 'Standard E',
     gameHighScores: {},
+    totalXp: 0,
+    gamePlays: {},
+    selectedGuitarDesignId: 'starter-1',
     practiceLog: {},
     lastPracticeDate: null,
     longestStreak: 0,
@@ -86,6 +89,23 @@ test('game scores keep only the best and report whether it landed', () => {
   assert.equal(useProgressStore.getState().gameHighScores['chord-quiz'], 180);
   assert.equal(recordGameScore('chord-quiz', 180), false, 'a tie is not a new best');
   assert.equal(recordGameScore('chord-changes', 90), true, 'different games score independently');
+  assert.equal(useProgressStore.getState().gamePlays['chord-quiz'], 4);
+  assert.equal(useProgressStore.getState().gamePlays['chord-changes'], 1);
+  assert.ok(useProgressStore.getState().totalXp > 0, 'completed rounds award XP');
+});
+
+test('lesson XP is awarded once and guitar designs respect level locks', () => {
+  resetProgress();
+  const state = useProgressStore.getState();
+  state.completeLesson('beginner-tuning-up', 100);
+  assert.equal(useProgressStore.getState().totalXp, 75);
+  state.completeLesson('beginner-tuning-up', 100);
+  assert.equal(useProgressStore.getState().totalXp, 75, 'retakes cannot farm first-completion XP');
+  assert.equal(state.selectGuitarDesign('level-1'), false, 'level 2 design stays locked');
+  useProgressStore.setState({ totalXp: 100 });
+  assert.equal(state.selectGuitarDesign('level-1'), true);
+  assert.equal(useProgressStore.getState().selectedGuitarDesignId, 'level-1');
+  assert.equal(state.selectGuitarDesign('not-real'), false);
 });
 
 test('favourites are a simple toggle list', () => {
@@ -234,7 +254,7 @@ test('rehydrating restores previously persisted lesson progress', async () => {
         practiceLog: { '2026-03-14': 120, '2026-03-15': 600 },
         lastPracticeDate: '2026-03-15',
         favoriteChords: ['G'],
-        gameHighScores: { 'chord-quiz': 200 },
+        gameHighScores: { 'chord-quiz': 200, 'ear-training': 900, 'fretboard-explorer': 700 },
         chordStats: {},
         alternateTuning: 'Standard E',
       },
@@ -251,6 +271,9 @@ test('rehydrating restores previously persisted lesson progress', async () => {
   assert.equal(state.totalPracticeMinutes, 12);
   assert.equal(state.practiceSecondsToday(DAY), 600);
   assert.deepEqual(state.favoriteChords, ['G']);
+  assert.equal(state.gameHighScores['ear-training'], 90, 'legacy 1000-point records migrate to percent');
+  assert.equal(state.gameHighScores['fretboard-explorer'], 70);
+  assert.equal(state.gameHighScores['chord-quiz'], 200, 'unrelated point-based games are preserved');
 });
 
 // ---------------------------------------------------------------------------

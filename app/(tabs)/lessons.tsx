@@ -21,6 +21,7 @@ import { minutesFrom } from '../../features/practice/streak';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 import Questionnaire from '../../components/Questionnaire';
 import GuitarAnatomy from '../../components/GuitarAnatomy';
+import ChordDiagramLesson from '../../components/ChordDiagramLesson';
 import { LESSON_CONTENT } from '../../features/lessons/data/lessonContent';
 import { getDrill } from '../../features/lessons/data/drills';
 import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
@@ -61,7 +62,7 @@ interface Lesson {
   title: string;
   description: string;
   difficulty: Difficulty;
-  component?: 'guitar-anatomy';
+  component?: 'guitar-anatomy' | 'chord-diagrams';
 }
 
 interface LessonCategory {
@@ -116,6 +117,7 @@ const LESSON_DATA: LessonCategory[] = [
         description:
           'What the dots, numbers, crosses and circles mean, so every chord in the app tells you exactly where your fingers go.',
         difficulty: 'beginner',
+        component: 'chord-diagrams',
       },
       {
         id: 'beginner-fretting-notes',
@@ -550,8 +552,8 @@ export default function LessonsScreen() {
   }, []);
 
   const handleLessonTap = useCallback((lesson: Lesson) => {
-    if (lesson.component === 'guitar-anatomy') {
-      setActiveLessonContent('guitar-anatomy');
+    if (lesson.component) {
+      setActiveLessonContent(lesson.component);
     } else {
       setSelectedLesson(lesson);
     }
@@ -591,6 +593,13 @@ export default function LessonsScreen() {
   const handleAnatomyQuizPassed = useCallback(
     (scorePercent: number) => {
       completeLesson('beginner-guitar-anatomy', scorePercent);
+    },
+    [completeLesson],
+  );
+
+  const handleDiagramQuizPassed = useCallback(
+    (scorePercent: number) => {
+      completeLesson('beginner-reading-diagrams', scorePercent);
     },
     [completeLesson],
   );
@@ -646,6 +655,28 @@ export default function LessonsScreen() {
           )}
         </View>
         <GuitarAnatomyLessonContent onQuizPassed={handleAnatomyQuizPassed} />
+      </View>
+    );
+  }
+
+  if (activeLessonContent === 'chord-diagrams') {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.lessonHeader}>
+          <TouchableOpacity
+            style={styles.lessonBackButton}
+            onPress={handleCloseLessonContent}
+            accessibilityRole="button"
+            accessibilityLabel="Back to lessons"
+          >
+            <Text style={styles.lessonBackButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.lessonHeaderTitle}>Reading Chord Diagrams</Text>
+          {isLessonCompleted('beginner-reading-diagrams') && (
+            <Text style={styles.lessonHeaderDone}>✓</Text>
+          )}
+        </View>
+        <ChordDiagramLesson onQuizPassed={handleDiagramQuizPassed} />
       </View>
     );
   }

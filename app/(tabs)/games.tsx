@@ -20,6 +20,10 @@ import TrainingGame, { type TrainingGameId } from '../../features/games/training
 import ProgressionBuilderGame from '../../features/games/progression/ProgressionBuilderGame';
 import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
 import { getDrill } from '../../features/lessons/data/drills';
+import StarterArcadeGame from '../../features/games/starter/StarterArcadeGame';
+import type { StarterGameId } from '../../features/games/starter/starterArcade';
+import GuitarLocker from '../../features/games/locker/GuitarLocker';
+import { levelProgress } from '../../features/progression/playerProgress';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -30,9 +34,28 @@ interface Game {
   icon: string;
   difficulty: Difficulty;
   color: string;
+  recommended?: boolean;
 }
 
 const GAMES: Game[] = [
+  {
+    id: 'string-scout',
+    title: 'String Scout',
+    description: 'Learn string names and numbers in quick rounds',
+    icon: '🧭',
+    difficulty: 'Beginner',
+    color: '#4CAF50',
+    recommended: true,
+  },
+  {
+    id: 'tune-sense',
+    title: 'Tune Sense',
+    description: 'Learn flat, sharp and which way to tune',
+    icon: '🎯',
+    difficulty: 'Beginner',
+    color: '#42A5F5',
+    recommended: true,
+  },
   {
     id: 'chord-quiz',
     title: 'Chord Quiz',
@@ -50,30 +73,6 @@ const GAMES: Game[] = [
     color: '#4CAF50',
   },
   {
-    id: 'scale-sprint',
-    title: 'Scale Sprint',
-    description: 'Play a C major scale with live pitch scoring',
-    icon: '⚡',
-    difficulty: 'Intermediate',
-    color: '#FF6B6B',
-  },
-  {
-    id: 'ear-training',
-    title: 'Ear Training',
-    description: 'Train your ear to recognize intervals',
-    icon: '👂',
-    difficulty: 'Intermediate',
-    color: '#4ECDC4',
-  },
-  {
-    id: 'rhythm-master',
-    title: 'Rhythm Master',
-    description: 'Master complex rhythm patterns',
-    icon: '🥁',
-    difficulty: 'Advanced',
-    color: '#FFD93D',
-  },
-  {
     id: 'fretboard-explorer',
     title: 'Fretboard Explorer',
     description: 'Learn notes across the entire fretboard',
@@ -82,20 +81,44 @@ const GAMES: Game[] = [
     color: '#A8E6CF',
   },
   {
-    id: 'speed-challenge',
-    title: 'Speed Challenge',
-    description: 'Run the pentatonic box with live pitch scoring',
-    icon: '🏎️',
-    difficulty: 'Advanced',
-    color: '#FF8A5B',
-  },
-  {
     id: 'progression-builder',
     title: 'Progression Builder',
     description: 'Build, hear and save your own chord loops',
     icon: '🎼',
     difficulty: 'Beginner',
     color: '#64B5F6',
+  },
+  {
+    id: 'ear-training',
+    title: 'Ear Training',
+    description: 'Hear pitch distances with guided clues',
+    icon: '👂',
+    difficulty: 'Intermediate',
+    color: '#4ECDC4',
+  },
+  {
+    id: 'rhythm-master',
+    title: 'Rhythm Master',
+    description: 'Find the pulse, then tap eight steady beats',
+    icon: '🥁',
+    difficulty: 'Intermediate',
+    color: '#FFD93D',
+  },
+  {
+    id: 'scale-sprint',
+    title: 'Scale Sprint',
+    description: 'Play a C major scale with live pitch scoring',
+    icon: '⚡',
+    difficulty: 'Intermediate',
+    color: '#FF6B6B',
+  },
+  {
+    id: 'speed-challenge',
+    title: 'Speed Challenge',
+    description: 'Run the pentatonic box with live pitch scoring',
+    icon: '🏎️',
+    difficulty: 'Advanced',
+    color: '#FF8A5B',
   },
 ];
 
@@ -123,7 +146,12 @@ export default function PracticeGamesScreen() {
     if (params.game) router.setParams({ game: undefined, a: undefined, b: undefined });
   }, [params.game, router]);
   const highScores = useProgressStore((s) => s.gameHighScores);
+  const totalXp = useProgressStore((s) => s.totalXp);
+  const gamePlays = useProgressStore((s) => s.gamePlays);
   const recordGameScore = useProgressStore((s) => s.recordGameScore);
+  const playerLevel = levelProgress(totalXp);
+  const roundsPlayed = Object.values(gamePlays).reduce((sum, count) => sum + count, 0);
+  const recordsSet = Object.keys(highScores).length;
   const activeDrill = useMemo(() => {
     if (activeGame === 'scale-sprint') return getDrill('intermediate-scales-101');
     if (activeGame === 'speed-challenge') return getDrill('advanced-improvisation');
@@ -176,9 +204,9 @@ export default function PracticeGamesScreen() {
         >
           <Text style={styles.difficultyText}>{game.difficulty}</Text>
         </View>
-        {bestFor(game.id) > 0 && (
+        {bestFor(game.id) > 0 ? (
           <Text style={styles.bestScore}>Best {bestFor(game.id)}</Text>
-        )}
+        ) : game.recommended ? <Text style={styles.startHere}>START HERE</Text> : null}
       </View>
     </PressableScale>
   );
@@ -200,6 +228,12 @@ export default function PracticeGamesScreen() {
   if (activeGame === 'progression-builder') {
     return <ProgressionBuilderGame onExit={closeGame} />;
   }
+  if (activeGame === 'string-scout' || activeGame === 'tune-sense') {
+    return <StarterArcadeGame gameId={activeGame as StarterGameId} onExit={closeGame} />;
+  }
+  if (activeGame === 'guitar-locker') {
+    return <GuitarLocker onExit={closeGame} />;
+  }
   if (activeDrill && activeGame) {
     return (
       <PlayAlongLesson
@@ -214,7 +248,20 @@ export default function PracticeGamesScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Practice Games</Text>
-        <Text style={styles.headerSubtitle}>Sharpen your skills with fun challenges</Text>
+        <Text style={styles.headerSubtitle}>New here? Start with String Scout, then Tune Sense.</Text>
+        <PressableScale
+          onPress={() => setActiveGame('guitar-locker')}
+          style={styles.playerCard}
+          accessibilityRole="button"
+          accessibilityLabel={`Level ${playerLevel.level}. Open Guitar Locker.`}
+        >
+          <View style={styles.levelBadge}><Text style={styles.levelNumber}>{playerLevel.level}</Text></View>
+          <View style={styles.playerProgress}>
+            <View style={styles.playerLine}><Text style={styles.playerTitle}>LEVEL {playerLevel.level}</Text><Text style={styles.lockerLink}>Guitar Locker ›</Text></View>
+            <View style={styles.xpTrack}><View style={[styles.xpFill, { width: `${playerLevel.percent}%` }]} /></View>
+            <Text style={styles.playerMeta}>{playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP · {roundsPlayed} rounds · {recordsSet} records</Text>
+          </View>
+        </PressableScale>
       </View>
 
       <ScrollView
@@ -253,6 +300,16 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 32,
   },
+  playerCard: { marginTop: 18, minHeight: 92, borderRadius: 18, borderWidth: 1, borderColor: '#343760', backgroundColor: '#1a1a3e', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 13, ...CARD_SHADOW },
+  levelBadge: { width: 58, height: 58, borderRadius: 17, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center' },
+  levelNumber: { color: '#071408', fontSize: 27, fontWeight: '900' },
+  playerProgress: { flex: 1, gap: 7 },
+  playerLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  playerTitle: { color: Colors.dark.text, fontWeight: '900', letterSpacing: 1 },
+  lockerLink: { color: Colors.success, fontWeight: '800', fontSize: 12 },
+  xpTrack: { height: 7, borderRadius: 4, backgroundColor: '#34365B', overflow: 'hidden' },
+  xpFill: { height: '100%', borderRadius: 4, backgroundColor: Colors.success },
+  playerMeta: { color: Colors.dark.muted, fontSize: 11, fontWeight: '600' },
   gameCard: {
     backgroundColor: '#1a1a3e',
     borderRadius: 16,
@@ -293,6 +350,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.success,
   },
+  startHere: { fontSize: 10, fontWeight: '900', letterSpacing: 0.7, color: Colors.warning },
   difficultyBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,

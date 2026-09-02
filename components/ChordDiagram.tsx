@@ -14,6 +14,7 @@ import { Colors } from '../constants/Colors';
 import { findBarres } from '../features/chords/data/barres';
 import { chordFretWindow, DIAGRAM_FRET_COUNT } from '../features/chords/data/fretWindow';
 import { Chord } from '../features/chords/data/chords';
+import { describeChordDiagram } from '../features/chords/data/diagramGuide';
 import { useSettingsStore } from '../features/store/settingsStore';
 
 const FRETBOARD_STRING_COUNT = 6;
@@ -76,7 +77,11 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
   const fretY = (fret: number) => boardTop + (fret - startFret + 0.5) * cellH;
 
   return (
-    <View style={{ width, height }}>
+    <View
+      style={{ width, height }}
+      accessible
+      accessibilityLabel={describeChordDiagram(chord, leftHanded)}
+    >
       <Svg width={width} height={height}>
         <Defs>
           {/* Fretboard surface — barely-there top light on the navy panel */}

@@ -44,6 +44,7 @@ import { useMicReleaseOnLeave } from '../../features/audio/useMicReleaseOnLeave'
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 import { useSettingsStore } from '../../features/store/settingsStore';
 import { useTuningStore } from '../../features/store/tuningStore';
+import { guitarDesign } from '../../features/progression/guitarDesigns';
 
 const SECTIONS = INSTRUMENT_PROFILES.map((profile) => ({
   title: profile.name,
@@ -158,6 +159,8 @@ export default function TunerScreen() {
   const { width, height, fontScale } = useWindowDimensions();
   const alternateTuning = useProgressStore((s) => s.alternateTuning);
   const setAlternateTuning = useProgressStore((s) => s.setAlternateTuning);
+  const selectedGuitarDesignId = useProgressStore((s) => s.selectedGuitarDesignId);
+  const selectedGuitarDesign = guitarDesign(selectedGuitarDesignId);
   const guitarType = useUserPreferencesStore((s) => s.guitarType);
   const customTunings = useTuningStore((s) => s.customTunings);
   const meterStyle = useSettingsStore((s) => s.meterStyle);
@@ -468,6 +471,7 @@ export default function TunerScreen() {
         <View style={styles.headstockArea}>
           <HeadstockSvg
             guitarType={profile.headstock ?? 'acoustic'}
+            design={selectedGuitarDesign}
             highlightColor={aimedColor}
             highlightedPeg={aimedString ?? undefined}
             width={compactLayout ? 150 : 200}

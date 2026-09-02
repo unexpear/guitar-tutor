@@ -9,6 +9,12 @@ import {
   minutesFrom,
 } from '../practice/streak';
 import { ChordStats, recordAttempt } from '../practice/chordStats';
+import { levelFromXp, xpForFirstLesson, xpForGameScore } from '../progression/playerProgress';
+import {
+  DEFAULT_GUITAR_DESIGN_ID,
+  guitarDesign,
+  isDesignUnlocked,
+} from '../progression/guitarDesigns';
 
 export interface LessonProgress {
   lessonId: string;
@@ -26,6 +32,11 @@ interface ProgressState {
   alternateTuning: string;
   /** Best score per game id, e.g. { 'chord-quiz': 180 }. */
   gameHighScores: Record<string, number>;
+  /** Local-only progression: no account, server, or competitive pressure. */
+  totalXp: number;
+  /** Completed rounds by game id, used for the player's own records. */
+  gamePlays: Record<string, number>;
+  selectedGuitarDesignId: string;
   /** Seconds practised per local calendar day, YYYY-MM-DD keyed. */
   practiceLog: Record<string, number>;
   /** Local day of the most recent session, or null if there has never been one. */
@@ -35,8 +46,10 @@ interface ProgressState {
   chordStats: ChordStats;
 
   completeLesson: (lessonId: string, score: number) => void;
-  /** Records a score if it beats the stored best. Returns true if it did. */
+  /** Records a completed round, awards XP, and returns true for a new best. */
   recordGameScore: (gameId: string, score: number) => boolean;
+  /** Selects a collected design; locked or unknown ids are rejected. */
+  selectGuitarDesign: (designId: string) => boolean;
   addFavoriteChord: (chordName: string) => void;
   removeFavoriteChord: (chordName: string) => void;
   setAlternateTuning: (tuning: string) => void;
@@ -66,29 +79,52 @@ export const useProgressStore = create<ProgressState>()(
       favoriteChords: [],
       alternateTuning: 'guitar-acoustic-standard',
       gameHighScores: {},
+      totalXp: 0,
+      gamePlays: {},
+      selectedGuitarDesignId: DEFAULT_GUITAR_DESIGN_ID,
       practiceLog: {},
       lastPracticeDate: null,
       longestStreak: 0,
       chordStats: {},
 
       completeLesson: (lessonId: string, score: number) =>
-        set((state) => ({
-          completedLessons: {
-            ...state.completedLessons,
-            [lessonId]: {
-              lessonId,
-              completed: true,
-              score: Math.max(state.completedLessons[lessonId]?.score ?? 0, score),
+        set((state) => {
+          const firstCompletion = !state.completedLessons[lessonId]?.completed;
+          return {
+            completedLessons: {
+              ...state.completedLessons,
+              [lessonId]: {
+                lessonId,
+                completed: true,
+                score: Math.max(state.completedLessons[lessonId]?.score ?? 0, score),
+              },
             },
-          },
-        })),
+            totalXp: state.totalXp + (firstCompletion ? xpForFirstLesson(score) : 0),
+          };
+        }),
 
       recordGameScore: (gameId: string, score: number) => {
         const best = get().gameHighScores[gameId] ?? 0;
-        if (score <= best) return false;
         set((state) => ({
-          gameHighScores: { ...state.gameHighScores, [gameId]: score },
+          gameHighScores:
+            score > best
+              ? { ...state.gameHighScores, [gameId]: score }
+              : state.gameHighScores,
+          gamePlays: {
+            ...state.gamePlays,
+            [gameId]: (state.gamePlays[gameId] ?? 0) + 1,
+          },
+          totalXp: state.totalXp + xpForGameScore(score),
         }));
+        return score > best;
+      },
+
+      selectGuitarDesign: (designId: string) => {
+        const design = guitarDesign(designId);
+        if (design.id !== designId || !isDesignUnlocked(design, levelFromXp(get().totalXp))) {
+          return false;
+        }
+        set({ selectedGuitarDesignId: designId });
         return true;
       },
 
@@ -152,17 +188,28 @@ export const useProgressStore = create<ProgressState>()(
     {
       name: 'standardtune-progress',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 3,
       migrate: (persistedState) => {
         const state = persistedState as Partial<ProgressState>;
         const lifetimePracticeSeconds =
           typeof state.lifetimePracticeSeconds === 'number'
             ? state.lifetimePracticeSeconds
             : Math.max(0, state.totalPracticeMinutes ?? 0) * 60;
+        const gameHighScores = { ...(state.gameHighScores ?? {}) };
+        for (const gameId of ['ear-training', 'fretboard-explorer']) {
+          const oldScore = gameHighScores[gameId];
+          if (typeof oldScore === 'number' && oldScore > 100) {
+            gameHighScores[gameId] = Math.min(100, Math.round(oldScore / 10));
+          }
+        }
         return {
           ...state,
+          gameHighScores,
           lifetimePracticeSeconds,
           totalPracticeMinutes: minutesFrom(lifetimePracticeSeconds),
+          totalXp: typeof state.totalXp === 'number' ? Math.max(0, state.totalXp) : 0,
+          gamePlays: state.gamePlays ?? {},
+          selectedGuitarDesignId: state.selectedGuitarDesignId ?? DEFAULT_GUITAR_DESIGN_ID,
         } as ProgressState;
       },
     }
