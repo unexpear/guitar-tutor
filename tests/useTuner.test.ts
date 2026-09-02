@@ -60,6 +60,20 @@ test('reference-pitch calibration reaches the engine and target maths', () => {
   assert.equal(a442, 110.5);
 });
 
+test('room profiles adjust the gate and confidence without changing instrument range', () => {
+  const quiet = tunerEngineOptionsFor(STANDARD_E, 440, 'quiet');
+  const normal = tunerEngineOptionsFor(STANDARD_E, 440, 'normal');
+  const noisy = tunerEngineOptionsFor(STANDARD_E, 440, 'noisy');
+  assert.equal(quiet.noiseGateDb, -60);
+  assert.equal(normal.noiseGateDb, -55);
+  assert.equal(noisy.noiseGateDb, -48);
+  assert.ok((quiet.confidenceThreshold ?? 1) < (noisy.confidenceThreshold ?? 0));
+  assert.equal(quiet.minFrequency, normal.minFrequency);
+  assert.equal(noisy.maxFrequency, normal.maxFrequency);
+  assert.equal(normal.emaAlpha, 0.32);
+  assert.equal(normal.hysteresisFrames, 3);
+});
+
 test('not listening reads exactly the idle state', () => {
   assert.deepEqual(mapTunerReading(null, opts({ isRunning: false })), IDLE_STATE);
 });
@@ -117,6 +131,20 @@ test('low-confidence or wandering readings are withheld as unstable', () => {
   assert.equal(weak.verdict, null);
   assert.equal(wandering.signal, 'unstable');
   assert.equal(wandering.verdict, null);
+});
+
+test('the JS confidence gate follows the selected room profile', () => {
+  const target = noteToFrequency('E2');
+  const quiet = mapTunerReading(
+    reading({ confidence: 0.7 }),
+    opts({ smoothHz: target, targetStringIndex: 0, minimumConfidence: 0.68 }),
+  );
+  const noisy = mapTunerReading(
+    reading({ confidence: 0.7 }),
+    opts({ smoothHz: target, targetStringIndex: 0, minimumConfidence: 0.82 }),
+  );
+  assert.equal(quiet.signal, 'clear');
+  assert.equal(noisy.signal, 'unstable');
 });
 
 test('selected-string mode corrects an octave overtone without changing auto mode', () => {

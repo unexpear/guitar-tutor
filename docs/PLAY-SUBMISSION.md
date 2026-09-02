@@ -16,7 +16,7 @@ Everything needed to fill in the Play Console for StandardTune, in the order the
 ## Store listing
 
 - **Category:** Music & Audio
-- **Tags:** guitar, tuner, music education
+- **Tags:** instrument tuner, guitar, music education
 - **Contact email:** required — use an address you monitor (issues link alone is not accepted)
 
 ## App content declarations
@@ -43,7 +43,7 @@ If analytics, crash reporting, or any network feature is ever added, this form A
 
 ## Permissions notes (if the console asks)
 
-- `RECORD_AUDIO`: core functionality — real-time guitar pitch detection for the tuner and play-along lessons; requested in context, foreground only, audio never leaves the device.
+- `RECORD_AUDIO`: core functionality — real-time instrument pitch detection for the tuner and guitar play-along lessons; requested in context, foreground only, audio never leaves the device.
 - No sensitive/restricted permissions are used. `SYSTEM_ALERT_WINDOW` is explicitly stripped from the manifest at build time.
 
 ## Version codes
@@ -62,8 +62,8 @@ build if the code goes missing or drops back to 1.
 | Uploaded | versionCode | version |
 |---|---|---|
 | 2026-08-22, first closed test | 1 | 1.0.0 |
-| latest (tag `v1.0.0-4`) | 4 | 1.0.0 |
-| next | 5 | 1.0.0 |
+| 2026-09-02 (tag `v1.0.0-5`) | 5 | 1.0.0 |
+| next | 6 | 1.1.0 |
 
 ## Signing
 
@@ -93,16 +93,17 @@ Two ways. The second one is a one-time setup that removes this step forever.
 2. Open the release: Test and release -> Testing -> Closed testing ->
    Manage track -> Create new release.
 3. Drag the `.aab` onto the "App bundles" drop zone and wait for processing.
-4. Release name: `5 (1.0.0) - next closed test`
+4. Release name: `6 (1.1.0) - next closed test`
 5. Release notes (paste inside the existing `<en-US>` tags):
 
 ```
 First closed test build of StandardTune.
 
-- Real-time multi-instrument tuner with 31 presets and per-string indicators
+- Real-time multi-instrument tuner with 36 presets, custom tunings and per-string indicators
 - Chord library with 36 chords, diagrams, and reference audio
 - Play-along practice drills that listen to your guitar
-- Beginner to advanced lessons with an interactive guitar anatomy quiz
+- Guitar and bass lessons with an interactive guitar anatomy quiz
+- Ear, rhythm, fretboard and chord practice tools with local progress
 - Metronome with tap tempo and multiple time signatures
 
 Everything runs offline and audio never leaves your device. Please report

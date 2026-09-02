@@ -13,6 +13,8 @@ export interface TuningPreset {
   strings: string[];
   /** Paired target indices for multi-course instruments such as 12-string. */
   coursePairs?: readonly (readonly [number, number])[];
+  /** The physical string order intentionally does not ascend in pitch. */
+  reentrant?: boolean;
 }
 
 export const TUNING_PRESETS: TuningPreset[] = [
@@ -200,6 +202,7 @@ export const TUNING_PRESETS: TuningPreset[] = [
     name: 'Standard High G',
     instrumentId: 'ukulele-standard',
     strings: ['G4', 'C4', 'E4', 'A4'],
+    reentrant: true,
   },
   {
     id: 'ukulele-low-g-standard',
@@ -213,6 +216,11 @@ export const TUNING_PRESETS: TuningPreset[] = [
     instrumentId: 'ukulele-baritone',
     strings: ['D3', 'G3', 'B3', 'E4'],
   },
+  { id: 'mandolin-standard', name: 'Standard G', instrumentId: 'mandolin', strings: ['G3', 'G3', 'D4', 'D4', 'A4', 'A4', 'E5', 'E5'], coursePairs: [[0, 1], [2, 3], [4, 5], [6, 7]] },
+  { id: 'banjo-5-open-g', name: 'Open G', instrumentId: 'banjo-5', strings: ['G4', 'D3', 'G3', 'B3', 'D4'], reentrant: true },
+  { id: 'violin-standard', name: 'Standard G', instrumentId: 'violin', strings: ['G3', 'D4', 'A4', 'E5'] },
+  { id: 'viola-standard', name: 'Standard C', instrumentId: 'viola', strings: ['C3', 'G3', 'D4', 'A4'] },
+  { id: 'cello-standard', name: 'Standard C', instrumentId: 'cello', strings: ['C2', 'G2', 'D3', 'A3'] },
   {
     id: 'chromatic',
     name: 'Chromatic',

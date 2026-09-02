@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from 'expo-router';
-import { ColorValue, Pressable } from 'react-native';
+import { ColorValue, Pressable, useWindowDimensions } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 type MCIName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -10,6 +10,7 @@ function TabIcon({ name, color }: { name: MCIName; color: ColorValue }) {
 
 export default function TabLayout() {
   const router = useRouter();
+  const { fontScale } = useWindowDimensions();
 
   return (
     <Tabs
@@ -26,6 +27,7 @@ export default function TabLayout() {
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#9ca3af',
+        tabBarShowLabel: fontScale <= 1.4,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
@@ -82,7 +84,7 @@ export default function TabLayout() {
         name="metronome"
         options={{
           headerShown: false,
-          title: 'Metronome',
+          title: 'Tempo',
           tabBarIcon: ({ color }) => <TabIcon name="metronome" color={color} />,
         }}
       />

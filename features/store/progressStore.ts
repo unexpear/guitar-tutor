@@ -19,6 +19,8 @@ export interface LessonProgress {
 interface ProgressState {
   completedLessons: Record<string, LessonProgress>;
   currentStreak: number;
+  /** Lifetime total, retained even when old daily log entries are pruned. */
+  lifetimePracticeSeconds: number;
   totalPracticeMinutes: number;
   favoriteChords: string[];
   alternateTuning: string;
@@ -59,6 +61,7 @@ export const useProgressStore = create<ProgressState>()(
     (set, get) => ({
       completedLessons: {},
       currentStreak: 0,
+      lifetimePracticeSeconds: 0,
       totalPracticeMinutes: 0,
       favoriteChords: [],
       alternateTuning: 'guitar-acoustic-standard',
@@ -111,7 +114,7 @@ export const useProgressStore = create<ProgressState>()(
             today
           );
           const streak = nextStreak(state.lastPracticeDate, state.currentStreak, today);
-          const totalSeconds = Object.values(log).reduce((a, b) => a + b, 0);
+          const lifetimePracticeSeconds = state.lifetimePracticeSeconds + seconds;
           return {
             practiceLog: log,
             // Out-of-order sessions (a clock that jumped) must not drag the
@@ -123,7 +126,8 @@ export const useProgressStore = create<ProgressState>()(
                 : today,
             currentStreak: streak,
             longestStreak: Math.max(state.longestStreak, streak),
-            totalPracticeMinutes: minutesFrom(totalSeconds),
+            lifetimePracticeSeconds,
+            totalPracticeMinutes: minutesFrom(lifetimePracticeSeconds),
           };
         });
       },
@@ -148,6 +152,19 @@ export const useProgressStore = create<ProgressState>()(
     {
       name: 'standardtune-progress',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<ProgressState>;
+        const lifetimePracticeSeconds =
+          typeof state.lifetimePracticeSeconds === 'number'
+            ? state.lifetimePracticeSeconds
+            : Math.max(0, state.totalPracticeMinutes ?? 0) * 60;
+        return {
+          ...state,
+          lifetimePracticeSeconds,
+          totalPracticeMinutes: minutesFrom(lifetimePracticeSeconds),
+        } as ProgressState;
+      },
     }
   )
 );

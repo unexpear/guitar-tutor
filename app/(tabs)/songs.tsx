@@ -545,6 +545,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: 32,
     paddingVertical: 10,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   detailCloseText: {
     fontSize: 15,
@@ -596,6 +598,8 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
+    minHeight: 48,
+    justifyContent: 'center',
     borderRadius: 20,
     backgroundColor: '#1a1a3e',
   },

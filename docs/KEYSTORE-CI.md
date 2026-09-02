@@ -64,15 +64,20 @@ The keystore file only exists during the workflow run — it's wiped when the ru
 When you're ready to release:
 
 ```bash
-# Update version in app.json (versionCode must increment)
-git tag v1.0.0
-git push origin v1.0.0
+# From a clean main branch, preview the automated code bump and tag.
+npm run release -- --dry-run
+
+# Then bump versionCode, commit, tag and push in one checked operation.
+npm run release
 ```
 
 This triggers the workflow, which:
 - Builds the signed release APK
-- Creates a GitHub Release tagged `v1.0.0`
+- Creates a GitHub Release using the generated version/code tag (for example,
+  `v1.1.0-6`)
 - Attaches the APK to the release
+- Uploads the signed AAB to Play closed testing when
+  `PLAY_SERVICE_ACCOUNT_JSON` is configured
 
 Obtainium can then detect and offer the update to users.
 

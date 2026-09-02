@@ -14,6 +14,7 @@ import { Colors } from '../constants/Colors';
 import { findBarres } from '../features/chords/data/barres';
 import { chordFretWindow, DIAGRAM_FRET_COUNT } from '../features/chords/data/fretWindow';
 import { Chord } from '../features/chords/data/chords';
+import { useSettingsStore } from '../features/store/settingsStore';
 
 const FRETBOARD_STRING_COUNT = 6;
 const FRET_COUNT = DIAGRAM_FRET_COUNT;
@@ -28,6 +29,7 @@ const FRET_COLOR = 'rgba(148, 158, 196, 0.32)';
 const NUT_COLOR = '#8f98c2';
 
 export default function ChordDiagram({ chord, small }: { chord: Chord; small?: boolean }) {
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
   const color = Colors.dark;
   const { startFret, showNut } = chordFretWindow(chord);
   // Finger-dot radius drives all other proportions.
@@ -39,6 +41,8 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
   const edge = small ? 3 : 5; // fretboard overhang past the outer strings
   const cellH = boardH / FRET_COUNT;
   const cellW = boardW / (FRETBOARD_STRING_COUNT - 1);
+  const stringX = (stringIndex: number) =>
+    pad + (leftHanded ? FRETBOARD_STRING_COUNT - 1 - stringIndex : stringIndex) * cellW;
   const padBase = dotR + 2; // room for dots on the outer strings
   // The large diagram numbers its frets down the left edge; the thumbnail
   // has no room and keeps the compact "4fr" tag instead. Both share one
@@ -117,7 +121,8 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
 
         {/* Strings — one slate tone, weight graded bass to treble */}
         {[...Array(FRETBOARD_STRING_COUNT)].map((_, i) => {
-          const w = stringWeights[i];
+          const sourceIndex = leftHanded ? FRETBOARD_STRING_COUNT - 1 - i : i;
+          const w = stringWeights[sourceIndex];
           return (
             <Rect
               key={`string-${i}`}
@@ -146,8 +151,10 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
 
         {/* Barres: one rounded bar per finger that spans multiple strings */}
         {barres.map((b) => {
-          const x1 = pad + b.from * cellW;
-          const x2 = pad + b.to * cellW;
+          const fromX = stringX(b.from);
+          const toX = stringX(b.to);
+          const x1 = Math.min(fromX, toX);
+          const x2 = Math.max(fromX, toX);
           const cy = fretY(b.fret);
           const h = dotR * 2;
           return (
@@ -163,7 +170,7 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
                 strokeWidth={small ? 1 : 1.2}
               />
               <SvgText
-                x={x1}
+                x={fromX}
                 y={cy + (small ? 3.5 : 5.5)}
                 fontSize={small ? 10 : 15}
                 fontWeight="800"
@@ -212,7 +219,7 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
 
         {/* Per-string markers: muted ×, open ○, or finger dot */}
         {chord.strings.map((fret, stringIdx) => {
-          const cx = pad + stringIdx * cellW;
+          const cx = stringX(stringIdx);
           if (fret === -1) {
             const s = small ? 3 : 4.5;
             const cy = markerH - (small ? 6 : 9);
@@ -288,7 +295,7 @@ export default function ChordDiagram({ chord, small }: { chord: Chord; small?: b
           STRING_LETTERS.map((letter, i) => (
             <SvgText
               key={`letter-${i}`}
-              x={pad + i * cellW}
+              x={stringX(i)}
               y={boardTop + boardH + 15}
               fontSize={10.5}
               fontWeight="700"

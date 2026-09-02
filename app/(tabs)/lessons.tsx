@@ -48,6 +48,10 @@ const LESSON_ICONS: Record<string, MCIName> = {
   'advanced-improvisation': 'lightning-bolt',
   'advanced-techniques': 'fire',
   'advanced-songwriting': 'playlist-edit',
+  'bass-first-notes': 'guitar-electric',
+  'bass-right-hand': 'gesture-tap',
+  'bass-fretboard': 'music-note',
+  'bass-groove': 'metronome',
 };
 
 const FALLBACK_ICON: MCIName = 'music-note';
@@ -68,6 +72,17 @@ interface LessonCategory {
 }
 
 const LESSON_DATA: LessonCategory[] = [
+  {
+    id: 'bass-path',
+    label: 'Bass Path',
+    difficulty: 'beginner',
+    lessons: [
+      { id: 'bass-first-notes', title: 'Bass Setup & First Notes', description: 'Tune E-A-D-G, set a comfortable playing position, and make clean low notes without fret buzz.', difficulty: 'beginner' },
+      { id: 'bass-right-hand', title: 'Alternating Fingers', description: 'Build an even index-middle plucking motion and mute strings that should stay quiet.', difficulty: 'beginner' },
+      { id: 'bass-fretboard', title: 'Bass Fretboard Map', description: 'Find roots and octaves on four-, five-, and six-string bass without memorizing every fret at once.', difficulty: 'beginner' },
+      { id: 'bass-groove', title: 'Lock In the Groove', description: 'Use the metronome to place steady roots, rests, and eighth notes around a drum-like pulse.', difficulty: 'beginner' },
+    ],
+  },
   {
     id: 'beginner',
     label: 'Beginner',
@@ -643,7 +658,7 @@ export default function LessonsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <Text style={styles.header}>Guitar Lessons</Text>
+          <Text style={styles.header}>Learn</Text>
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={handleOpenSettings}

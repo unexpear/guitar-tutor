@@ -1,14 +1,16 @@
-<b>StandardTune</b> is a free and open source guitar tuner and learning companion.
+<b>StandardTune</b> is a free and open source instrument tuner and guitar learning companion.
 
 Features:
 - Real-time tuner with native pitch detection that guides you to each string's target
 - Realistic headstock visual with per-string in-tune indicators
-- 31 tuning presets for guitars, basses, ukulele and chromatic tuning, with calibrated reference notes
+- 36 built-in tunings for guitars, basses, ukulele, mandolin, banjo, violin, viola and cello, plus chromatic and custom tunings
+- Quiet, normal and noisy-room profiles, signal diagnostics, pitch history, overtone correction, strobe and stage modes
 - Interactive chord library with finger positions, diagrams, and audio playback
 - Play-along practice that listens to your guitar: pluck the shown string or strum the shown chord, with an easy any-tone mode and a strict full-chord mode
 - Structured lessons from beginner to advanced, with an interactive anatomy quiz
 - Song chord references with tap-to-hear shapes and original microphone-scored chord practice
-- Chord Quiz and one-minute Chord Changes games, with local best scores
+- Chord Quiz, Chord Changes, Ear Training, Rhythm Master and Fretboard Explorer, plus a local chord progression builder
+- Four focused bass lessons, left-handed chord diagrams, haptic cues, spoken cues and string auto-advance
 - Built-in metronome with tap tempo, accented downbeats, and multiple time signatures
 - Dark theme optimized for low-light environments
 

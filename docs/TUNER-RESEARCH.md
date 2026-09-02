@@ -55,6 +55,9 @@ The production tuner catalog now includes:
 - Six-string bass: B–E–A–D–G–C
 - Ukulele: re-entrant high-G, linear low-G and baritone D–G–B–E
 - Chromatic mode
+- Experimental device profiles for mandolin, five-string banjo, violin, viola
+  and cello. Their standard targets follow manufacturer guidance, but the
+  physical-device gate below still applies before removing the label.
 
 Manufacturer references:
 
@@ -68,6 +71,12 @@ Manufacturer references:
   https://kalabrand.com/blogs/home/ukulele-tuning-decoded
 - Ibanez's supported tuner categories, used as a real-world product comparison:
   https://www.ibanez.com/world/special/TunerApp/
+- Yamaha violin/viola/cello tuning reference:
+  https://usa.yamaha.com/files/download/other_assets/0/333430/yt240_en.pdf
+- Martin mandolin string/course reference:
+  https://www.martinguitar.com/strings/m400-mandolin-strings-monel.html
+- Deering five-string banjo tuning reference:
+  https://www.deeringbanjos.com/pages/how-to-tune-a-banjo
 
 ## Noise and overtone policy
 
@@ -85,6 +94,16 @@ Manufacturer references:
    overtones and a half-frequency period-doubling error when the corrected
    value is within 45 cents of the selected target.
 6. Corrections are disclosed in the UI rather than silently hidden.
+7. The native median-5 filter is followed by a moderate 0.32 EMA and
+   three-frame note hysteresis. The app uses only a three-sample bridge median,
+   avoiding the latency of stacking a second five-frame filter.
+8. A valid pitch survives a no-pitch gap for 450 ms. This prevents one or two
+   dropped frames in a decaying sustain from flashing the display blank; longer
+   silence or rejected input still clears the reading.
+9. Room profiles move both the RMS gate and confidence floor together: Quiet
+   uses -60 dBFS / 0.68, Normal -55 / 0.75, and Noisy -48 / 0.82. The low gate
+   is a deliberate user choice rather than an automatic gate that might learn
+   a sustained instrument note as background noise.
 
 ## Physical-device release gate
 
@@ -100,8 +119,9 @@ from bass or eight-string guitar, test at least:
 - Selected-string and automatic modes separately
 - Device rotation/background/return and incoming audio interruption
 
-The diagnostic screen at `app/bass-spike.tsx` exposes raw E1 results for this
-gate. It deliberately bypasses app-side correction.
+Use a development-only native harness or captured engine telemetry when raw E1
+results are needed for this gate. Do not ship that diagnostic surface as an
+Expo Router route in production.
 
 ## Calibration and completion window
 

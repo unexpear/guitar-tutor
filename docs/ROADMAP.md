@@ -1,4 +1,4 @@
-# What StandardTune could add next
+# StandardTune product status and next work
 
 A survey of the app as it stands, and where the value is. Written from a
 read of the whole source tree, so everything here is grounded in what the
@@ -6,24 +6,25 @@ code actually does rather than what the tabs imply.
 
 The app has one genuinely strong asset: a native pitch-detection pipeline
 wired to a hardened matcher that can tell whether you played the right
-thing. Almost nothing else in the app uses it. That is the theme of this
-document — most of the highest-value work is connecting existing parts to
-each other, not building new ones.
+thing. The tuner, lesson drills, song practice and Chord Changes now share
+that foundation. The remaining high-value work is expanding the instrument
+content without weakening the free, private, offline-first product.
 
 ## Where the app is thin
 
 | Area | State |
 |---|---|
-| Games tab | 7 cards, **2 games**. Chord Quiz and Chord Changes are built; the other five are dimmed and marked "Soon" rather than pretending. |
+| Games tab | **8 playable tools**: Chord Quiz, Chord Changes, microphone-scored Scale Sprint and Speed Challenge, Ear Training, Rhythm Master, Fretboard Explorer and a local Progression Builder. |
 | Play-along drills | **11 drills for 11 lessons.** Every lesson that can support a drill has one: the holding, tuning-up and reading-diagrams lessons are at-your-own-pace reading, and Guitar Anatomy has its own interactive diagram instead. |
-| Practice tracking | Done. Time at the instrument is logged per day, shown against the goal, and drives a streak. |
+| Song practice | 15 original, two-pass chord-change exercises with live scoring and no copyrighted lyrics or transcriptions. |
+| Practice tracking | Done. Time at the instrument is logged per day, shown against the goal, and drives a streak. The lifetime total is retained separately from the bounded daily history. |
 | Lesson scores | Shown on the card when a drill produced them. |
-| Tuner | 31 presets across guitar, bass and ukulele; chromatic mode; noise/stability rejection; harmonic correction; A4 calibration and adjustable completion window. |
-| Bass | The tuner supports 4/5/6-string bass. Lessons, chords and games remain explicitly guitar-only. |
+| Tuner | 36 presets across guitar, bass, ukulele, folk and orchestral strings; custom tunings; chromatic, needle, strobe and stage modes; room profiles; diagnostics; harmonic correction and calibration. |
+| Bass | The tuner supports 4/5/6-string bass and Learn includes a four-part bass foundation path. Physical-device B0/E1 validation and microphone-scored bass drills remain release gates. |
 
 ## Worth building, in order
 
-### 1. Local custom tunings
+### 1. Local custom tunings — implemented
 
 Let players build and name 1–12 string tunings entirely on-device. This is the
 most natural extension of the free-tuner promise: alternate and personal
@@ -34,7 +35,7 @@ instrument profile so low strings receive the right detector settings.
 **Effort:** medium. **Value:** high — it removes the largest remaining tuner
 feature gap without expanding permissions or licensing exposure.
 
-### 2. Bass learning content, properly
+### 2. Bass learning content — foundation implemented
 
 The tuner now has dedicated bass profiles, variable string counts, low-range
 DSP settings and reference tones through B0. Bass is intentionally still not
@@ -77,15 +78,16 @@ For context on what has just landed, so this list is not re-proposing it:
   resyncs rather than firing missed beats in a burst.
 - Chords play when tapped, and can be favourited.
 - The tuning chosen in Settings actually reaches the Tuner.
-- Songs list the chords they need, with diagrams you can hear.
+- Songs list the chords they need, with diagrams you can hear, and provide
+  original two-pass chord-change practice with live pitch scoring.
 - **Chord Quiz**, the Games tab's first real game. Three question types —
   name the shape, pick the shape, name what you hear — over ten questions,
   with a streak bonus and a persisted high score. The work that mattered
   was the wrong answers: four chords drawn at random are trivial, so
   distractors are chosen from the same root and the most hand-similar
   shapes. Asking someone to identify G7 next to G, B7 and Cmaj7 is a real
-  question; next to Bdim it is not. The other five cards are now dimmed
-  and labelled "Soon" instead of all showing the same alert.
+  question; next to Bdim it is not. The remaining cards have since been
+  replaced with playable local practice tools rather than placeholder alerts.
 - A drill for every lesson that can have one. Seven new ones, written to
   the exercise each lesson already prescribes rather than invented: the
   barre drill runs in full-chord mode because the point is whether every
@@ -125,5 +127,6 @@ For context on what has just landed, so this list is not re-proposing it:
   released the mic when you left a screen, and Chord Quiz served silent
   listening questions when sounds were off. Favourites, longest streak,
   total practice time and song genre were all stored and never shown.
-- 106 unit tests over the chord data, matcher, beat clock, fret window,
-  song library, and quiz generation, running in CI.
+- 240 unit tests over tuner DSP and matching, chord and song data, timing,
+  progress persistence, lesson drills, release notes and quiz generation,
+  running in CI.

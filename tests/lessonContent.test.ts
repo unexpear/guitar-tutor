@@ -24,6 +24,10 @@ const ALL_LESSON_IDS = [
   'advanced-improvisation',
   'advanced-techniques',
   'advanced-songwriting',
+  'bass-first-notes',
+  'bass-right-hand',
+  'bass-fretboard',
+  'bass-groove',
 ];
 
 test('every lesson except anatomy has real instructional content', () => {

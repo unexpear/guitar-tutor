@@ -1,7 +1,6 @@
-- 31 tunings for guitars, 4/5/6-string basses, ukulele and chromatic mode
-- Better rejection of background noise, unstable pitches and common overtones
-- Adjustable A4 calibration and tuner accuracy
-- Play every song's chord set as an original microphone-scored practice drill
-- More reliable Chord Changes and play-along microphone startup
-- Chord Quiz now counts toward daily practice time
-- Improved small-screen game and song navigation
+- Custom tunings with validated clipboard backup and restore
+- Smoother sustained readings plus quiet, normal and noisy-room profiles
+- Signal diagnostics, pitch history, strobe and keep-awake stage modes
+- Mandolin, banjo, violin, viola and cello presets
+- Ear, rhythm and fretboard trainers plus a four-part bass path
+- Left-handed diagrams, haptic/spoken cues and string auto-advance

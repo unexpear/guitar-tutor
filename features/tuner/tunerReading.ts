@@ -68,9 +68,21 @@ export const TUNER_ENGINE_OPTIONS = instrumentProfile(
 export function tunerEngineOptionsFor(
   tuning: TuningPreset,
   referencePitchHz = 440,
+  sensitivity: 'quiet' | 'normal' | 'noisy' = 'normal',
 ) {
+  const input = {
+    quiet: { noiseGateDb: -60, confidenceThreshold: 0.68 },
+    normal: { noiseGateDb: -55, confidenceThreshold: 0.75 },
+    noisy: { noiseGateDb: -48, confidenceThreshold: 0.82 },
+  }[sensitivity];
   return {
     ...instrumentProfile(tuning.instrumentId).engine,
+    ...input,
+    // The native processor already applies median-5. A moderate EMA and
+    // three-frame note hysteresis reduce display chatter without masking a
+    // fresh pluck (onset detection resets the processor on attacks).
+    emaAlpha: 0.32,
+    hysteresisFrames: 3,
     a4: referencePitchHz,
   };
 }
@@ -110,6 +122,8 @@ export function mapTunerReading(
     spreadCents?: number;
     /** User-selected green/in-tune window, in cents. */
     inTuneCents?: number;
+    /** Must match the active native-engine room profile. */
+    minimumConfidence?: number;
   }
 ): TunerState {
   const {
@@ -120,6 +134,7 @@ export function mapTunerReading(
     stringFrequencies,
     spreadCents = 0,
     inTuneCents = 3,
+    minimumConfidence = 0.75,
   } = opts;
 
   if (!isRunning) return IDLE_STATE;
@@ -131,7 +146,7 @@ export function mapTunerReading(
     return { ...IDLE_STATE, isActive: true, rmsDb, signal };
   }
 
-  if (reading.confidence < 0.75 || spreadCents > 24) {
+  if (reading.confidence < minimumConfidence || spreadCents > 24) {
     return {
       ...IDLE_STATE,
       isActive: true,

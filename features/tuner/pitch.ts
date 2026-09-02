@@ -6,7 +6,9 @@
  */
 
 /** How many recent readings the median is taken over. */
-export const SMOOTH_WINDOW = 5;
+// Native output has already passed a median-5 and EMA. Three JS samples are
+// enough to reject a bridge outlier without stacking another long delay.
+export const SMOOTH_WINDOW = 3;
 
 /**
  * Cents from `target` to `frequency`. Negative is flat, positive is sharp.

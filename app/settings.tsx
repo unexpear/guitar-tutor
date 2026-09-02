@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { Colors, CARD_SHADOW } from '../constants/Colors';
 import PressableScale from '../components/PressableScale';
 import { useProgressStore } from '../features/store/progressStore';
@@ -19,6 +20,7 @@ import { minutesFrom } from '../features/practice/streak';
 import * as Linking from 'expo-linking';
 import { useUserPreferencesStore } from '../features/store/userPreferencesStore';
 import { useSettingsStore } from '../features/store/settingsStore';
+import { useTuningStore } from '../features/store/tuningStore';
 import {
   findTuningPreset,
   TUNING_PRESETS,
@@ -29,6 +31,7 @@ import {
 } from '../features/tuner/data/instrumentProfiles';
 
 const ACCENT = Colors.success;
+const APP_VERSION = Constants.expoConfig?.version ?? 'Unknown';
 
 /** 95 -> "1h 35m", 40 -> "40m". */
 function formatDuration(minutes: number): string {
@@ -55,19 +58,13 @@ function SectionCard({
 function SettingRow({
   label,
   right,
-  accessibilityLabel,
 }: {
   label: string;
   right: React.ReactNode;
   accessibilityLabel?: string;
 }) {
   return (
-    <View
-      style={styles.row}
-      accessible={!!accessibilityLabel}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="adjustable"
-    >
+    <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
       {right}
     </View>
@@ -135,6 +132,15 @@ function CustomSlider({
         now: value,
         text: `${value}`,
       }}
+      accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'increment') {
+          onValueChange(Math.min(max, value + step));
+        }
+        if (event.nativeEvent.actionName === 'decrement') {
+          onValueChange(Math.max(min, value - step));
+        }
+      }}
     >
       <View
         style={styles.sliderTouchArea}
@@ -161,6 +167,34 @@ function CustomSlider({
           />
         </View>
       </View>
+    </View>
+  );
+}
+
+function ChoiceButtons<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: readonly { value: T; label: string }[];
+  onChange: (value: T) => void;
+  label: string;
+}) {
+  return (
+    <View style={styles.choiceGroup} accessibilityRole="radiogroup" accessibilityLabel={label}>
+      {options.map((option) => (
+        <PressableScale
+          key={option.value}
+          onPress={() => onChange(option.value)}
+          style={[styles.choiceButton, value === option.value && styles.choiceButtonActive]}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: value === option.value }}
+        >
+          <Text style={[styles.choiceText, value === option.value && styles.choiceTextActive]}>{option.label}</Text>
+        </PressableScale>
+      ))}
     </View>
   );
 }
@@ -222,7 +256,9 @@ function TuningPicker({
   guitarType: 'acoustic' | 'electric' | 'classical';
 }) {
   const [visible, setVisible] = useState(false);
+  const customTunings = useTuningStore((state) => state.customTunings);
   const currentPreset =
+    customTunings.find((preset) => preset.id === current) ??
     findTuningPreset(current, guitarType) ?? TUNING_PRESETS[0];
   const currentProfile = instrumentProfile(currentPreset.instrumentId);
 
@@ -252,6 +288,17 @@ function TuningPicker({
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Select Tuning</Text>
             <ScrollView style={styles.modalScroll}>
+              {customTunings.length > 0 && (
+                <View>
+                  <Text style={styles.modalSectionTitle}>My tunings</Text>
+                  {customTunings.map((preset) => (
+                    <PressableScale key={preset.id} onPress={() => { onSelect(preset.id); setVisible(false); }} style={[styles.modalOption, preset.id === currentPreset.id && styles.modalOptionActive]} accessibilityRole="button">
+                      <View><Text style={styles.modalOptionText}>{preset.name}</Text><Text style={styles.modalOptionNotes}>{preset.strings.join(' · ')}</Text></View>
+                      {preset.id === currentPreset.id && <Text style={styles.checkmark}>✓</Text>}
+                    </PressableScale>
+                  ))}
+                </View>
+              )}
               {INSTRUMENT_PROFILES.map((profile) => {
                 const presets = TUNING_PRESETS.filter(
                   (preset) => preset.instrumentId === profile.id,
@@ -329,6 +376,7 @@ export default function SettingsScreen() {
   const { guitarType, experienceLevel, tuningPreference, resetQuestionnaire } =
     useUserPreferencesStore();
   const selectedTunerPreset =
+    useTuningStore((state) => state.customTunings).find((preset) => preset.id === alternateTuning) ??
     findTuningPreset(alternateTuning, guitarType) ?? TUNING_PRESETS[0];
   const selectedTunerProfile = instrumentProfile(selectedTunerPreset.instrumentId);
 
@@ -338,11 +386,23 @@ export default function SettingsScreen() {
     practiceGoalMinutes,
     referencePitchHz,
     inTuneToleranceCents,
+    tunerSensitivity,
+    meterStyle,
+    leftHanded,
+    hapticsEnabled,
+    spokenFeedbackEnabled,
+    autoAdvanceStrings,
     setSoundsEnabled,
     setSampleVolume,
     setPracticeGoalMinutes,
     setReferencePitchHz,
     setInTuneToleranceCents,
+    setTunerSensitivity,
+    setMeterStyle,
+    setLeftHanded,
+    setHapticsEnabled,
+    setSpokenFeedbackEnabled,
+    setAutoAdvanceStrings,
   } = useSettingsStore();
 
   const handleRetakeQuestionnaire = () => {
@@ -456,6 +516,14 @@ export default function SettingsScreen() {
             A4 defaults to the ISO 440 Hz standard. Use ±1 cent for precise
             setup or a wider window for easier everyday tuning.
           </Text>
+          <SettingRow
+            label="Room sensitivity"
+            right={<ChoiceButtons value={tunerSensitivity} options={[{ value: 'quiet', label: 'Quiet' }, { value: 'normal', label: 'Normal' }, { value: 'noisy', label: 'Noisy' }]} onChange={setTunerSensitivity} label="Tuner room sensitivity" />}
+          />
+          <Text style={styles.hint}>Quiet hears softer notes. Noisy rejects more fans, voices and room sound.</Text>
+          <TouchableOpacity style={styles.retakeButton} onPress={() => router.push('/custom-tunings')} accessibilityRole="button" accessibilityLabel="Manage custom tunings">
+            <Text style={styles.retakeButtonText}>Manage Custom Tunings</Text>
+          </TouchableOpacity>
         </SectionCard>
 
         <SectionCard title="Appearance">
@@ -469,6 +537,8 @@ export default function SettingsScreen() {
           <Text style={styles.hint}>
             Dark only, so the screen stays readable in a dim room.
           </Text>
+          <SettingRow label="Tuner meter" right={<ChoiceButtons value={meterStyle} options={[{ value: 'needle', label: 'Needle' }, { value: 'strobe', label: 'Strobe' }]} onChange={setMeterStyle} label="Tuner meter style" />} />
+          <SettingRow label="Left-handed diagrams" right={<CustomSwitch value={leftHanded} onValueChange={setLeftHanded} accessibilityLabel="Toggle left-handed chord diagrams" />} />
         </SectionCard>
 
         <SectionCard title="Audio">
@@ -497,6 +567,9 @@ export default function SettingsScreen() {
               />
             }
           />
+          <SettingRow label="Haptic in-tune cue" right={<CustomSwitch value={hapticsEnabled} onValueChange={setHapticsEnabled} accessibilityLabel="Toggle haptic in-tune cue" />} />
+          <SettingRow label="Spoken tuner cues" right={<CustomSwitch value={spokenFeedbackEnabled} onValueChange={setSpokenFeedbackEnabled} accessibilityLabel="Toggle spoken tuner cues" />} />
+          <SettingRow label="Auto-advance strings" right={<CustomSwitch value={autoAdvanceStrings} onValueChange={setAutoAdvanceStrings} accessibilityLabel="Toggle automatic string advance" />} />
         </SectionCard>
 
         <SectionCard title="Practice">
@@ -595,8 +668,8 @@ export default function SettingsScreen() {
           />
           <SettingRow
             label="Version"
-            accessibilityLabel="App version: 1.0.0"
-            right={<Text style={styles.rowValue}>1.0.0</Text>}
+            accessibilityLabel={`App version: ${APP_VERSION}`}
+            right={<Text style={styles.rowValue}>{APP_VERSION}</Text>}
           />
           <TouchableOpacity
             onPress={() =>
@@ -611,32 +684,14 @@ export default function SettingsScreen() {
               right={<Text style={styles.rowLink}>View ↗</Text>}
             />
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`https://github.com/unexpear/guitar-tutor/issues/new?title=${encodeURIComponent('App feedback')}&body=${encodeURIComponent(`StandardTune ${APP_VERSION}\n\nWhat happened or what should improve?\n`)}`)}
+            accessibilityRole="link"
+            accessibilityLabel="Send feedback or report incorrect content on GitHub"
+          >
+            <SettingRow label="Feedback & Corrections" right={<Text style={styles.rowLink}>Report ↗</Text>} />
+          </TouchableOpacity>
         </SectionCard>
-
-        {__DEV__ && (
-          <SectionCard title="Developer">
-            <PressableScale
-              onPress={() => router.push('/bass-spike')}
-              style={{
-                backgroundColor: Colors.warning,
-                borderRadius: 10,
-                paddingVertical: 12,
-                alignItems: 'center',
-                marginTop: 4,
-              }}
-              accessibilityLabel="Open bass tuner feasibility harness (E1 gate)"
-              accessibilityRole="button"
-            >
-              <Text style={{ color: '#111', fontWeight: '800', letterSpacing: 0.5 }}>
-                Bass Spike · E1 Gate (dev only)
-              </Text>
-            </PressableScale>
-            <Text style={[styles.hint, { marginTop: 8 }]}>
-              Raw low-frequency harness for checking E1 lock and octave errors without the
-              production tuner&apos;s app-side correction. See the screen for the test protocol.
-            </Text>
-          </SectionCard>
-        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -752,7 +807,7 @@ const styles = StyleSheet.create({
   },
   sliderContainer: {
     width: 160,
-    height: 40,
+    height: 48,
     justifyContent: 'center',
   },
   sliderTouchArea: {
@@ -793,9 +848,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   goalButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: Colors.dark.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -835,6 +890,11 @@ const styles = StyleSheet.create({
   modalScroll: {
     paddingHorizontal: Colors.spacing.md,
   },
+  choiceGroup: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4 },
+  choiceButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 9, borderRadius: 8, borderWidth: 1, borderColor: Colors.dark.cardBorder },
+  choiceButtonActive: { backgroundColor: ACCENT, borderColor: ACCENT },
+  choiceText: { color: Colors.dark.muted, fontSize: 12, fontWeight: '600' },
+  choiceTextActive: { color: '#071408' },
   stepperValue: {
     minWidth: 62,
     color: ACCENT,

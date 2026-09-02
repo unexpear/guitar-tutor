@@ -102,7 +102,13 @@ function ChordCard({
   const color = Colors.dark;
   return (
     <Animated.View entering={FadeInDown.delay(index * 30).springify()}>
-      <PressableScale onPress={onPress} scale={0.96} style={[styles.card, CARD_SHADOW, { width: cardWidth }]}>
+      <PressableScale
+        onPress={onPress}
+        scale={0.96}
+        style={[styles.card, CARD_SHADOW, { width: cardWidth }]}
+        accessibilityLabel={`${chord.name}, ${CHORD_TYPE_LABELS[chord.type]} chord`}
+        accessibilityHint="Shows fingering and reference audio"
+      >
         <ChordDiagram chord={chord} small />
         <Text style={[styles.cardName, { color: color.text }]}>{chord.name}</Text>
         <Text style={[styles.cardType, { color: color.muted }]}>
@@ -131,7 +137,12 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
 
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.detailOverlay}>
-      <Pressable style={styles.detailBackdrop} onPress={onClose} />
+      <Pressable
+        style={styles.detailBackdrop}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close chord details"
+      />
       <Animated.View
         entering={FadeInDown.springify()}
         style={[styles.detailSheet, { backgroundColor: color.surfaceElevated }]}
@@ -217,7 +228,11 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
           </PressableScale>
         </View>
 
-        <PressableScale onPress={onClose} style={styles.detailCloseBtn}>
+        <PressableScale
+          onPress={onClose}
+          style={styles.detailCloseBtn}
+          accessibilityLabel="Close chord details"
+        >
           <Text style={[styles.detailCloseText, { color: color.muted }]}>Close</Text>
         </PressableScale>
       </Animated.View>
@@ -307,7 +322,12 @@ export default function ChordsScreen() {
           autoCapitalize="characters"
         />
         {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')} hitSlop={12}>
+          <Pressable
+            onPress={() => setSearch('')}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Clear chord search"
+          >
             <Ionicons name="close" size={18} color={color.muted} />
           </Pressable>
         )}
@@ -438,7 +458,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterBtn: {
-    height: 36,
+    minHeight: 48,
     paddingHorizontal: 16,
     borderRadius: 18,
     borderWidth: 1,
@@ -608,6 +628,7 @@ const styles = StyleSheet.create({
   detailCloseBtn: {
     paddingHorizontal: 32,
     paddingVertical: 12,
+    minHeight: 48,
     borderRadius: 12,
   },
   detailCloseText: {

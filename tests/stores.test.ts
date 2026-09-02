@@ -46,6 +46,7 @@ function resetProgress() {
   useProgressStore.setState({
     completedLessons: {},
     currentStreak: 0,
+    lifetimePracticeSeconds: 0,
     totalPracticeMinutes: 0,
     favoriteChords: [],
     alternateTuning: 'Standard E',
@@ -122,6 +123,7 @@ test('practice accrues into the local day and moves the streak', () => {
   assert.equal(state.currentStreak, 1);
   assert.equal(state.longestStreak, 1);
   assert.equal(state.totalPracticeMinutes, 1); // 90s floors to 1 minute
+  assert.equal(state.lifetimePracticeSeconds, 90);
 
   // Same day accumulates seconds but must not inflate the streak.
   state.recordPractice(90, DAY);
@@ -129,6 +131,24 @@ test('practice accrues into the local day and moves the streak', () => {
   assert.equal(state.practiceSecondsToday(DAY), 180);
   assert.equal(state.currentStreak, 1);
   assert.equal(state.totalPracticeMinutes, 3); // 180s = 3
+  assert.equal(state.lifetimePracticeSeconds, 180);
+});
+
+test('lifetime practice time survives pruning of old daily entries', () => {
+  resetProgress();
+  useProgressStore.setState({
+    lifetimePracticeSeconds: 3_600,
+    totalPracticeMinutes: 60,
+    practiceLog: { '2024-01-01': 3_600 },
+  });
+
+  const current = new Date(2026, 2, 15, 12, 0);
+  useProgressStore.getState().recordPractice(60, current);
+  const state = useProgressStore.getState();
+
+  assert.deepEqual(state.practiceLog, { '2026-03-15': 60 });
+  assert.equal(state.lifetimePracticeSeconds, 3_660);
+  assert.equal(state.totalPracticeMinutes, 61);
 });
 
 test('practising the next day extends the streak; a gap resets it', () => {
@@ -227,6 +247,8 @@ test('rehydrating restores previously persisted lesson progress', async () => {
   assert.equal(state.isLessonCompleted('beginner-open-chords'), true);
   assert.equal(state.currentStreak, 3);
   assert.equal(state.longestStreak, 5);
+  assert.equal(state.lifetimePracticeSeconds, 720, 'v0 totals migrate to lifetime seconds');
+  assert.equal(state.totalPracticeMinutes, 12);
   assert.equal(state.practiceSecondsToday(DAY), 600);
   assert.deepEqual(state.favoriteChords, ['G']);
 });
@@ -242,6 +264,9 @@ test('settings start with sane defaults', () => {
   assert.equal(s.practiceGoalMinutes, 15);
   assert.equal(s.referencePitchHz, 440);
   assert.equal(s.inTuneToleranceCents, 3);
+  assert.equal(s.tunerSensitivity, 'normal');
+  assert.equal(s.meterStyle, 'needle');
+  assert.equal(s.leftHanded, false);
 });
 
 test('sample volume is clamped to 0-100 and rounded', () => {

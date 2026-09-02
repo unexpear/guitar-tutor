@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, GestureResponderEvent } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, GestureResponderEvent } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import PressableScale from '../../components/PressableScale';
 import Animated, {
@@ -203,6 +203,13 @@ export default function MetronomeScreen() {
   );
 
   const sliderPercentage = ((bpm - MIN_BPM) / (MAX_BPM - MIN_BPM)) * 100;
+  const handleTempoAccessibilityAction = useCallback(
+    (event: { nativeEvent: { actionName: string } }) => {
+      if (event.nativeEvent.actionName === 'increment') handleBpmChange(bpm + 1);
+      if (event.nativeEvent.actionName === 'decrement') handleBpmChange(bpm - 1);
+    },
+    [bpm, handleBpmChange],
+  );
 
   return (
     <View style={styles.container}>
@@ -210,7 +217,12 @@ export default function MetronomeScreen() {
         <Text style={styles.headerTitle}>Metronome</Text>
       </View>
 
-      <View style={styles.body}>
+      <ScrollView
+        style={styles.bodyScroll}
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <View style={styles.beatsContainer} accessibilityRole="none">
           {Array.from({ length: beatCount }).map((_, index) => (
             <BeatDot
@@ -249,6 +261,8 @@ export default function MetronomeScreen() {
             accessibilityRole="adjustable"
             accessibilityLabel="Tempo slider"
             accessibilityValue={{ min: MIN_BPM, max: MAX_BPM, now: bpm, text: `${bpm} BPM` }}
+            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={handleTempoAccessibilityAction}
           >
             <View style={styles.sliderTrack} pointerEvents="none">
               <View style={[styles.sliderFill, { width: `${sliderPercentage}%` }]} />
@@ -321,7 +335,7 @@ export default function MetronomeScreen() {
             ))}
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -341,8 +355,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  body: {
+  bodyScroll: {
     flex: 1,
+  },
+  body: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
@@ -424,9 +441,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bpmStepButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#1a1a3e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -438,7 +455,7 @@ const styles = StyleSheet.create({
   },
   sliderTouchArea: {
     flex: 1,
-    height: 40,
+    height: 48,
     justifyContent: 'center',
   },
   sliderTrack: {
@@ -521,6 +538,7 @@ const styles = StyleSheet.create({
   timeSigButton: {
     paddingHorizontal: 18,
     paddingVertical: 10,
+    minHeight: 48,
     borderRadius: 12,
     backgroundColor: '#1a1a3e',
   },

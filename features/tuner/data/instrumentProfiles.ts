@@ -1,6 +1,6 @@
 import type { TunerConfig } from 'react-native-tuner-engine';
 
-export type InstrumentFamily = 'guitar' | 'bass' | 'ukulele' | 'chromatic';
+export type InstrumentFamily = 'guitar' | 'bass' | 'ukulele' | 'folk' | 'orchestral' | 'chromatic';
 
 export type InstrumentId =
   | 'guitar-acoustic'
@@ -15,6 +15,11 @@ export type InstrumentId =
   | 'bass-6'
   | 'ukulele-standard'
   | 'ukulele-baritone'
+  | 'mandolin'
+  | 'banjo-5'
+  | 'violin'
+  | 'viola'
+  | 'cello'
   | 'chromatic';
 
 export interface InstrumentProfile {
@@ -221,6 +226,11 @@ export const INSTRUMENT_PROFILES: readonly InstrumentProfile[] = [
       quality: 'balanced',
     },
   },
+  { id: 'mandolin', family: 'folk', name: 'Mandolin', shortName: 'Mandolin', icon: '♬', experimental: true, engine: { ...COMMON_ENGINE, minFrequency: 150, maxFrequency: 1400, hpfCutoffHz: 100, quality: 'balanced' } },
+  { id: 'banjo-5', family: 'folk', name: '5-String Banjo', shortName: 'Banjo', icon: '♬', experimental: true, engine: { ...COMMON_ENGINE, minFrequency: 120, maxFrequency: 1200, hpfCutoffHz: 80, quality: 'balanced' } },
+  { id: 'violin', family: 'orchestral', name: 'Violin', shortName: 'Violin', icon: '♬', experimental: true, engine: { ...COMMON_ENGINE, minFrequency: 150, maxFrequency: 1400, hpfCutoffHz: 100, quality: 'balanced' } },
+  { id: 'viola', family: 'orchestral', name: 'Viola', shortName: 'Viola', icon: '♬', experimental: true, engine: { ...COMMON_ENGINE, minFrequency: 100, maxFrequency: 1000, hpfCutoffHz: 70, quality: 'balanced' } },
+  { id: 'cello', family: 'orchestral', name: 'Cello', shortName: 'Cello', icon: '♬', experimental: true, engine: { ...COMMON_ENGINE, minFrequency: 50, maxFrequency: 600, hpfCutoffHz: 35, quality: 'high-accuracy' } },
   {
     id: 'chromatic',
     family: 'chromatic',

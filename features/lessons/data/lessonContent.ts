@@ -9,6 +9,22 @@ export interface LessonSection {
  * intentionally has no entry here.
  */
 export const LESSON_CONTENT: Record<string, LessonSection[]> = {
+  'bass-first-notes': [
+    { heading: 'Tune before you practise', body: 'A standard four-string bass is E1-A1-D2-G2 from the thickest string to the thinnest. Five-string bass adds B0 below E; six-string adds C3 above G. In the tuner choose your exact bass, select one string, pluck once near the neck pickup, and let it ring. Guided mode is especially useful on B0 and E1 because phones can hear a stronger overtone than the fundamental.' },
+    { heading: 'Clean low notes', body: 'Rest the bass against your body with the neck slightly raised. Fret immediately behind the metal fret using the pad near your fingertip. Use only enough pressure to stop buzz. If the tuner jumps, mute the other strings with both hands and move the phone closer to the instrument or a quiet amplifier.' },
+  ],
+  'bass-right-hand': [
+    { heading: 'Alternate index and middle', body: 'Pluck toward the next thicker string, alternating index and middle fingers. Start on one open string and listen for equal volume and tone. The motion is small: the finger passes through the string and comes to rest on its neighbour instead of pulling upward away from the body.' },
+    { heading: 'Muting is half the technique', body: 'Let the thumb rest on a pickup or a lower string. As you move to thinner strings, let the thumb follow. Your fretting hand can lightly touch unused higher strings. Play E-E-rest-E at 60 BPM and listen during every rest; silence is the goal.' },
+  ],
+  'bass-fretboard': [
+    { heading: 'Learn landmarks first', body: 'The open strings repeat at fret 12. On any string, the octave is twelve frets higher. A second useful octave shape is two strings thinner and two frets higher, as long as both strings are tuned in fourths. Start with E, A, D and G at frets 0, 5, 7 and 12.' },
+    { heading: 'Five- and six-string extensions', body: 'A low B string follows the same chromatic sequence as every other string: C is fret 1, D fret 3, E fret 5. A high C string begins at C3. Use Fretboard Explorer in Practice Games and say each answer aloud before tapping it.' },
+  ],
+  'bass-groove': [
+    { heading: 'Make the click feel like a drummer', body: 'Set the metronome to 60 BPM and play one root on each click. When that is effortless, keep the same tempo and play two even eighth notes per click. Do not chase a late note; leave it behind and meet the next click cleanly.' },
+    { heading: 'Add rests and changes', body: 'Try one bar each of E, A, D and A. Then play beat one, rest on beat two, and play beats three and four. Record a minute in Rhythm Master. Consistent space between notes matters more than speed.' },
+  ],
   'beginner-holding-the-guitar': [
     {
       heading: 'Sit down and get it settled',

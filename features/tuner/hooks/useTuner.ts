@@ -32,9 +32,10 @@ export function useTuner(
   const inTuneCents = useSettingsStore(
     (state) => state.inTuneToleranceCents,
   );
+  const tunerSensitivity = useSettingsStore((state) => state.tunerSensitivity);
   const engineOptions = useMemo(
-    () => tunerEngineOptionsFor(tuning, referencePitchHz),
-    [referencePitchHz, tuning.instrumentId],
+    () => tunerEngineOptionsFor(tuning, referencePitchHz, tunerSensitivity),
+    [referencePitchHz, tunerSensitivity, tuning.instrumentId],
   );
   const engine = useTunerEngine(engineOptions);
   const { start, stop, latest, isRunning, error } = engine;
@@ -84,6 +85,8 @@ export function useTuner(
   const windowRef = useRef<number[]>([]);
   const [smoothHz, setSmoothHz] = useState(0);
   const [spreadCents, setSpreadCents] = useState(0);
+  const [heldReading, setHeldReading] = useState<typeof latest>(null);
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Depend on the number, never on `latest` itself. The engine hands back a
   // fresh object every render, so an object dependency here re-ran the
@@ -91,34 +94,70 @@ export function useTuner(
   // exceeded" the moment a pitch arrived.
   const rawHz = latest?.hasPitch ? latest.frequency : 0;
 
+  const rawConfidence = latest?.confidence ?? 0;
+  const rawHasPitch = latest?.hasPitch ?? false;
+  const rawRmsDb = latest?.rmsDb ?? -120;
+
   useEffect(() => {
-    if (!isRunning || rawHz <= 0 || !Number.isFinite(rawHz)) {
+    if (!isRunning) {
+      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+      clearTimerRef.current = null;
       windowRef.current = [];
       setSmoothHz(0);
       setSpreadCents(0);
+      setHeldReading(null);
       return;
     }
+    if (!rawHasPitch || rawHz <= 0 || !Number.isFinite(rawHz)) {
+      // Real microphones often drop one or two frames during a decaying
+      // sustain. Keep the last trustworthy pitch briefly instead of flashing
+      // the tuner blank; prolonged silence/noise still clears it promptly.
+      if (!clearTimerRef.current) {
+        clearTimerRef.current = setTimeout(() => {
+          windowRef.current = [];
+          setSmoothHz(0);
+          setSpreadCents(0);
+          setHeldReading(null);
+          clearTimerRef.current = null;
+        }, 450);
+      }
+      return;
+    }
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    clearTimerRef.current = null;
     windowRef.current = pushWindow(windowRef.current, rawHz);
     setSmoothHz(median(windowRef.current));
     setSpreadCents(frequencySpreadCents(windowRef.current));
-  }, [rawHz, isRunning]);
+    setHeldReading(latest);
+    return () => {
+      // Do not clear here: this cleanup runs for each new audio frame.
+    };
+  }, [rawConfidence, rawHasPitch, rawHz, rawRmsDb, isRunning]);
+
+  useEffect(() => () => {
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+  }, []);
 
   // A new target means the old readings describe a different string.
   // Keyed on the stable id rather than the object, for the same reason.
   const tuningId = tuning.id;
   useEffect(() => {
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    clearTimerRef.current = null;
     windowRef.current = [];
     setSmoothHz(0);
     setSpreadCents(0);
+    setHeldReading(null);
   }, [targetStringIndex, tuningId, tuning.instrumentId]);
 
   const state: TunerState = useMemo(
     () =>
-      mapTunerReading(latest, {
+      mapTunerReading(heldReading ?? latest, {
         isRunning,
         smoothHz,
         spreadCents,
         inTuneCents,
+        minimumConfidence: engineOptions.confidenceThreshold,
         targetStringIndex,
         tuning,
         stringFrequencies,
@@ -126,7 +165,9 @@ export function useTuner(
     [
       inTuneCents,
       isRunning,
+      heldReading,
       latest,
+      engineOptions.confidenceThreshold,
       smoothHz,
       spreadCents,
       stringFrequencies,

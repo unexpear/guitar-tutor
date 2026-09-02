@@ -10,6 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
  */
 const DIR = new URL('../distribution/whatsnew/', import.meta.url);
 const MAX_CHARS = 500;
+const WORKFLOW = new URL('../.github/workflows/build-release.yml', import.meta.url);
 
 const files = readdirSync(DIR).filter((f) => f.startsWith('whatsnew-'));
 
@@ -28,3 +29,18 @@ for (const file of files) {
     assert.ok(text.trim().length > 0, `${file} is empty`);
   });
 }
+
+test('release workflow uses current Node-based actions and avoids a duplicate main build', () => {
+  const workflow = readFileSync(WORKFLOW, 'utf8');
+
+  assert.match(workflow, /actions\/checkout@v6/);
+  assert.match(workflow, /actions\/setup-node@v6/);
+  assert.match(workflow, /node-version: '24'/);
+  assert.match(workflow, /actions\/upload-artifact@v6/);
+  assert.match(workflow, /actions\/download-artifact@v6/);
+  assert.match(workflow, /softprops\/action-gh-release@v3/);
+  assert.match(workflow, /r0adkll\/upload-google-play@v1\.1\.5/);
+  assert.match(workflow, /tracks: alpha/);
+  assert.match(workflow, /paths-ignore: \['app\.json'\]/);
+  assert.doesNotMatch(workflow, /^\s+track: alpha$/m);
+});

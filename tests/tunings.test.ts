@@ -69,14 +69,19 @@ test('garbage input returns 0 instead of NaN or nonsense', () => {
   }
 });
 
-test('the catalogue covers guitars, basses, ukuleles and chromatic tuning', () => {
-  assert.equal(TUNING_PRESETS.length, 31);
+test('the catalogue covers guitars, basses, folk, orchestral, ukulele and chromatic tuning', () => {
+  assert.equal(TUNING_PRESETS.length, 36);
   const acoustic = TUNING_PRESETS.filter((p) => p.guitarType === 'acoustic');
   const electric = TUNING_PRESETS.filter((p) => p.guitarType === 'electric');
   assert.equal(acoustic.length, 8);
   assert.equal(electric.length, 8);
   assert.ok(TUNING_PRESETS.some((p) => p.instrumentId.startsWith('bass-')));
   assert.ok(TUNING_PRESETS.some((p) => p.instrumentId.startsWith('ukulele-')));
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId === 'mandolin'));
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId === 'banjo-5'));
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId === 'violin'));
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId === 'viola'));
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId === 'cello'));
   assert.ok(TUNING_PRESETS.some((p) => p.instrumentId === 'chromatic'));
 });
 
@@ -112,7 +117,7 @@ test('single-course linear instruments ascend in pitch from low to high', () => 
   for (const p of TUNING_PRESETS) {
     if (
       p.instrumentId === 'chromatic' ||
-      p.instrumentId === 'ukulele-standard' ||
+      p.reentrant ||
       p.coursePairs
     ) continue;
     const freqs = p.strings.map((n) => noteToFrequency(n));

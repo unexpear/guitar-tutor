@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Alert,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -17,6 +16,10 @@ import ChordQuizGame, {
 import ChordChangesGame, {
   CHORD_CHANGES_ID,
 } from '../../features/games/chordChanges/ChordChangesGame';
+import TrainingGame, { type TrainingGameId } from '../../features/games/training/TrainingGame';
+import ProgressionBuilderGame from '../../features/games/progression/ProgressionBuilderGame';
+import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
+import { getDrill } from '../../features/lessons/data/drills';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -27,8 +30,6 @@ interface Game {
   icon: string;
   difficulty: Difficulty;
   color: string;
-  /** False while a game is still just a card. */
-  playable?: boolean;
 }
 
 const GAMES: Game[] = [
@@ -39,7 +40,6 @@ const GAMES: Game[] = [
     icon: '🧠',
     difficulty: 'Beginner',
     color: '#6C63FF',
-    playable: true,
   },
   {
     id: CHORD_CHANGES_ID,
@@ -48,12 +48,11 @@ const GAMES: Game[] = [
     icon: '🔁',
     difficulty: 'Beginner',
     color: '#4CAF50',
-    playable: true,
   },
   {
     id: 'scale-sprint',
     title: 'Scale Sprint',
-    description: 'Race through scales as fast as you can',
+    description: 'Play a C major scale with live pitch scoring',
     icon: '⚡',
     difficulty: 'Intermediate',
     color: '#FF6B6B',
@@ -85,10 +84,18 @@ const GAMES: Game[] = [
   {
     id: 'speed-challenge',
     title: 'Speed Challenge',
-    description: 'Test your picking speed and accuracy',
+    description: 'Run the pentatonic box with live pitch scoring',
     icon: '🏎️',
     difficulty: 'Advanced',
     color: '#FF8A5B',
+  },
+  {
+    id: 'progression-builder',
+    title: 'Progression Builder',
+    description: 'Build, hear and save your own chord loops',
+    icon: '🎼',
+    difficulty: 'Beginner',
+    color: '#64B5F6',
   },
 ];
 
@@ -116,6 +123,12 @@ export default function PracticeGamesScreen() {
     if (params.game) router.setParams({ game: undefined, a: undefined, b: undefined });
   }, [params.game, router]);
   const highScores = useProgressStore((s) => s.gameHighScores);
+  const recordGameScore = useProgressStore((s) => s.recordGameScore);
+  const activeDrill = useMemo(() => {
+    if (activeGame === 'scale-sprint') return getDrill('intermediate-scales-101');
+    if (activeGame === 'speed-challenge') return getDrill('advanced-improvisation');
+    return undefined;
+  }, [activeGame]);
 
   // Chord Changes keeps a best per chord pair, so the card shows the best of
   // them rather than a single game-wide number.
@@ -134,26 +147,16 @@ export default function PracticeGamesScreen() {
   const cardWidth = (width - sidePadding * 2 - cardGap) / 2;
 
   const handleGamePress = useCallback((game: Game) => {
-    if (game.playable) {
-      setActiveGame(game.id);
-      return;
-    }
-    Alert.alert(
-      game.title,
-      'This game is not built yet. Chord Quiz and Chord Changes are ready now.',
-      [{ text: 'OK' }],
-    );
+    setActiveGame(game.id);
   }, []);
 
   const renderGameCard = (game: Game) => (
     <PressableScale
       key={game.id}
-      style={[styles.gameCard, { width: cardWidth }, !game.playable && styles.gameCardSoon]}
+      style={[styles.gameCard, { width: cardWidth }]}
       onPress={() => handleGamePress(game)}
       accessibilityRole="button"
-      accessibilityLabel={`${game.title}: ${game.description}. Difficulty ${game.difficulty}${
-        game.playable ? '' : '. Not built yet'
-      }`}
+      accessibilityLabel={`${game.title}: ${game.description}. Difficulty ${game.difficulty}`}
     >
       <View style={[styles.iconContainer, { backgroundColor: game.color + '20' }]}>
         <Text style={styles.gameIcon}>{game.icon}</Text>
@@ -173,12 +176,8 @@ export default function PracticeGamesScreen() {
         >
           <Text style={styles.difficultyText}>{game.difficulty}</Text>
         </View>
-        {game.playable ? (
-          bestFor(game.id) > 0 && (
-            <Text style={styles.bestScore}>Best {bestFor(game.id)}</Text>
-          )
-        ) : (
-          <Text style={styles.soonLabel}>Soon</Text>
+        {bestFor(game.id) > 0 && (
+          <Text style={styles.bestScore}>Best {bestFor(game.id)}</Text>
         )}
       </View>
     </PressableScale>
@@ -192,6 +191,21 @@ export default function PracticeGamesScreen() {
       <ChordChangesGame
         onExit={closeGame}
         initialPair={params.a && params.b ? [params.a, params.b] : undefined}
+      />
+    );
+  }
+  if (activeGame === 'ear-training' || activeGame === 'rhythm-master' || activeGame === 'fretboard-explorer') {
+    return <TrainingGame gameId={activeGame as TrainingGameId} onExit={closeGame} />;
+  }
+  if (activeGame === 'progression-builder') {
+    return <ProgressionBuilderGame onExit={closeGame} />;
+  }
+  if (activeDrill && activeGame) {
+    return (
+      <PlayAlongLesson
+        drill={activeDrill}
+        onClose={closeGame}
+        onFinish={(score) => recordGameScore(activeGame, score)}
       />
     );
   }
@@ -245,9 +259,6 @@ const styles = StyleSheet.create({
     padding: 16,
     ...CARD_SHADOW,
   },
-  gameCardSoon: {
-    opacity: 0.55,
-  },
   iconContainer: {
     width: 48,
     height: 48,
@@ -281,12 +292,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: Colors.success,
-  },
-  soonLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.dark.muted,
-    opacity: 0.7,
   },
   difficultyBadge: {
     alignSelf: 'flex-start',

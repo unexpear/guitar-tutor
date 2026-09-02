@@ -1,12 +1,12 @@
 # StandardTune Privacy Policy
 
-**Effective date:** August 21, 2026
+**Effective date:** September 2, 2026
 
-StandardTune is a free, open source guitar tuner and learning app. This policy explains what data the app handles. The short version: **we collect nothing.**
+StandardTune is a free, open source instrument tuner and guitar learning app. This policy explains what data the app handles. The short version: **we collect nothing.**
 
 ## Microphone
 
-StandardTune uses your device's microphone for exactly one purpose: detecting the pitch of your guitar while the tuner or a play-along practice drill is active.
+StandardTune uses your device's microphone for exactly one purpose: detecting the pitch of your guitar, bass, ukulele, or other instrument while the tuner or a play-along practice drill is active.
 
 - Audio is analyzed **on your device, in real time, in memory only** (the app's built-in pitch-detection engine).
 - Audio is **never recorded, never stored, and never transmitted** anywhere.

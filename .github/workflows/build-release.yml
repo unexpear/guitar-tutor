@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    # The release helper's main-branch commit only changes app.json, then it
+    # pushes a tag for the same commit. Let the tag own that expensive build.
+    paths-ignore: ['app.json']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -20,12 +23,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Setup Java
@@ -35,7 +38,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install npm dependencies
         run: npm ci
@@ -114,7 +117,7 @@ jobs:
 
       - name: Upload release APK artifact (signed)
         if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-release-apk
           path: android/app/build/outputs/apk/release/*.apk
@@ -122,7 +125,7 @@ jobs:
 
       - name: Upload release AAB artifact
         if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
@@ -133,7 +136,7 @@ jobs:
       # and never emit an AAB that looks uploadable.
       - name: Upload UNSIGNED release APK artifact
         if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && env.HAS_SIGNING_KEY != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-release-apk-DEBUG-SIGNED-not-for-play
           path: android/app/build/outputs/apk/release/*.apk
@@ -152,7 +155,7 @@ jobs:
 
       - name: Upload debug APK artifact
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
@@ -163,7 +166,7 @@ jobs:
         # A GitHub Release is a convenience. The Play upload is the point, and
         # it is a downstream job, so this must not be able to fail the build.
         continue-on-error: true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: android/app/build/outputs/apk/release/*.apk
           generate_release_notes: true
@@ -188,23 +191,23 @@ jobs:
     steps:
       - name: Checkout repository
         if: env.HAS_PLAY_SA == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download release AAB
         if: env.HAS_PLAY_SA == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: app-release-aab
           path: aab
 
       - name: Upload to Play closed testing track
         if: env.HAS_PLAY_SA == 'true'
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.standardtune.guitar
           releaseFiles: aab/*.aab
-          track: alpha
+          tracks: alpha
           # 'completed' rolls straight out to the closed testers. The point
           # of tagging is not to then go and click a button in the console;
           # switch to 'draft' if you ever want a human gate before testers

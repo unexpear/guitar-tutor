@@ -15,6 +15,8 @@ interface HeadstockProps {
   guitarType?: 'acoustic' | 'electric';
   highlightColor?: string;
   highlightedPeg?: number;
+  width?: number;
+  height?: number;
 }
 
 /**
@@ -72,11 +74,15 @@ function HeadstockBase({
   colors,
   highlightColor = '#4CAF50',
   highlightedPeg,
+  width = 200,
+  height = 320,
   label,
 }: {
   colors: FinishColors;
   highlightColor?: string;
   highlightedPeg?: number;
+  width?: number;
+  height?: number;
   label: string;
 }) {
   const p = colors.idPrefix;
@@ -89,7 +95,7 @@ function HeadstockBase({
 
   return (
     <View style={{ alignItems: 'center' }}>
-      <Svg width={200} height={320} viewBox="0 0 200 320" accessibilityLabel={label}>
+      <Svg width={width} height={height} viewBox="0 0 200 320" accessibilityLabel={label}>
         <Defs>
           <LinearGradient id={`${p}Face`} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={colors.faceTop} />
@@ -296,6 +302,8 @@ export function AcousticHeadstock(props: HeadstockProps) {
       label="Acoustic guitar headstock"
       highlightColor={props.highlightColor}
       highlightedPeg={props.highlightedPeg}
+      width={props.width}
+      height={props.height}
     />
   );
 }
@@ -307,6 +315,8 @@ export function ElectricHeadstock(props: HeadstockProps) {
       label="Electric guitar headstock"
       highlightColor={props.highlightColor}
       highlightedPeg={props.highlightedPeg}
+      width={props.width}
+      height={props.height}
     />
   );
 }
