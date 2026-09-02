@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Modal,
   Pressable,
-  FlatList,
   SectionList,
   useWindowDimensions,
 } from 'react-native';
@@ -21,9 +20,15 @@ import Animated, {
 import { useTuner } from '../../features/tuner/hooks/useTuner';
 import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
 import {
+  findTuningPreset,
+  tuningTargetLabel,
   TUNING_PRESETS,
   TuningPreset,
 } from '../../features/tuner/data/tunings';
+import {
+  INSTRUMENT_PROFILES,
+  instrumentProfile,
+} from '../../features/tuner/data/instrumentProfiles';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
@@ -33,16 +38,10 @@ import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
 import { useMicReleaseOnLeave } from '../../features/audio/useMicReleaseOnLeave';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 
-const SECTIONS = [
-  {
-    title: 'Acoustic',
-    data: TUNING_PRESETS.filter((p) => p.guitarType === 'acoustic'),
-  },
-  {
-    title: 'Electric',
-    data: TUNING_PRESETS.filter((p) => p.guitarType === 'electric'),
-  },
-];
+const SECTIONS = INSTRUMENT_PROFILES.map((profile) => ({
+  title: profile.name,
+  data: TUNING_PRESETS.filter((preset) => preset.instrumentId === profile.id),
+})).filter((section) => section.data.length > 0);
 
 const NEEDLE_TRACK_WIDTH = 288;
 const GAUGE_TICKS = Array.from({ length: 21 }, (_, i) => i);
@@ -62,6 +61,7 @@ function StringChip({
   index,
   label,
   note,
+  positionLabel,
   size,
   selected,
   aimed,
@@ -72,6 +72,7 @@ function StringChip({
   index: number;
   label: string;
   note: string;
+  positionLabel: string;
   size: number;
   selected: boolean;
   aimed: boolean;
@@ -101,7 +102,7 @@ function StringChip({
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`String ${index + 1}, ${label}${
+      accessibilityLabel={`${positionLabel}, ${label}${
         selected ? ', selected for tuning' : ''
       }${
         live
@@ -135,7 +136,9 @@ export default function TunerScreen() {
   const alternateTuning = useProgressStore((s) => s.alternateTuning);
   const setAlternateTuning = useProgressStore((s) => s.setAlternateTuning);
   const guitarType = useUserPreferencesStore((s) => s.guitarType);
-  const [tuning, setTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
+  const [tuning, setTuning] = useState<TuningPreset>(
+    () => findTuningPreset(alternateTuning, guitarType) ?? TUNING_PRESETS[0],
+  );
   const [pickerVisible, setPickerVisible] = useState(false);
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
   /** The string the user picked, or null to let the tuner guess. */
@@ -147,6 +150,7 @@ export default function TunerScreen() {
   usePracticeTimer(tuner.isActive);
   useMicReleaseOnLeave(tuner.stopListening, tuner.isActive);
   const { playNote } = useGuitarSound();
+  const profile = instrumentProfile(tuning.instrumentId);
 
   // Peg labels follow the selected tuning (e.g. Drop D shows D A D G B E).
   const stringLabels = tuning.strings.map((n, i) => {
@@ -169,9 +173,8 @@ export default function TunerScreen() {
 
   const isTuned = hasPitch && tuner.verdict === 'in-tune';
 
-  // One rule for every colour on this screen: green only at dead on, amber
-  // within nine cents, red past ten. The old ±5 green disagreed with the
-  // number printed underneath it.
+  // One verdict drives every colour on this screen. Its green window comes
+  // from Settings; amber remains the near zone and red begins at ten cents.
   const centsColor =
     hasPitch && tuner.verdict ? VERDICT_COLORS[tuner.verdict] : Colors.dark.muted;
   const noteColor = isTuned ? Colors.success : Colors.dark.text;
@@ -185,11 +188,23 @@ export default function TunerScreen() {
     ? tuner.isActive
       ? 'Listening…'
       : 'Ready'
-    : Math.abs(displayCents) <= 5
+    : tuner.verdict === 'in-tune'
     ? 'In Tune'
     : displayCents > 0
-    ? 'Sharp'
-    : 'Flat';
+    ? 'Tune Down ↓'
+    : 'Tune Up ↑';
+  const signalHint =
+    tuner.harmonicRatio !== 1
+      ? tuner.harmonicRatio > 1
+        ? `Overtone corrected ×${tuner.harmonicRatio} · mute the other strings`
+        : 'Octave error corrected · pluck the selected string again'
+      : tuner.signal === 'noisy'
+      ? 'Background sound is high · move closer and mute every other string'
+      : tuner.signal === 'unstable'
+      ? 'Let one string ring clearly · avoid touching the microphone'
+      : tuner.signal === 'quiet'
+      ? 'Play one string clearly near the microphone'
+      : '';
   const clampedCents = Math.max(-50, Math.min(50, displayCents));
 
   // Animate the needle instead of snapping per pitch event.
@@ -249,27 +264,37 @@ export default function TunerScreen() {
 
   const handleSelectTuning = useCallback(
     (preset: TuningPreset) => {
+      if (tuner.isActive) void tuner.stopListening();
       setTuning(preset);
       setTunedStrings(new Set());
+      setSelectedString(null);
       setPickerVisible(false);
       // Remember it, so Settings and the next launch agree with what is on
       // screen here.
-      setAlternateTuning(preset.name);
+      setAlternateTuning(preset.id);
     },
-    [setAlternateTuning],
+    [setAlternateTuning, tuner.isActive, tuner.stopListening],
   );
 
   // Adopt the saved tuning once the store rehydrates, and whenever it is
   // changed from Settings. Several presets share a name across guitar types
   // (Drop D exists for both), so prefer the one matching the player's guitar.
   useEffect(() => {
-    if (!alternateTuning || alternateTuning === tuning.name) return;
-    const matches = TUNING_PRESETS.filter((p) => p.name === alternateTuning);
-    const preset = matches.find((p) => p.guitarType === guitarType) ?? matches[0];
+    if (!alternateTuning) return;
+    const preset = findTuningPreset(alternateTuning, guitarType);
     if (!preset) return;
+    if (preset.id === tuning.id) return;
+    if (tuner.isActive) void tuner.stopListening();
     setTuning(preset);
     setTunedStrings(new Set());
-  }, [alternateTuning, guitarType, tuning.name]);
+    setSelectedString(null);
+  }, [
+    alternateTuning,
+    guitarType,
+    tuner.isActive,
+    tuner.stopListening,
+    tuning.id,
+  ]);
 
   const prevActiveRef = React.useRef(false);
   useEffect(() => {
@@ -290,7 +315,12 @@ export default function TunerScreen() {
     transform: [{ scale: pulseValue.value }],
   }));
 
-  const circleSize = Math.min(width * 0.12, 48);
+  const circleSize = Math.min(
+    width * (tuning.strings.length > 8 ? 0.09 : 0.12),
+    tuning.strings.length > 8 ? 40 : 48,
+  );
+  const usesGuitarHeadstock =
+    tuning.strings.length === 6 && profile.headstock !== undefined;
 
   // Whichever string the readout currently describes: the chosen one, or
   // the detector's guess when nothing is chosen.
@@ -321,15 +351,21 @@ export default function TunerScreen() {
           <Text style={styles.tuningLabel}>{tuning.name}</Text>
           <Text style={styles.tuningChevron}>v</Text>
         </PressableScale>
+        <Text style={styles.instrumentLabel}>
+          {profile.name} · A4 {tuner.referencePitchHz} Hz
+          {profile.experimental ? ' · experimental low range' : ''}
+        </Text>
       </View>
 
       <Text style={styles.aimHint} numberOfLines={1}>
         {selectedString !== null
           ? `Tuning ${stringLabels[selectedString]} · tap it again for auto`
-          : 'Tap a string to tune it on its own'}
+          : tuning.strings.length === 0
+          ? 'Chromatic mode · play one clear note at a time'
+          : 'Tap a string for the most accurate guided tuning'}
       </Text>
 
-      <View style={styles.stringsArea}>
+      {usesGuitarHeadstock ? <View style={styles.stringsArea}>
         <View style={styles.stringColumn}>
           {[0, 1, 2].map((i) => (
             <StringChip
@@ -337,6 +373,7 @@ export default function TunerScreen() {
               index={i}
               label={stringLabels[i]}
               note={tuning.strings[i]}
+              positionLabel={tuningTargetLabel(tuning, i)}
               size={circleSize}
               selected={selectedString === i}
               aimed={aimedString === i}
@@ -349,7 +386,7 @@ export default function TunerScreen() {
 
         <View style={styles.headstockArea}>
           <HeadstockSvg
-            guitarType={tuning.guitarType}
+            guitarType={profile.headstock ?? 'acoustic'}
             highlightColor={aimedColor}
             highlightedPeg={aimedString ?? undefined}
           />
@@ -362,6 +399,7 @@ export default function TunerScreen() {
               index={i}
               label={stringLabels[i]}
               note={tuning.strings[i]}
+              positionLabel={tuningTargetLabel(tuning, i)}
               size={circleSize}
               selected={selectedString === i}
               aimed={aimedString === i}
@@ -371,7 +409,38 @@ export default function TunerScreen() {
             />
           ))}
         </View>
-      </View>
+      </View> : tuning.strings.length > 0 ? (
+        <View style={styles.dynamicInstrumentArea}>
+          <View style={styles.genericNeck}>
+            <Text style={styles.genericInstrumentIcon}>{profile.icon}</Text>
+            <Text style={styles.genericInstrumentName}>{profile.shortName}</Text>
+          </View>
+          <View style={styles.dynamicStringGrid}>
+            {tuning.strings.map((note, index) => (
+              <View key={`${index}-${note}`} style={styles.dynamicStringItem}>
+                <StringChip
+                  index={index}
+                  label={stringLabels[index]}
+                  note={note}
+                  positionLabel={tuningTargetLabel(tuning, index)}
+                  size={circleSize}
+                  selected={selectedString === index}
+                  aimed={aimedString === index}
+                  verdict={aimedString === index ? tuner.verdict : null}
+                  tuned={tunedStrings.has(index)}
+                  onPress={handleSelectString}
+                />
+                <Text style={styles.stringOctave}>{note}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : (
+        <View style={styles.chromaticBadge}>
+          <Text style={styles.chromaticIcon}>♪</Text>
+          <Text style={styles.chromaticText}>Any instrument · any note</Text>
+        </View>
+      )}
 
       <View style={styles.centerDisplay}>
         <View
@@ -436,7 +505,19 @@ export default function TunerScreen() {
           {centsLabel}
         </Text>
         <Text style={styles.freqText}>
-          {hasPitch ? `${tuner.frequency.toFixed(1)} Hz` : ' '}
+          {hasPitch
+            ? `${tuner.frequency.toFixed(1)} Hz · ${Math.round(tuner.confidence * 100)}% signal`
+            : ' '}
+        </Text>
+        <Text
+          style={[
+            styles.signalHint,
+            tuner.signal === 'noisy' && { color: Colors.warning },
+          ]}
+          numberOfLines={2}
+          accessibilityLiveRegion="polite"
+        >
+          {signalHint || ' '}
         </Text>
       </View>
 
@@ -454,6 +535,7 @@ export default function TunerScreen() {
         <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
           <PressableScale
             onPress={handleToggleTuning}
+            disabled={tuner.isStarting}
             style={[
               styles.tuneButton,
               {
@@ -463,9 +545,14 @@ export default function TunerScreen() {
               },
             ]}
             accessibilityLabel={
-              tuner.isActive ? 'Stop tuning' : 'Tap to start tuning'
+              tuner.isStarting
+                ? 'Starting tuner'
+                : tuner.isActive
+                ? 'Stop tuning'
+                : 'Tap to start tuning'
             }
             accessibilityRole="button"
+            accessibilityState={{ disabled: tuner.isStarting }}
           >
             <Text
               style={[
@@ -473,7 +560,13 @@ export default function TunerScreen() {
                 { color: tuner.isActive ? Colors.dark.text : '#fff' },
               ]}
             >
-              {tuner.isActive ? 'Stop' : tuner.error ? 'Try Again' : 'Tap to Tune'}
+              {tuner.isStarting
+                ? 'Starting…'
+                : tuner.isActive
+                ? 'Stop'
+                : tuner.error
+                ? 'Try Again'
+                : 'Tap to Tune'}
             </Text>
           </PressableScale>
         </Animated.View>
@@ -499,15 +592,15 @@ export default function TunerScreen() {
 
             <SectionList
               sections={SECTIONS}
-              keyExtractor={(item) => `${item.guitarType}-${item.name}`}
+              keyExtractor={(item) => item.id}
               stickySectionHeadersEnabled
               renderSectionHeader={({ section }) => (
                 <Text style={styles.sectionHeader}>{section.title}</Text>
               )}
               renderItem={({ item }) => {
                 const isSelected =
-                  item.name === tuning.name &&
-                  item.guitarType === tuning.guitarType;
+                  item.id === tuning.id;
+                const itemProfile = instrumentProfile(item.instrumentId);
                 return (
                   <PressableScale
                     onPress={() => handleSelectTuning(item)}
@@ -515,7 +608,7 @@ export default function TunerScreen() {
                       styles.presetRow,
                       isSelected && styles.presetRowSelected,
                     ]}
-                    accessibilityLabel={`${item.name} tuning for ${item.guitarType} guitar${isSelected ? ', currently selected' : ''}`}
+                    accessibilityLabel={`${item.name} tuning for ${itemProfile.name}${isSelected ? ', currently selected' : ''}`}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
                   >
@@ -529,8 +622,15 @@ export default function TunerScreen() {
                         {item.name}
                       </Text>
                       <Text style={styles.presetStrings}>
-                        {item.strings.join(' - ')}
+                        {item.strings.length > 0
+                          ? item.strings.join(' - ')
+                          : 'All notes'}
                       </Text>
+                      {itemProfile.experimental && (
+                        <Text style={styles.experimentalText}>
+                          Experimental · verify on your device
+                        </Text>
+                      )}
                     </View>
                     {isSelected && (
                       <Text style={styles.checkmark}>✓</Text>
@@ -570,6 +670,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  instrumentLabel: {
+    color: Colors.dark.muted,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 5,
+  },
   tuningChevron: {
     color: Colors.dark.muted,
     fontSize: 12,
@@ -590,6 +696,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 8,
+  },
+  dynamicInstrumentArea: {
+    paddingHorizontal: 18,
+    marginTop: 8,
+    alignItems: 'center',
+    gap: 8,
+  },
+  genericNeck: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: Colors.dark.surfaceElevated,
+  },
+  genericInstrumentIcon: {
+    fontSize: 15,
+  },
+  genericInstrumentName: {
+    color: Colors.dark.text,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  dynamicStringGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: 10,
+    rowGap: 2,
+  },
+  dynamicStringItem: {
+    alignItems: 'center',
+  },
+  stringOctave: {
+    color: Colors.dark.muted,
+    fontSize: 9,
+    fontVariant: ['tabular-nums'],
+    marginTop: -2,
+  },
+  chromaticBadge: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 18,
+    backgroundColor: Colors.dark.surfaceElevated,
+  },
+  chromaticIcon: {
+    color: Colors.success,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  chromaticText: {
+    color: Colors.dark.text,
+    fontSize: 12,
+    fontWeight: '600',
   },
   stringCircle: {
     alignItems: 'center',
@@ -702,6 +869,16 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     marginTop: 2,
     minHeight: 14,
+  },
+  signalHint: {
+    minHeight: 32,
+    maxWidth: 310,
+    marginTop: 5,
+    paddingHorizontal: 10,
+    color: Colors.dark.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: 'center',
   },
   tunedBadge: {
     position: 'absolute',
@@ -823,6 +1000,12 @@ const styles = StyleSheet.create({
     color: Colors.dark.muted,
     fontSize: 13,
     fontWeight: '400',
+  },
+  experimentalText: {
+    color: Colors.warning,
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
   },
   checkmark: {
     color: Colors.success,

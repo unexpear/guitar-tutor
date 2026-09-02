@@ -19,7 +19,14 @@ import { minutesFrom } from '../features/practice/streak';
 import * as Linking from 'expo-linking';
 import { useUserPreferencesStore } from '../features/store/userPreferencesStore';
 import { useSettingsStore } from '../features/store/settingsStore';
-import { TUNING_PRESETS } from '../features/tuner/data/tunings';
+import {
+  findTuningPreset,
+  TUNING_PRESETS,
+} from '../features/tuner/data/tunings';
+import {
+  INSTRUMENT_PROFILES,
+  instrumentProfile,
+} from '../features/tuner/data/instrumentProfiles';
 
 const ACCENT = Colors.success;
 
@@ -30,8 +37,6 @@ function formatDuration(minutes: number): string {
   const m = minutes % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
-const UNIQUE_TUNING_NAMES = [...new Set(TUNING_PRESETS.map((p) => p.name))];
-
 function SectionCard({
   title,
   children,
@@ -160,24 +165,76 @@ function CustomSlider({
   );
 }
 
+function NumericStepper({
+  value,
+  min,
+  max,
+  unit,
+  onChange,
+  label,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  unit: string;
+  onChange: (value: number) => void;
+  label: string;
+}) {
+  return (
+    <View style={styles.goalControl}>
+      <PressableScale
+        onPress={() => onChange(value - 1)}
+        disabled={value <= min}
+        style={[styles.goalButton, value <= min && styles.stepperDisabled]}
+        accessibilityLabel={`Decrease ${label}`}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: value <= min }}
+      >
+        <Text style={styles.goalButtonText}>−</Text>
+      </PressableScale>
+      <Text
+        style={styles.stepperValue}
+        accessibilityLabel={`${label}: ${value} ${unit}`}
+      >
+        {value} {unit}
+      </Text>
+      <PressableScale
+        onPress={() => onChange(value + 1)}
+        disabled={value >= max}
+        style={[styles.goalButton, value >= max && styles.stepperDisabled]}
+        accessibilityLabel={`Increase ${label}`}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: value >= max }}
+      >
+        <Text style={styles.goalButtonText}>+</Text>
+      </PressableScale>
+    </View>
+  );
+}
+
 function TuningPicker({
   current,
   onSelect,
+  guitarType,
 }: {
   current: string;
-  onSelect: (name: string) => void;
+  onSelect: (id: string) => void;
+  guitarType: 'acoustic' | 'electric' | 'classical';
 }) {
   const [visible, setVisible] = useState(false);
+  const currentPreset =
+    findTuningPreset(current, guitarType) ?? TUNING_PRESETS[0];
+  const currentProfile = instrumentProfile(currentPreset.instrumentId);
 
   return (
     <>
       <PressableScale
         onPress={() => setVisible(true)}
         style={styles.pickerButton}
-        accessibilityLabel={`Tuning: ${current}. Tap to change`}
+        accessibilityLabel={`Tuning: ${currentPreset.name} for ${currentProfile.name}. Tap to change`}
         accessibilityRole="button"
       >
-        <Text style={styles.pickerButtonText}>{current}</Text>
+        <Text style={styles.pickerButtonText}>{currentPreset.name}</Text>
         <Text style={styles.pickerChevron}>›</Text>
       </PressableScale>
 
@@ -195,33 +252,52 @@ function TuningPicker({
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Select Tuning</Text>
             <ScrollView style={styles.modalScroll}>
-              {UNIQUE_TUNING_NAMES.map((name) => (
-                <PressableScale
-                  key={name}
-                  onPress={() => {
-                    onSelect(name);
-                    setVisible(false);
-                  }}
-                  style={[
-                    styles.modalOption,
-                    name === current && styles.modalOptionActive,
-                  ]}
-                  accessibilityLabel={`${name}${name === current ? ' (current)' : ''}`}
-                  accessibilityRole="button"
-                >
-                  <Text
-                    style={[
-                      styles.modalOptionText,
-                      name === current && styles.modalOptionTextActive,
-                    ]}
-                  >
-                    {name}
-                  </Text>
-                  {name === current && (
-                    <Text style={styles.checkmark}>✓</Text>
-                  )}
-                </PressableScale>
-              ))}
+              {INSTRUMENT_PROFILES.map((profile) => {
+                const presets = TUNING_PRESETS.filter(
+                  (preset) => preset.instrumentId === profile.id,
+                );
+                if (presets.length === 0) return null;
+                return (
+                  <View key={profile.id}>
+                    <Text style={styles.modalSectionTitle}>{profile.name}</Text>
+                    {presets.map((preset) => {
+                      const selected = preset.id === currentPreset.id;
+                      return (
+                        <PressableScale
+                          key={preset.id}
+                          onPress={() => {
+                            onSelect(preset.id);
+                            setVisible(false);
+                          }}
+                          style={[
+                            styles.modalOption,
+                            selected && styles.modalOptionActive,
+                          ]}
+                          accessibilityLabel={`${preset.name} for ${profile.name}${selected ? ' (current)' : ''}`}
+                          accessibilityRole="button"
+                        >
+                          <View>
+                            <Text
+                              style={[
+                                styles.modalOptionText,
+                                selected && styles.modalOptionTextActive,
+                              ]}
+                            >
+                              {preset.name}
+                            </Text>
+                            <Text style={styles.modalOptionNotes}>
+                              {preset.strings.length > 0
+                                ? preset.strings.join(' · ')
+                                : 'Any note'}
+                            </Text>
+                          </View>
+                          {selected && <Text style={styles.checkmark}>✓</Text>}
+                        </PressableScale>
+                      );
+                    })}
+                  </View>
+                );
+              })}
             </ScrollView>
             <PressableScale
               onPress={() => setVisible(false)}
@@ -252,14 +328,21 @@ export default function SettingsScreen() {
   const streak = liveStreak();
   const { guitarType, experienceLevel, tuningPreference, resetQuestionnaire } =
     useUserPreferencesStore();
+  const selectedTunerPreset =
+    findTuningPreset(alternateTuning, guitarType) ?? TUNING_PRESETS[0];
+  const selectedTunerProfile = instrumentProfile(selectedTunerPreset.instrumentId);
 
   const {
     soundsEnabled,
     sampleVolume,
     practiceGoalMinutes,
+    referencePitchHz,
+    inTuneToleranceCents,
     setSoundsEnabled,
     setSampleVolume,
     setPracticeGoalMinutes,
+    setReferencePitchHz,
+    setInTuneToleranceCents,
   } = useSettingsStore();
 
   const handleRetakeQuestionnaire = () => {
@@ -332,14 +415,47 @@ export default function SettingsScreen() {
         <SectionCard title="Tuning">
           <SettingRow
             label="Current Tuning"
-            accessibilityLabel={`Current tuning: ${alternateTuning}`}
+            accessibilityLabel={`Current tuning: ${selectedTunerPreset.name} for ${selectedTunerProfile.name}`}
             right={
               <TuningPicker
                 current={alternateTuning}
                 onSelect={setAlternateTuning}
+                guitarType={guitarType}
               />
             }
           />
+          <SettingRow
+            label="Reference Pitch"
+            accessibilityLabel={`Reference pitch: A4 equals ${referencePitchHz} hertz`}
+            right={
+              <NumericStepper
+                value={referencePitchHz}
+                min={430}
+                max={450}
+                unit="Hz"
+                label="reference pitch"
+                onChange={setReferencePitchHz}
+              />
+            }
+          />
+          <SettingRow
+            label="In-Tune Window"
+            accessibilityLabel={`In-tune window: plus or minus ${inTuneToleranceCents} cents`}
+            right={
+              <NumericStepper
+                value={inTuneToleranceCents}
+                min={1}
+                max={5}
+                unit="¢"
+                label="in-tune window"
+                onChange={setInTuneToleranceCents}
+              />
+            }
+          />
+          <Text style={styles.hint}>
+            A4 defaults to the ISO 440 Hz standard. Use ±1 cent for precise
+            setup or a wider window for easier everyday tuning.
+          </Text>
         </SectionCard>
 
         <SectionCard title="Appearance">
@@ -463,6 +579,16 @@ export default function SettingsScreen() {
 
         <SectionCard title="About">
           <SettingRow
+            label="Access"
+            accessibilityLabel="Free forever, with no ads and no account"
+            right={<Text style={styles.rowValue}>Free · No ads</Text>}
+          />
+          <SettingRow
+            label="Audio Privacy"
+            accessibilityLabel="Microphone audio stays on this device"
+            right={<Text style={styles.rowValue}>On device</Text>}
+          />
+          <SettingRow
             label="App Name"
             accessibilityLabel="App name: StandardTune"
             right={<Text style={styles.rowValue}>StandardTune</Text>}
@@ -506,9 +632,8 @@ export default function SettingsScreen() {
               </Text>
             </PressableScale>
             <Text style={[styles.hint, { marginTop: 8 }]}>
-              Temporary harness that drives the engine with bass config (min 40 Hz, HPF 30 Hz,
-              high-accuracy). Does not change the production tuner. See the screen for the test
-              protocol.
+              Raw low-frequency harness for checking E1 lock and octave errors without the
+              production tuner&apos;s app-side correction. See the screen for the test protocol.
             </Text>
           </SectionCard>
         )}
@@ -710,6 +835,27 @@ const styles = StyleSheet.create({
   modalScroll: {
     paddingHorizontal: Colors.spacing.md,
   },
+  stepperValue: {
+    minWidth: 62,
+    color: ACCENT,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  stepperDisabled: {
+    opacity: 0.35,
+  },
+  modalSectionTitle: {
+    color: Colors.dark.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    paddingTop: 14,
+    paddingHorizontal: 12,
+    paddingBottom: 4,
+  },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -728,6 +874,11 @@ const styles = StyleSheet.create({
   modalOptionTextActive: {
     color: ACCENT,
     fontWeight: '600',
+  },
+  modalOptionNotes: {
+    color: Colors.dark.muted,
+    fontSize: 11,
+    marginTop: 2,
   },
   checkmark: {
     fontSize: 16,

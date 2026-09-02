@@ -22,6 +22,25 @@ test('a note needs two consistent frames before it counts', () => {
   assert.equal(m.feed(S(39.95)), 'hit');
 });
 
+test('note matching follows a calibrated reference pitch', () => {
+  const referencePitchHz = 450;
+  const calibratedFrequency = (midi: number) =>
+    referencePitchHz * Math.pow(2, (midi - 69) / 12);
+  const matcher = new TargetMatcher(noteTarget, {
+    referencePitchHz,
+    noteToleranceCents: 5,
+  });
+  const sample = {
+    frequency: calibratedFrequency(40),
+    confidence: 0.9,
+    rmsDb: -20,
+    tMs: 0,
+  };
+
+  assert.equal(matcher.feed(sample), null);
+  assert.equal(matcher.feed({ ...sample, tMs: 40 }), 'hit');
+});
+
 test('a sustained wrong note reports wrong', () => {
   const m = new TargetMatcher(noteTarget);
   let ev = null;

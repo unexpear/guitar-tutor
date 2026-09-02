@@ -3,9 +3,16 @@ import assert from 'node:assert/strict';
 
 import {
   TUNING_PRESETS,
+  findTuningPreset,
+  tuningTargetLabel,
   noteToFrequency,
   NOTE_NAMES,
 } from '../features/tuner/data/tunings';
+import {
+  INSTRUMENT_PROFILES,
+  guitarPracticeEngineOptions,
+  instrumentProfile,
+} from '../features/tuner/data/instrumentProfiles';
 
 function closeTo(actual: number, expected: number, tol = 0.005) {
   const rel = Math.abs(actual - expected) / expected;
@@ -62,23 +69,52 @@ test('garbage input returns 0 instead of NaN or nonsense', () => {
   }
 });
 
-test('there are sixteen presets covering both guitar families', () => {
-  assert.equal(TUNING_PRESETS.length, 16);
+test('the catalogue covers guitars, basses, ukuleles and chromatic tuning', () => {
+  assert.equal(TUNING_PRESETS.length, 31);
   const acoustic = TUNING_PRESETS.filter((p) => p.guitarType === 'acoustic');
   const electric = TUNING_PRESETS.filter((p) => p.guitarType === 'electric');
   assert.equal(acoustic.length, 8);
   assert.equal(electric.length, 8);
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId.startsWith('bass-')));
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId.startsWith('ukulele-')));
+  assert.ok(TUNING_PRESETS.some((p) => p.instrumentId === 'chromatic'));
 });
 
-test('every preset has exactly six strings', () => {
+test('saved tuning resolution follows the selected guitar family', () => {
+  assert.equal(findTuningPreset('Standard E', 'acoustic')?.guitarType, 'acoustic');
+  assert.equal(findTuningPreset('Standard E', 'electric')?.guitarType, 'electric');
+  assert.equal(findTuningPreset('Standard E', 'classical')?.instrumentId, 'guitar-classical');
+  assert.equal(findTuningPreset('Drop D', 'electric')?.guitarType, 'electric');
+  assert.equal(findTuningPreset('bass-4-standard', 'acoustic')?.instrumentId, 'bass-4');
+});
+
+test('saved tuning resolution falls back safely for family-specific presets', () => {
+  assert.equal(findTuningPreset('Drop C', 'acoustic')?.guitarType, 'electric');
+  assert.equal(findTuningPreset('Open C', 'electric')?.guitarType, 'acoustic');
+  assert.equal(findTuningPreset('Not a tuning', 'electric'), undefined);
+});
+
+test('every instrument preset has a supported target count', () => {
   for (const p of TUNING_PRESETS) {
-    assert.equal(p.strings.length, 6, `${p.name}: ${p.strings.length} strings`);
+    if (p.instrumentId === 'chromatic') {
+      assert.equal(p.strings.length, 0);
+    } else {
+      assert.ok(
+        p.strings.length >= 4 && p.strings.length <= 12,
+        `${p.id}: ${p.strings.length} targets`,
+      );
+    }
     assert.ok(p.name.trim(), 'a preset has no name');
   }
 });
 
-test('strings within a preset ascend in pitch from low to high', () => {
+test('single-course linear instruments ascend in pitch from low to high', () => {
   for (const p of TUNING_PRESETS) {
+    if (
+      p.instrumentId === 'chromatic' ||
+      p.instrumentId === 'ukulele-standard' ||
+      p.coursePairs
+    ) continue;
     const freqs = p.strings.map((n) => noteToFrequency(n));
     for (let i = 1; i < freqs.length; i++) {
       assert.ok(
@@ -89,14 +125,17 @@ test('strings within a preset ascend in pitch from low to high', () => {
   }
 });
 
-test('no string within a preset repeats another', () => {
+test('only declared paired courses may repeat an exact pitch', () => {
   for (const p of TUNING_PRESETS) {
+    if (p.instrumentId === 'chromatic') continue;
     const freqs = p.strings.map((n) => noteToFrequency(n));
-    assert.equal(
-      new Set(freqs).size,
-      6,
-      `${p.name}: two strings share a pitch`
-    );
+    const pairedIndexes = new Set(p.coursePairs?.flat() ?? []);
+    freqs.forEach((frequency, index) => {
+      const first = freqs.findIndex((candidate) => candidate === frequency);
+      if (first !== index) {
+        assert.ok(pairedIndexes.has(index), `${p.id}: undeclared duplicate target`);
+      }
+    });
   }
 });
 
@@ -114,23 +153,67 @@ test('every string label is a sharp spelling of a real note', () => {
   }
 });
 
-test('presets are unique within a guitar family', () => {
+test('preset ids and names within an instrument are unique', () => {
+  const ids = new Set<string>();
   const seen = new Set<string>();
   for (const p of TUNING_PRESETS) {
-    const key = `${p.guitarType}:${p.name}`;
+    assert.ok(!ids.has(p.id), `duplicate preset id ${p.id}`);
+    ids.add(p.id);
+    const key = `${p.instrumentId}:${p.name}`;
     assert.ok(!seen.has(key), `duplicate preset ${key}`);
     seen.add(key);
   }
 });
 
-test('every open-string frequency sits in the playable guitar range', () => {
+test('every target sits inside its explicit detector profile', () => {
   for (const p of TUNING_PRESETS) {
+    const engine = instrumentProfile(p.instrumentId).engine;
     for (const s of p.strings) {
       const f = noteToFrequency(s);
-      assert.ok(f >= 55, `${p.name}: ${s} at ${f} Hz is below the low C`);
-      assert.ok(f <= 700, `${p.name}: ${s} at ${f} Hz is absurdly high`);
+      assert.ok(f >= (engine.minFrequency ?? 0), `${p.id}: ${s} below detector range`);
+      assert.ok(f <= (engine.maxFrequency ?? Infinity), `${p.id}: ${s} above detector range`);
     }
   }
+});
+
+test('every tuning references a real, uniquely keyed instrument profile', () => {
+  for (const tuning of TUNING_PRESETS) {
+    assert.equal(instrumentProfile(tuning.instrumentId).id, tuning.instrumentId);
+  }
+  assert.equal(
+    new Set(INSTRUMENT_PROFILES.map((profile) => profile.id)).size,
+    INSTRUMENT_PROFILES.length,
+  );
+});
+
+test('guitar practice uses the full guitar range and current calibration', () => {
+  const options = guitarPracticeEngineOptions(442);
+  assert.equal(options.a4, 442);
+  assert.equal(options.minFrequency, 55);
+  assert.equal(options.maxFrequency, 1400);
+  assert.equal('instrument' in options, false);
+});
+
+test('the twelve-string layout declares six complete paired courses', () => {
+  const twelve = TUNING_PRESETS.find((p) => p.id === 'guitar-12-standard');
+  assert.ok(twelve?.coursePairs);
+  assert.equal(twelve.coursePairs.length, 6);
+  assert.deepEqual(
+    [...new Set(twelve.coursePairs.flat())].sort((a, b) => a - b),
+    Array.from({ length: 12 }, (_, index) => index),
+  );
+  assert.equal(tuningTargetLabel(twelve, 0), 'Course 6, main string');
+  assert.equal(tuningTargetLabel(twelve, 1), 'Course 6, paired string');
+  assert.equal(tuningTargetLabel(twelve, 11), 'Course 1, paired string');
+});
+
+test('ordinary string numbering follows instrument convention', () => {
+  const guitar = TUNING_PRESETS.find((p) => p.id === 'guitar-acoustic-standard');
+  const bass = TUNING_PRESETS.find((p) => p.id === 'bass-4-standard');
+  assert.ok(guitar && bass);
+  assert.equal(tuningTargetLabel(guitar, 0), 'String 6');
+  assert.equal(tuningTargetLabel(guitar, 5), 'String 1');
+  assert.equal(tuningTargetLabel(bass, 0), 'String 4');
 });
 
 test('drop tunings really drop the sixth string a full step', () => {

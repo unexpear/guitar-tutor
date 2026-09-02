@@ -40,6 +40,46 @@ export function pushWindow(window: number[], value: number, size = SMOOTH_WINDOW
   return next.length > size ? next.slice(next.length - size) : next;
 }
 
+/** Peak-to-peak movement in cents. Frequency ratios make this octave-safe. */
+export function frequencySpreadCents(values: number[]): number {
+  const valid = values.filter((value) => Number.isFinite(value) && value > 0);
+  if (valid.length < 2) return 0;
+  return Math.abs(centsBetween(Math.max(...valid), Math.min(...valid)));
+}
+
+export interface HarmonicCorrection {
+  frequency: number;
+  /** 1 is uncorrected; 2–4 are overtones; 0.5 is period doubling. */
+  ratio: number;
+}
+
+/**
+ * Correct a common octave/harmonic error only when the player explicitly
+ * selected a target string. In automatic mode the same pitch may genuinely
+ * belong to another open string, so applying this globally would invent
+ * false positives.
+ */
+export function correctSelectedStringHarmonic(
+  frequency: number,
+  target: number,
+  toleranceCents = 45,
+): HarmonicCorrection {
+  if (frequency <= 0 || target <= 0) return { frequency, ratio: 1 };
+  const ratios = [1, 2, 3, 4, 0.5] as const;
+  let best = { frequency, ratio: 1 };
+  let bestError = Math.abs(centsBetween(frequency, target));
+
+  for (const ratio of ratios.slice(1)) {
+    const corrected = frequency / ratio;
+    const error = Math.abs(centsBetween(corrected, target));
+    if (error < bestError && error <= toleranceCents) {
+      best = { frequency: corrected, ratio };
+      bestError = error;
+    }
+  }
+  return best;
+}
+
 export type TuneVerdict = 'in-tune' | 'close' | 'off';
 
 /**
@@ -49,15 +89,20 @@ export type TuneVerdict = 'in-tune' | 'close' | 'off';
  * agrees with the number on screen — a readout of 0 that glowed amber would
  * just look broken.
  *
- *   0        in tune
- *   1 - 9    close
+ *   0 - chosen tolerance  in tune
+ *   up to 9                close
  *   10+      off, in either direction
  */
 export const OFF_CENTS = 10;
+export const DEFAULT_IN_TUNE_CENTS = 3;
 
-export function verdictForCents(cents: number): TuneVerdict {
+export function verdictForCents(
+  cents: number,
+  inTuneCents = DEFAULT_IN_TUNE_CENTS,
+): TuneVerdict {
   const rounded = Math.abs(Math.round(cents));
-  if (rounded === 0) return 'in-tune';
+  const tolerance = Math.max(1, Math.min(5, Math.round(inTuneCents)));
+  if (rounded <= tolerance) return 'in-tune';
   return rounded >= OFF_CENTS ? 'off' : 'close';
 }
 

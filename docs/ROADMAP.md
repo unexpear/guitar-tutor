@@ -18,24 +18,35 @@ each other, not building new ones.
 | Play-along drills | **11 drills for 11 lessons.** Every lesson that can support a drill has one: the holding, tuning-up and reading-diagrams lessons are at-your-own-pace reading, and Guitar Anatomy has its own interactive diagram instead. |
 | Practice tracking | Done. Time at the instrument is logged per day, shown against the goal, and drives a streak. |
 | Lesson scores | Shown on the card when a drill produced them. |
-| Bass | Withdrawn from the questionnaire until it can be supported properly — see below. |
+| Tuner | 31 presets across guitar, bass and ukulele; chromatic mode; noise/stability rejection; harmonic correction; A4 calibration and adjustable completion window. |
+| Bass | The tuner supports 4/5/6-string bass. Lessons, chords and games remain explicitly guitar-only. |
 
 ## Worth building, in order
 
-### 1. Bass, properly
+### 1. Local custom tunings
 
-Bass used to be one of four answers in the questionnaire and then changed
-nothing: the app would hand a bassist a six-string tuner asking for E2 to
-E4, when a bass is four strings from E1 to G2. It is withdrawn for now, and
-anyone who had picked it is moved to electric.
+Let players build and name 1–12 string tunings entirely on-device. This is the
+most natural extension of the free-tuner promise: alternate and personal
+tunings should not require payment or an account. The editor needs bounded note
+validation, safe persistence, deletion confirmation, and a clear choice of
+instrument profile so low strings receive the right detector settings.
 
-Supporting it for real is a genuine feature, not a toggle: string counts
-are assumed to be six in the tuner UI, the headstock SVG and the tunings
-data, the pitch floor needs to reach E1 at about 41 Hz, and the chord
-library does not apply at all. Worth doing, but as its own piece of work.
+**Effort:** medium. **Value:** high — it removes the largest remaining tuner
+feature gap without expanding permissions or licensing exposure.
 
-**Effort:** medium. **Value:** medium — it opens the app to a new
-instrument, but every existing feature needs a bass-shaped answer first.
+### 2. Bass learning content, properly
+
+The tuner now has dedicated bass profiles, variable string counts, low-range
+DSP settings and reference tones through B0. Bass is intentionally still not
+an onboarding answer because the lesson, chord and game catalog is written for
+six-string guitar.
+
+The remaining work is a bass-specific curriculum: four-line tab, fretboard
+positions, rhythm/groove drills, bass anatomy and bass progress keys. It should
+not reuse guitar chord diagrams or mark guitar lessons as bass-ready.
+
+**Effort:** large. **Value:** medium — the tuner is ready, but learning content
+needs its own product design and instrument-tested exercises.
 
 ## Smaller cleanups
 
@@ -99,8 +110,9 @@ For context on what has just landed, so this list is not re-proposing it:
   the two chords that song opens on.
 - Dead code removed (a 49-entry sample table nothing imported, an unused
   lesson-navigation API, an unused tuning helper), lesson scores shown
-  where they were previously stored and discarded, and Bass withdrawn from
-  the questionnaire rather than left as an answer that changed nothing.
+  where they were previously stored and discarded, and Bass removed from
+  the guitar-learning questionnaire. Bass tuning is now selected separately
+  in the multi-instrument tuner, without implying that lessons adapt to bass.
 - Per-chord progress. Every judged attempt — a quiz answer, a drill target
   hit or missed, a change that landed — is recorded against that chord, and
   the chord sheet says whether it is solid, shaky, or not practised yet. A

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,12 @@ import {
 } from '../../features/chords/data/chords';
 import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
 import { useRouter } from 'expo-router';
+import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
+import { useProgressStore } from '../../features/store/progressStore';
+import {
+  buildSongPracticeDrill,
+  songPracticeScoreKey,
+} from '../../features/songs/songPractice';
 
 const DIFFICULTY_FILTERS: (Difficulty | 'All')[] = ['All', 'Easy', 'Medium', 'Hard'];
 
@@ -57,7 +63,17 @@ function initialsFor(artist: string) {
   return (first + second).toUpperCase();
 }
 
-function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
+function SongDetail({
+  song,
+  onClose,
+  onPractice,
+  bestScore,
+}: {
+  song: Song;
+  onClose: () => void;
+  onPractice: () => void;
+  bestScore: number;
+}) {
   const color = Colors.dark;
   const { playChord } = useGuitarSound();
   const router = useRouter();
@@ -78,6 +94,10 @@ function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
       />
       <Animated.View entering={FadeInDown.springify()} style={styles.detailSheet}>
         <View style={styles.detailHandle} />
+        <ScrollView
+          contentContainerStyle={styles.detailBody}
+          showsVerticalScrollIndicator={false}
+        >
 
         <View style={styles.detailHead}>
           <View style={[styles.detailArt, { backgroundColor: art.bg }]}>
@@ -153,9 +173,22 @@ function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
           })}
         </ScrollView>
 
+        <PressableScale
+          style={styles.practiseBtn}
+          onPress={onPractice}
+          accessibilityRole="button"
+          accessibilityLabel={`Practice all chords used by ${song.title}`}
+        >
+          <Ionicons name="play" size={18} color="#0b2410" />
+          <Text style={styles.practiseBtnText}>Play chord practice</Text>
+        </PressableScale>
+        {bestScore > 0 && (
+          <Text style={styles.practiceBest}>Best accuracy: {bestScore}%</Text>
+        )}
+
         {canPractise && (
           <PressableScale
-            style={styles.practiseBtn}
+            style={styles.pairBtn}
             onPress={() => {
               onClose();
               router.push(
@@ -167,21 +200,22 @@ function SongDetail({ song, onClose }: { song: Song; onClose: () => void }) {
             accessibilityRole="button"
             accessibilityLabel={`Practise changing between ${practisePair[0]} and ${practisePair[1]}`}
           >
-            <Ionicons name="repeat" size={18} color="#0b2410" />
-            <Text style={styles.practiseBtnText}>
+            <Ionicons name="repeat" size={18} color={Colors.success} />
+            <Text style={styles.pairBtnText}>
               Drill {practisePair[0]} ↔ {practisePair[1]}
             </Text>
           </PressableScale>
         )}
 
         <Text style={styles.detailFinePrint}>
-          Chord reference only - tap a shape to hear it. Learn the arrangement
-          from the record.
+          Chord reference only - tap a shape to hear it. Practice is an original
+          two-pass chord-set exercise, not the song arrangement.
         </Text>
 
         <PressableScale onPress={onClose} style={styles.detailCloseBtn}>
           <Text style={[styles.detailCloseText, { color: color.muted }]}>Close</Text>
         </PressableScale>
+        </ScrollView>
       </Animated.View>
     </Animated.View>
   );
@@ -191,6 +225,25 @@ export default function SongLibraryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<Difficulty | 'All'>('All');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [practiceSong, setPracticeSong] = useState<Song | null>(null);
+  const highScores = useProgressStore((state) => state.gameHighScores);
+  const recordGameScore = useProgressStore((state) => state.recordGameScore);
+  const practiceDrill = useMemo(
+    () => (practiceSong ? buildSongPracticeDrill(practiceSong) : null),
+    [practiceSong],
+  );
+
+  if (practiceSong && practiceDrill) {
+    return (
+      <PlayAlongLesson
+        drill={practiceDrill}
+        onClose={() => setPracticeSong(null)}
+        onFinish={(score) =>
+          recordGameScore(songPracticeScoreKey(practiceSong.id), score)
+        }
+      />
+    );
+  }
 
   const filteredSongs = SONGS.filter((song) => {
     const q = searchQuery.trim().toLowerCase();
@@ -326,7 +379,15 @@ export default function SongLibraryScreen() {
       />
 
       {selectedSong && (
-        <SongDetail song={selectedSong} onClose={() => setSelectedSong(null)} />
+        <SongDetail
+          song={selectedSong}
+          bestScore={highScores[songPracticeScoreKey(selectedSong.id)] ?? 0}
+          onClose={() => setSelectedSong(null)}
+          onPractice={() => {
+            setPracticeSong(selectedSong);
+            setSelectedSong(null);
+          }}
+        />
       )}
     </View>
   );
@@ -349,7 +410,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 28,
+    maxHeight: '94%',
+    gap: 10,
+  },
+  detailBody: {
     gap: 14,
+    paddingBottom: 4,
   },
   detailHandle: {
     alignSelf: 'center',
@@ -447,6 +513,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#0b2410',
+  },
+  practiceBest: {
+    color: Colors.success,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  pairBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.success,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  pairBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.success,
   },
   detailFinePrint: {
     color: Colors.dark.muted,

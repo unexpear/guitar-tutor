@@ -13,6 +13,8 @@
 
 export interface SoundPlayer {
   volume: number;
+  playbackRate: number;
+  shouldCorrectPitch: boolean;
   play(): void;
   release(): void;
 }
@@ -25,6 +27,7 @@ export interface ChordPlayback {
 export interface SoundSettings {
   soundsEnabled: boolean;
   sampleVolume: number;
+  referencePitchHz: number;
 }
 
 /** A cancellable scheduling handle; the default adapts setTimeout. */
@@ -77,6 +80,21 @@ export function createSoundController(
   let chordPlayers: SoundPlayer[] = [];
   let chordTimers: TimerHandle[] = [];
 
+  const configurePlayer = (
+    player: SoundPlayer,
+    settings: SoundSettings,
+  ) => {
+    player.volume = settings.sampleVolume / 100;
+    const reference =
+      Number.isFinite(settings.referencePitchHz) && settings.referencePitchHz > 0
+        ? settings.referencePitchHz
+        : 440;
+    // Samples were generated at A4=440. Disabling time-stretch pitch
+    // correction makes this small rate change retune the sample itself.
+    player.shouldCorrectPitch = false;
+    player.playbackRate = reference / 440;
+  };
+
   const stopChord: SoundController['stopChord'] = () => {
     chordTimers.forEach((handle) => void clearTimer(handle));
     chordTimers = [];
@@ -107,7 +125,8 @@ export function createSoundController(
 
     async playNote(note: string) {
       try {
-        const { soundsEnabled, sampleVolume } = getSettings();
+        const settings = getSettings();
+        const { soundsEnabled } = settings;
         if (!soundsEnabled) return;
 
         single?.release();
@@ -121,7 +140,7 @@ export function createSoundController(
 
         const player = createPlayer(asset);
         single = player;
-        player.volume = sampleVolume / 100;
+        configurePlayer(player, settings);
         player.play();
       } catch (err) {
         warn(`Failed to play note: ${note}`);
@@ -130,7 +149,8 @@ export function createSoundController(
 
     async playChord(notes: string[], staggerMs = 55) {
       try {
-        const { soundsEnabled, sampleVolume } = getSettings();
+        const settings = getSettings();
+        const { soundsEnabled } = settings;
         if (!soundsEnabled) return;
 
         stopChord();
@@ -143,7 +163,7 @@ export function createSoundController(
               return null;
             }
             const player = createPlayer(asset);
-            player.volume = sampleVolume / 100;
+            configurePlayer(player, settings);
             return player;
           })
           .filter((p): p is SoundPlayer => p !== null);

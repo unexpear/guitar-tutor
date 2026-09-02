@@ -1,38 +1,84 @@
 /**
  * Guitar reference samples, generated from scripts/generate-samples.js.
  *
- * Assets are resolved lazily: the map only holds module specifiers, and the
- * actual `require` (a Metro thing) runs when a note is played. Importing this
- * module is therefore safe anywhere — including the test runner — and only
- * requesting a note on a device pulls a WAV in. C2..E6 covers the tuner's
- * range and every string of every preset.
+ * Metro requires every bundled asset path to be statically discoverable, so
+ * each require must contain a string literal. Keep this registry explicit even
+ * though the filenames follow a predictable pattern.
  */
 
-const PITCH_CLASSES = [
-  'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
-] as const;
-
-/** Octaves 2..5 are complete; octave 6 goes up to E. */
-const NOTE_NAMES: string[] = [];
-for (const octave of [2, 3, 4, 5]) {
-  for (const pc of PITCH_CLASSES) NOTE_NAMES.push(`${pc}${octave}`);
-}
-for (const pc of ['C', 'C#', 'D', 'D#', 'E'] as const) NOTE_NAMES.push(`${pc}6`);
+const ASSETS: Record<string, number | string> = {
+  B0: require('../../../assets/audio/B0.wav'),
+  C1: require('../../../assets/audio/C1.wav'),
+  'C#1': require('../../../assets/audio/C#1.wav'),
+  D1: require('../../../assets/audio/D1.wav'),
+  'D#1': require('../../../assets/audio/D#1.wav'),
+  E1: require('../../../assets/audio/E1.wav'),
+  F1: require('../../../assets/audio/F1.wav'),
+  'F#1': require('../../../assets/audio/F#1.wav'),
+  G1: require('../../../assets/audio/G1.wav'),
+  'G#1': require('../../../assets/audio/G#1.wav'),
+  A1: require('../../../assets/audio/A1.wav'),
+  'A#1': require('../../../assets/audio/A#1.wav'),
+  B1: require('../../../assets/audio/B1.wav'),
+  C2: require('../../../assets/audio/C2.wav'),
+  'C#2': require('../../../assets/audio/C#2.wav'),
+  D2: require('../../../assets/audio/D2.wav'),
+  'D#2': require('../../../assets/audio/D#2.wav'),
+  E2: require('../../../assets/audio/E2.wav'),
+  F2: require('../../../assets/audio/F2.wav'),
+  'F#2': require('../../../assets/audio/F#2.wav'),
+  G2: require('../../../assets/audio/G2.wav'),
+  'G#2': require('../../../assets/audio/G#2.wav'),
+  A2: require('../../../assets/audio/A2.wav'),
+  'A#2': require('../../../assets/audio/A#2.wav'),
+  B2: require('../../../assets/audio/B2.wav'),
+  C3: require('../../../assets/audio/C3.wav'),
+  'C#3': require('../../../assets/audio/C#3.wav'),
+  D3: require('../../../assets/audio/D3.wav'),
+  'D#3': require('../../../assets/audio/D#3.wav'),
+  E3: require('../../../assets/audio/E3.wav'),
+  F3: require('../../../assets/audio/F3.wav'),
+  'F#3': require('../../../assets/audio/F#3.wav'),
+  G3: require('../../../assets/audio/G3.wav'),
+  'G#3': require('../../../assets/audio/G#3.wav'),
+  A3: require('../../../assets/audio/A3.wav'),
+  'A#3': require('../../../assets/audio/A#3.wav'),
+  B3: require('../../../assets/audio/B3.wav'),
+  C4: require('../../../assets/audio/C4.wav'),
+  'C#4': require('../../../assets/audio/C#4.wav'),
+  D4: require('../../../assets/audio/D4.wav'),
+  'D#4': require('../../../assets/audio/D#4.wav'),
+  E4: require('../../../assets/audio/E4.wav'),
+  F4: require('../../../assets/audio/F4.wav'),
+  'F#4': require('../../../assets/audio/F#4.wav'),
+  G4: require('../../../assets/audio/G4.wav'),
+  'G#4': require('../../../assets/audio/G#4.wav'),
+  A4: require('../../../assets/audio/A4.wav'),
+  'A#4': require('../../../assets/audio/A#4.wav'),
+  B4: require('../../../assets/audio/B4.wav'),
+  C5: require('../../../assets/audio/C5.wav'),
+  'C#5': require('../../../assets/audio/C#5.wav'),
+  D5: require('../../../assets/audio/D5.wav'),
+  'D#5': require('../../../assets/audio/D#5.wav'),
+  E5: require('../../../assets/audio/E5.wav'),
+  F5: require('../../../assets/audio/F5.wav'),
+  'F#5': require('../../../assets/audio/F#5.wav'),
+  G5: require('../../../assets/audio/G5.wav'),
+  'G#5': require('../../../assets/audio/G#5.wav'),
+  A5: require('../../../assets/audio/A5.wav'),
+  'A#5': require('../../../assets/audio/A#5.wav'),
+  B5: require('../../../assets/audio/B5.wav'),
+  C6: require('../../../assets/audio/C6.wav'),
+  'C#6': require('../../../assets/audio/C#6.wav'),
+  D6: require('../../../assets/audio/D6.wav'),
+  'D#6': require('../../../assets/audio/D#6.wav'),
+  E6: require('../../../assets/audio/E6.wav'),
+};
 
 /** The note names this app can actually produce sound for. */
-export const SAMPLE_NOTES: string[] = NOTE_NAMES;
+export const SAMPLE_NOTES: string[] = Object.keys(ASSETS);
 
-const ASSETS: Record<string, string> = Object.fromEntries(
-  NOTE_NAMES.map((note) => [note, `../../../assets/audio/${note}.wav`])
-);
-
-/**
- * The asset for a note, or null when there is no sample for it.
- * The `require` only executes when the sample is actually requested, so this
- * is callable from tests too (non-existent notes just return null without
- * touching the filesystem or the bundler).
- */
+/** The bundled asset for a note, or null when no sample exists. */
 export function sampleForNote(note: string): number | string | null {
-  const spec = ASSETS[note];
-  return spec === undefined ? null : (require(spec) as number | string);
+  return ASSETS[note] ?? null;
 }

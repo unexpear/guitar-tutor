@@ -5,7 +5,7 @@ import { createSoundController, type SoundController } from '../soundController'
 import { sampleForNote } from '../data/audioAssets';
 
 /**
- * Play guitar reference samples: single notes and strummed chords.
+ * Play instrument reference notes and guitar chord samples.
  *
  * All of the decision logic lives in createSoundController; this hook only
  * wires it to the real engine (expo-audio's createAudioPlayer), the bundled

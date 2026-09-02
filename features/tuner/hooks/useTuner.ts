@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTuner as useTunerEngine } from 'react-native-tuner-engine';
 import { TUNING_PRESETS, TuningPreset } from '../data/tunings';
-import { median, pushWindow } from '../pitch';
+import { frequencySpreadCents, median, pushWindow } from '../pitch';
+import { useSettingsStore } from '../../store/settingsStore';
 import {
   mapTunerReading,
   targetFrequenciesFor,
-  TUNER_ENGINE_OPTIONS,
+  tunerEngineOptionsFor,
   TunerState,
 } from '../tunerReading';
 
@@ -14,9 +15,9 @@ export type { TunerState };
 /**
  * Real-time guitar tuner backed by react-native-tuner-engine.
  * Pitch detection runs natively (YIN/PYIN/cepstrum ensemble on a C++ audio
- * thread) with the configuration in TUNER_ENGINE_OPTIONS; the JS side maps
- * the pitch stream onto the selected tuning's strings. All of that mapping
- * lives in the pure mapTunerReading so the tuner contract is testable.
+ * thread) with the selected instrument profile; the JS side maps the pitch
+ * stream onto the selected tuning's strings. All of that mapping lives in
+ * the pure mapTunerReading so the tuner contract is testable.
  */
 export function useTuner(
   tuning: TuningPreset = TUNING_PRESETS[0],
@@ -27,7 +28,15 @@ export function useTuner(
    */
   targetStringIndex: number | null = null
 ) {
-  const engine = useTunerEngine(TUNER_ENGINE_OPTIONS);
+  const referencePitchHz = useSettingsStore((state) => state.referencePitchHz);
+  const inTuneCents = useSettingsStore(
+    (state) => state.inTuneToleranceCents,
+  );
+  const engineOptions = useMemo(
+    () => tunerEngineOptionsFor(tuning, referencePitchHz),
+    [referencePitchHz, tuning.instrumentId],
+  );
+  const engine = useTunerEngine(engineOptions);
   const { start, stop, latest, isRunning, error } = engine;
 
   useEffect(() => {
@@ -36,26 +45,45 @@ export function useTuner(
 
   // Precompute target frequencies for the current tuning.
   const stringFrequencies = useMemo(
-    () => targetFrequenciesFor(tuning),
-    [tuning],
+    () => targetFrequenciesFor(tuning, referencePitchHz),
+    [referencePitchHz, tuning],
   );
 
   const isRunningRef = useRef(isRunning);
   isRunningRef.current = isRunning;
 
+  // Permission and engine startup are asynchronous. Keep a synchronous guard
+  // as well as UI state so two quick taps cannot start the singleton engine
+  // twice before its isRunning update reaches React.
+  const startPendingRef = useRef(false);
+  const [isStarting, setIsStarting] = useState(false);
+
+  const startListening = useCallback(async () => {
+    if (isRunningRef.current || startPendingRef.current) return;
+    startPendingRef.current = true;
+    setIsStarting(true);
+    try {
+      await start();
+    } finally {
+      startPendingRef.current = false;
+      setIsStarting(false);
+    }
+  }, [start]);
+
   const toggleListening = useCallback(() => {
     if (isRunningRef.current) {
-      stop();
+      void stop();
     } else {
-      start();
+      void startListening();
     }
-  }, [start, stop]);
+  }, [startListening, stop]);
 
   // Rolling window of recent frequencies. The raw stream is jittery enough
   // that the needle twitches on a perfectly steady note, so the reading is
   // taken from the median of the last few frames rather than the last one.
   const windowRef = useRef<number[]>([]);
   const [smoothHz, setSmoothHz] = useState(0);
+  const [spreadCents, setSpreadCents] = useState(0);
 
   // Depend on the number, never on `latest` itself. The engine hands back a
   // fresh object every render, so an object dependency here re-ran the
@@ -67,38 +95,55 @@ export function useTuner(
     if (!isRunning || rawHz <= 0 || !Number.isFinite(rawHz)) {
       windowRef.current = [];
       setSmoothHz(0);
+      setSpreadCents(0);
       return;
     }
     windowRef.current = pushWindow(windowRef.current, rawHz);
     setSmoothHz(median(windowRef.current));
+    setSpreadCents(frequencySpreadCents(windowRef.current));
   }, [rawHz, isRunning]);
 
   // A new target means the old readings describe a different string.
-  // Keyed on the tuning's name rather than the object, for the same reason.
-  const tuningName = tuning.name;
+  // Keyed on the stable id rather than the object, for the same reason.
+  const tuningId = tuning.id;
   useEffect(() => {
     windowRef.current = [];
     setSmoothHz(0);
-  }, [targetStringIndex, tuningName]);
+    setSpreadCents(0);
+  }, [targetStringIndex, tuningId, tuning.instrumentId]);
 
   const state: TunerState = useMemo(
     () =>
       mapTunerReading(latest, {
         isRunning,
         smoothHz,
+        spreadCents,
+        inTuneCents,
         targetStringIndex,
         tuning,
         stringFrequencies,
       }),
-    [latest, isRunning, smoothHz, stringFrequencies, tuning, targetStringIndex],
+    [
+      inTuneCents,
+      isRunning,
+      latest,
+      smoothHz,
+      spreadCents,
+      stringFrequencies,
+      targetStringIndex,
+      tuning,
+    ],
   );
 
   return {
     ...state,
+    referencePitchHz,
+    inTuneCents,
+    isStarting,
     // Surfaced, not just logged: a denied mic permission used to leave the
     // tune button looking alive and doing nothing at all.
     error,
-    startListening: start,
+    startListening,
     stopListening: stop,
     toggleListening,
   };

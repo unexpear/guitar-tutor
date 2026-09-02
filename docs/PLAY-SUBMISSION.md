@@ -99,7 +99,7 @@ Two ways. The second one is a one-time setup that removes this step forever.
 ```
 First closed test build of StandardTune.
 
-- Real-time tuner with 16 tunings and per-string in-tune indicators
+- Real-time multi-instrument tuner with 31 presets and per-string indicators
 - Chord library with 36 chords, diagrams, and reference audio
 - Play-along practice drills that listen to your guitar
 - Beginner to advanced lessons with an interactive guitar anatomy quiz

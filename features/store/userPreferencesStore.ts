@@ -3,11 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Bass is deliberately absent. Everything in the app assumes six strings in
- * guitar range — the chord library, the diagrams, the tuner's string row —
- * and a bass is four strings an octave below, so offering it produced
- * confidently wrong tuning targets. Classical stays: it is standard tuning
- * on nylon strings, which the acoustic material genuinely covers.
+ * This preference describes the six-string guitar learning curriculum, not
+ * every instrument supported by the tuner. Bass, ukulele, and extended-range
+ * instruments are selected independently on the Tuner screen; listing them
+ * here would imply that lessons and chord diagrams adapt to those instruments.
  */
 export type GuitarType = 'acoustic' | 'electric' | 'classical';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
@@ -58,8 +57,8 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
         return rest;
       },
       onRehydrateStorage: () => (state) => {
-        // Anyone who picked Bass before it was withdrawn is moved to the
-        // closest thing the app actually supports.
+        // Migrate old questionnaire values that the guitar curriculum cannot
+        // represent. The tuner keeps its own independent instrument choice.
         if (state && !['acoustic', 'electric', 'classical'].includes(state.guitarType)) {
           state.guitarType = 'electric';
         }

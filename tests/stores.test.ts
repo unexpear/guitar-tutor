@@ -240,6 +240,8 @@ test('settings start with sane defaults', () => {
   assert.equal(s.soundsEnabled, true);
   assert.equal(s.sampleVolume, 75);
   assert.equal(s.practiceGoalMinutes, 15);
+  assert.equal(s.referencePitchHz, 440);
+  assert.equal(s.inTuneToleranceCents, 3);
 });
 
 test('sample volume is clamped to 0-100 and rounded', () => {
@@ -262,6 +264,23 @@ test('practice goal is clamped to a sane 5-120 range', () => {
   assert.equal(useSettingsStore.getState().practiceGoalMinutes, 120);
   s.setPracticeGoalMinutes(30);
   assert.equal(useSettingsStore.getState().practiceGoalMinutes, 30);
+});
+
+test('tuner calibration settings are rounded and clamped', () => {
+  const s = useSettingsStore.getState();
+  s.setReferencePitchHz(429);
+  assert.equal(useSettingsStore.getState().referencePitchHz, 430);
+  s.setReferencePitchHz(442.4);
+  assert.equal(useSettingsStore.getState().referencePitchHz, 442);
+  s.setReferencePitchHz(999);
+  assert.equal(useSettingsStore.getState().referencePitchHz, 450);
+
+  s.setInTuneToleranceCents(0);
+  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 1);
+  s.setInTuneToleranceCents(3.7);
+  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 4);
+  s.setInTuneToleranceCents(20);
+  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 5);
 });
 
 // ---------------------------------------------------------------------------
@@ -302,7 +321,7 @@ test('the hydration flag is transient and never persisted', async () => {
   assert.ok(!('hasHydrated' in parsed.state), 'hasHydrated leaked into storage');
 });
 
-test('a withdrawn guitar type is migrated on load, and hydration is flagged', async () => {
+test('an unsupported lesson guitar type is migrated on load, and hydration is flagged', async () => {
   mem.entries.set(
     'standardtune-user-preferences',
     JSON.stringify({

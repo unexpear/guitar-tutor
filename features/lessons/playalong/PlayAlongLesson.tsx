@@ -23,6 +23,7 @@ import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { usePracticeTimer } from '../../practice/usePracticeTimer';
 import { useProgressStore } from '../../store/progressStore';
 import { useMicReleaseOnLeave } from '../../audio/useMicReleaseOnLeave';
+import { guitarPracticeEngineOptions } from '../../tuner/data/instrumentProfiles';
 
 const ACCENT_CLICK = require('../../../assets/audio/click-accent.wav');
 const REGULAR_CLICK = require('../../../assets/audio/click.wav');
@@ -134,21 +135,21 @@ export default function PlayAlongLesson({
   drill,
   onClose,
   onComplete,
+  onFinish,
 }: {
   drill: Drill;
   onClose: () => void;
-  onComplete: (scorePercent: number) => void;
+  /** Called only after a passing run, preserving lesson-completion behavior. */
+  onComplete?: (scorePercent: number) => void;
+  /** Called after every run so games can retain a best score below the pass line. */
+  onFinish?: (scorePercent: number) => void;
 }) {
-  const engine = useTunerEngine({
-    instrument: 'guitar',
-    a4: 440,
-    minFrequency: 60,
-    maxFrequency: 1400,
-    confidenceThreshold: 0.5,
-    noiseGateDb: -52,
-    hysteresisFrames: 2,
-    onsetDetection: true,
-  });
+  const referencePitchHz = useSettingsStore((state) => state.referencePitchHz);
+  const engineOptions = useMemo(
+    () => guitarPracticeEngineOptions(referencePitchHz),
+    [referencePitchHz],
+  );
+  const engine = useTunerEngine(engineOptions);
   const { start, stop, latest, isRunning, error } = engine;
   usePracticeTimer(isRunning);
   const recordChordAttempt = useProgressStore((s) => s.recordChordAttempt);
@@ -162,6 +163,8 @@ export default function PlayAlongLesson({
   const [mode, setMode] = useState<DetectionMode>(drill.defaultMode);
   const [pace, setPace] = useState<Pace>('wait');
   const [started, setStarted] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const startPendingRef = useRef(false);
   const [idx, setIdx] = useState(0);
   const [statuses, setStatuses] = useState<TargetStatus[]>(() =>
     drill.targets.map(() => 'pending'),
@@ -200,14 +203,17 @@ export default function PlayAlongLesson({
   useEffect(() => {
     if (finished) return;
     const target = drill.targets[idx];
-    matcherRef.current = new TargetMatcher(target, { mode });
+    matcherRef.current = new TargetMatcher(target, {
+      mode,
+      referencePitchHz,
+    });
     matcherRef.current.reset();
     setHeardState({
       target: matcherRef.current.state().targetClasses,
       heard: [],
     });
     setStrumsLeft(target.kind === 'chord' ? target.strums ?? 1 : 1);
-  }, [drill, idx, mode, finished]);
+  }, [drill, idx, mode, finished, referencePitchHz]);
 
   // Engine lifecycle.
   useEffect(() => {
@@ -337,41 +343,52 @@ export default function PlayAlongLesson({
       completedRef.current = true;
       stop();
       clockRef.current?.stop();
-      if (scorePercent >= PASS_PERCENT) onComplete(scorePercent);
+      onFinish?.(scorePercent);
+      if (scorePercent >= PASS_PERCENT) onComplete?.(scorePercent);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
 
   const handleStart = useCallback(async () => {
-    await start();
-    setStarted(true);
+    if (startPendingRef.current || isRunning) return;
+    startPendingRef.current = true;
+    setIsStarting(true);
+    try {
+      await start();
+      setStarted(true);
 
-    if (hasClick) {
-      clockRef.current?.stop();
-      clockRef.current = createBeatClock({
-        getBpm: () => drill.bpm ?? 70,
-        getBeatsPerBar: () => drill.beatsPerBar ?? 4,
-        countInBeats: drill.beatsPerBar ?? 4,
-        onCountIn: (remaining) => {
-          setCountIn(remaining);
-          const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
-          if (!soundsEnabled) return;
-          const p = clickRef.current;
-          if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
-        },
-        onStart: () => setCountIn(null),
-        onBeat: (beat, scheduledAt) => {
-          lastBeatAtRef.current = scheduledAt;
-          setBeatInBar(beat);
-          const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
-          if (!soundsEnabled) return;
-          const p = beat === 0 ? accentRef.current : clickRef.current;
-          if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
-        },
-      });
-      clockRef.current.start();
+      if (hasClick) {
+        clockRef.current?.stop();
+        clockRef.current = createBeatClock({
+          getBpm: () => drill.bpm ?? 70,
+          getBeatsPerBar: () => drill.beatsPerBar ?? 4,
+          countInBeats: drill.beatsPerBar ?? 4,
+          onCountIn: (remaining) => {
+            setCountIn(remaining);
+            const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+            if (!soundsEnabled) return;
+            const p = clickRef.current;
+            if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
+          },
+          onStart: () => setCountIn(null),
+          onBeat: (beat, scheduledAt) => {
+            lastBeatAtRef.current = scheduledAt;
+            setBeatInBar(beat);
+            const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+            if (!soundsEnabled) return;
+            const p = beat === 0 ? accentRef.current : clickRef.current;
+            if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
+          },
+        });
+        clockRef.current.start();
+      }
+    } catch {
+      // The tuner hook supplies its permission/start error to the UI below.
+    } finally {
+      startPendingRef.current = false;
+      setIsStarting(false);
     }
-  }, [start, hasClick, drill]);
+  }, [start, isRunning, hasClick, drill]);
 
   const conveyorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: conveyorX.value }],
@@ -509,13 +526,15 @@ export default function PlayAlongLesson({
               </Text>
             )}
             <PressableScale
-              style={styles.startBtn}
+              style={[styles.startBtn, isStarting && styles.startBtnDisabled]}
               onPress={handleStart}
+              disabled={isStarting}
               accessibilityRole="button"
               accessibilityLabel="Start listening"
+              accessibilityState={{ disabled: isStarting }}
             >
               <Text style={styles.startBtnText}>
-                {error ? 'Try Again' : 'Start Listening'}
+                {isStarting ? 'Starting…' : error ? 'Try Again' : 'Start Listening'}
               </Text>
             </PressableScale>
           </View>
@@ -867,6 +886,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 44,
     ...CARD_SHADOW,
   },
+  startBtnDisabled: { opacity: 0.55 },
   startBtnText: {
     fontSize: 16,
     fontWeight: '800',

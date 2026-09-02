@@ -9,6 +9,8 @@ import {
 type FakePlayer = {
   asset: number | string;
   volume: number;
+  playbackRate: number;
+  shouldCorrectPitch: boolean;
   played: number;
   released: boolean;
   releasedCount: number;
@@ -22,7 +24,11 @@ interface FakeEnv {
   createdAssets: Array<number | string>;
   warns: string[];
   modeCalls: Array<Parameters<NonNullable<SoundControllerDeps['setAudioMode']>>[0]>;
-  settings: { soundsEnabled: boolean; sampleVolume: number };
+  settings: {
+    soundsEnabled: boolean;
+    sampleVolume: number;
+    referencePitchHz: number;
+  };
   scheduled: Array<{ at: number; fn: () => void; cancelled: boolean }>;
   fireAll(): void;
 }
@@ -39,7 +45,11 @@ function makeEnv(overrides: Partial<SoundControllerDeps> = {}): FakeEnv {
   const createdAssets: Array<number | string> = [];
   const warns: string[] = [];
   const modeCalls: Array<Parameters<NonNullable<SoundControllerDeps['setAudioMode']>>[0]> = [];
-  const settings = { soundsEnabled: true, sampleVolume: 80 };
+  const settings = {
+    soundsEnabled: true,
+    sampleVolume: 80,
+    referencePitchHz: 440,
+  };
   const scheduled: Array<{ at: number; fn: () => void; cancelled: boolean }> = [];
   let now = 0;
 
@@ -49,6 +59,8 @@ function makeEnv(overrides: Partial<SoundControllerDeps> = {}): FakeEnv {
       const player: FakePlayer = {
         asset,
         volume: 1,
+        playbackRate: 1,
+        shouldCorrectPitch: true,
         played: 0,
         released: false,
         releasedCount: 0,
@@ -133,8 +145,23 @@ test('playNote picks the sample, sets the volume, and plays exactly once', async
   assert.deepEqual(env.createdAssets, ['asset:C4']);
   assert.equal(env.players.length, 1);
   assert.equal(env.players[0].volume, 0.8);
+  assert.equal(env.players[0].playbackRate, 1);
+  assert.equal(env.players[0].shouldCorrectPitch, false);
   assert.equal(env.players[0].played, 1);
   assert.equal(env.players[0].released, false);
+});
+
+test('reference notes and chords follow the selected A4 calibration', async () => {
+  const env = makeEnv();
+  env.settings.referencePitchHz = 442;
+
+  await env.controller.playNote('C4');
+  await env.controller.playChord(['E4', 'G4']);
+
+  for (const player of env.players) {
+    assert.equal(player.playbackRate, 442 / 440);
+    assert.equal(player.shouldCorrectPitch, false);
+  }
 });
 
 test('a second playNote releases the previous player exactly once', async () => {

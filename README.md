@@ -1,6 +1,6 @@
 # StandardTune
 
-A free and open source guitar tuner and learning companion for Android. No ads, no tracking, no in-app purchases.
+A free and open source multi-instrument tuner and guitar learning companion for Android. No ads, no tracking, no in-app purchases.
 
 ## Screenshots
 
@@ -15,18 +15,19 @@ A free and open source guitar tuner and learning companion for Android. No ads, 
 ## Features
 
 - **Real-time tuner** powered by [react-native-tuner-engine](https://www.npmjs.com/package/react-native-tuner-engine) — a native C++ pitch-detection pipeline (YIN / PYIN / cepstrum ensemble) running on a dedicated audio thread
-- **16 tuning presets** — Standard, Drop D, Drop C, Open G, DADGAD, Half Step Down, and more
+- **31 tuning presets** — acoustic, electric and classical guitar, baritone and extended-range guitar, 4/5/6-string bass, 12-string courses, ukulele and chromatic mode
 - **Single-string tuning** — tap a string to aim at it; green means dead on, amber within nine cents, red past ten
+- **Difficult-room guidance** — unstable/noisy input is withheld, and selected-string mode identifies common overtone and octave errors
+- **Tuner calibration** — persisted A4 reference from 430–450 Hz and a selectable ±1–5 cent in-tune window, with beginner-friendly tune-up/down directions
 - **Chord library** — 36 chords with finger positions, diagrams that draw barres and slide up the neck, and tap-to-hear playback
 - **Metronome** — 40–200 BPM, tap tempo, accented downbeats, 2/4 · 3/4 · 4/4 · 6/8, on a drift-corrected clock shared with the play-along drills
 - **Lessons** — 15 structured beginner-to-advanced lessons (14 with full instructional text, plus an interactive guitar-anatomy diagram and quiz)
-- **Song library** — 15 songs with the chords each one needs, plus key and capo
+- **Song library** — 15 chord references with key and capo, tap-to-hear shapes, and an original microphone-scored chord-set exercise for every song
 - **Play-along practice** — Guitar Hero-style drills that listen to your real guitar: pluck the directed string/fret or strum the directed chord, with an "any tone" beginner mode and a "full chord" mode that requires evidence of multiple chord tones before scoring a hit
-- Dark theme throughout
-
 - **Chord Quiz** — name the shape, pick the shape, or name what you hear, with distractors chosen to be the chords people actually mix up
 - **Chord Changes** — the one-minute-changes exercise, counted off your actual playing
 - **Practice tracking** — time at the instrument, logged per day against a goal, with a streak
+- Dark theme throughout
 
 Five of the seven cards in the Games tab are not built yet; they are dimmed
 and marked "Soon". The two that are built — Chord Quiz and Chord Changes — are
@@ -34,7 +35,8 @@ playable now. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Development
 
-Requires Node 20+ and an Android development environment (JDK 17, Android SDK).
+Requires Node 20.19.4+ (or a compatible newer LTS release) and an Android
+development environment (JDK 17, Android SDK).
 
 ```sh
 npm install
@@ -65,7 +67,13 @@ service-account setup that the upload step needs.
 Useful scripts:
 
 - `npm start` — Metro dev server
-- `node scripts/generate-samples.js` — regenerate the guitar reference samples in `assets/audio/`
+- `npm run bundle:check` — build the production Android JavaScript bundle without creating an APK
+- `node scripts/generate-samples.js` — regenerate the instrument reference samples in `assets/audio/`
+
+The tuner research, configuration rationale and physical-device release gate
+are documented in [docs/TUNER-RESEARCH.md](docs/TUNER-RESEARCH.md).
+The no-paywall product rules, learning references, and license boundaries are
+documented in [docs/FREE-AND-OPEN-DESIGN.md](docs/FREE-AND-OPEN-DESIGN.md).
 
 ## Release builds
 

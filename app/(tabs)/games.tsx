@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -133,7 +140,7 @@ export default function PracticeGamesScreen() {
     }
     Alert.alert(
       game.title,
-      'This one is not built yet. Chord Quiz is - give it a go.',
+      'This game is not built yet. Chord Quiz and Chord Changes are ready now.',
       [{ text: 'OK' }],
     );
   }, []);
@@ -196,9 +203,12 @@ export default function PracticeGamesScreen() {
         <Text style={styles.headerSubtitle}>Sharpen your skills with fun challenges</Text>
       </View>
 
-      <View style={[styles.grid, { paddingHorizontal: sidePadding }]}>
+      <ScrollView
+        contentContainerStyle={[styles.grid, { paddingHorizontal: sidePadding }]}
+        showsVerticalScrollIndicator={false}
+      >
         {GAMES.map((game) => renderGameCard(game))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -227,6 +237,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 14,
+    paddingBottom: 32,
   },
   gameCard: {
     backgroundColor: '#1a1a3e',

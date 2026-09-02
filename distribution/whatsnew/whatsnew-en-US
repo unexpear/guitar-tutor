@@ -1,8 +1,7 @@
-- Chord Quiz and Chord Changes: two practice games that listen to you play
-- A drill for every lesson, not just three
-- Practice tracking: time played, a daily goal, and a streak
-- Chord diagrams now draw barres and shapes up the neck; 36 chords
-- Songs list the chords they need, with diagrams you can hear
-- Per-chord progress, so you can see what needs work
-- Fixes: the tuner now tells you when mic permission is denied, and the
-  mic is released when you leave the screen
+- 31 tunings for guitars, 4/5/6-string basses, ukulele and chromatic mode
+- Better rejection of background noise, unstable pitches and common overtones
+- Adjustable A4 calibration and tuner accuracy
+- Play every song's chord set as an original microphone-scored practice drill
+- More reliable Chord Changes and play-along microphone startup
+- Chord Quiz now counts toward daily practice time
+- Improved small-screen game and song navigation

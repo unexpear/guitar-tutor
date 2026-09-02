@@ -9,10 +9,16 @@ interface SettingsState {
   sampleVolume: number;
   /** Daily practice goal in minutes. */
   practiceGoalMinutes: number;
+  /** Concert pitch used by both native detection and target-note maths. */
+  referencePitchHz: number;
+  /** How close a displayed reading must be before it is marked in tune. */
+  inTuneToleranceCents: number;
 
   setSoundsEnabled: (enabled: boolean) => void;
   setSampleVolume: (volume: number) => void;
   setPracticeGoalMinutes: (minutes: number) => void;
+  setReferencePitchHz: (hz: number) => void;
+  setInTuneToleranceCents: (cents: number) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -21,12 +27,20 @@ export const useSettingsStore = create<SettingsState>()(
       soundsEnabled: true,
       sampleVolume: 75,
       practiceGoalMinutes: 15,
+      referencePitchHz: 440,
+      inTuneToleranceCents: 3,
 
       setSoundsEnabled: (enabled: boolean) => set({ soundsEnabled: enabled }),
       setSampleVolume: (volume: number) =>
         set({ sampleVolume: Math.max(0, Math.min(100, Math.round(volume))) }),
       setPracticeGoalMinutes: (minutes: number) =>
         set({ practiceGoalMinutes: Math.max(5, Math.min(120, minutes)) }),
+      setReferencePitchHz: (hz: number) =>
+        set({ referencePitchHz: Math.max(430, Math.min(450, Math.round(hz))) }),
+      setInTuneToleranceCents: (cents: number) =>
+        set({
+          inTuneToleranceCents: Math.max(1, Math.min(5, Math.round(cents))),
+        }),
     }),
     {
       name: 'standardtune-settings',

@@ -14,6 +14,8 @@ import {
   ExperienceLevel,
   TuningPreference,
 } from '../features/store/userPreferencesStore';
+import { useProgressStore } from '../features/store/progressStore';
+import { findTuningPreset } from '../features/tuner/data/tunings';
 
 interface QuestionnaireProps {
   onComplete: () => void;
@@ -50,8 +52,18 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
     setTuningPreference,
     completeQuestionnaire,
   } = useUserPreferencesStore();
+  const setAlternateTuning = useProgressStore((state) => state.setAlternateTuning);
 
   const handleComplete = () => {
+    const preferredName: Record<TuningPreference, string> = {
+      standard: 'Standard E',
+      drop_d: 'Drop D',
+      open_g: 'Open G',
+      open_d: 'Open D',
+      dadgad: 'DADGAD',
+    };
+    const preset = findTuningPreset(preferredName[tuningPreference], guitarType);
+    if (preset) setAlternateTuning(preset.id);
     completeQuestionnaire();
     onComplete();
   };

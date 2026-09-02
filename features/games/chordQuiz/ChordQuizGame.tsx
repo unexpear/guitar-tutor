@@ -17,6 +17,7 @@ import {
   QuizMode,
   QUIZ_MODES,
 } from './quiz';
+import { usePracticeTimer } from '../../practice/usePracticeTimer';
 
 export const CHORD_QUIZ_ID = 'chord-quiz';
 const ROUND_LENGTH = 10;
@@ -52,6 +53,7 @@ export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
   const [bestStreak, setBestStreak] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [beatBest, setBeatBest] = useState(false);
+  usePracticeTimer(phase === 'playing');
 
   const question = questions[index];
 

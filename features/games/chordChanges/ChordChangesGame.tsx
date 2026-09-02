@@ -11,6 +11,8 @@ import { TargetMatcher, DetectionMode } from '../../lessons/playalong/matcher';
 import { useProgressStore } from '../../store/progressStore';
 import { usePracticeTimer } from '../../practice/usePracticeTimer';
 import { useMicReleaseOnLeave } from '../../audio/useMicReleaseOnLeave';
+import { useSettingsStore } from '../../store/settingsStore';
+import { guitarPracticeEngineOptions } from '../../tuner/data/instrumentProfiles';
 import {
   ROUND_SECONDS,
   SUGGESTED_PAIRS,
@@ -32,16 +34,12 @@ export default function ChordChangesGame({
   /** Prefill, e.g. when arriving from a song's chord list. */
   initialPair?: [string, string];
 }) {
-  const engine = useTunerEngine({
-    instrument: 'guitar',
-    a4: 440,
-    minFrequency: 60,
-    maxFrequency: 1400,
-    confidenceThreshold: 0.5,
-    noiseGateDb: -52,
-    hysteresisFrames: 2,
-    onsetDetection: true,
-  });
+  const referencePitchHz = useSettingsStore((state) => state.referencePitchHz);
+  const engineOptions = useMemo(
+    () => guitarPracticeEngineOptions(referencePitchHz),
+    [referencePitchHz],
+  );
+  const engine = useTunerEngine(engineOptions);
   const { start, stop, latest, isRunning, error } = engine;
   usePracticeTimer(isRunning);
   useMicReleaseOnLeave(stop, isRunning);
@@ -61,6 +59,8 @@ export default function ChordChangesGame({
   const [current, setCurrent] = useState(0); // index into `names`
   const [secondsLeft, setSecondsLeft] = useState(ROUND_SECONDS);
   const [beatBest, setBeatBest] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const startPendingRef = useRef(false);
 
   const chords = useMemo(
     () => names.map((n) => getChord(n)).filter((c): c is Chord => !!c),
@@ -84,25 +84,35 @@ export default function ChordChangesGame({
       if (!chord) return;
       matcherRef.current = new TargetMatcher(
         { kind: 'chord', chordName: chord.name, label: chord.name },
-        { mode }
+        { mode, referencePitchHz },
       );
       armedAtRef.current = Date.now();
     },
-    [chords, mode]
+    [chords, mode, referencePitchHz]
   );
 
-  const begin = () => {
-    if (chords.length < 2) return;
-    setCount(0);
-    countRef.current = 0;
-    setCurrent(0);
-    currentRef.current = 0;
-    setSecondsLeft(ROUND_SECONDS);
-    setBeatBest(false);
-    armFor(0);
-    setPhase('running');
-    start();
-  };
+  const begin = useCallback(async () => {
+    if (chords.length < 2 || startPendingRef.current || isRunning) return;
+    startPendingRef.current = true;
+    setIsStarting(true);
+    try {
+      await start();
+      setCount(0);
+      countRef.current = 0;
+      setCurrent(0);
+      currentRef.current = 0;
+      setSecondsLeft(ROUND_SECONDS);
+      setBeatBest(false);
+      armFor(0);
+      setPhase('running');
+    } catch {
+      // The engine exposes the actionable permission/start error in `error`.
+      // Stay on setup instead of starting a timer with no microphone.
+    } finally {
+      startPendingRef.current = false;
+      setIsStarting(false);
+    }
+  }, [armFor, chords.length, isRunning, start]);
 
   const finish = useCallback(() => {
     stop();
@@ -286,12 +296,16 @@ export default function ChordChangesGame({
           {error ? <Text style={styles.error}>{String(error)}</Text> : null}
 
           <PressableScale
-            style={styles.primaryBtn}
+            style={[styles.primaryBtn, isStarting && styles.disabledBtn]}
             onPress={begin}
+            disabled={isStarting}
             accessibilityRole="button"
+            accessibilityState={{ disabled: isStarting }}
           >
             <Ionicons name="mic" size={18} color="#0b2410" />
-            <Text style={styles.primaryBtnText}>Start the minute</Text>
+            <Text style={styles.primaryBtnText}>
+              {isStarting ? 'Starting…' : 'Start the minute'}
+            </Text>
           </PressableScale>
         </ScrollView>
       </View>
@@ -482,6 +496,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   primaryBtnText: { fontSize: 16, fontWeight: '800', color: '#0b2410' },
+  disabledBtn: { opacity: 0.55 },
   secondaryBtn: { paddingHorizontal: 28, paddingVertical: 12, marginTop: 6 },
   secondaryBtnText: { fontSize: 15, fontWeight: '700', color: Colors.dark.muted },
 

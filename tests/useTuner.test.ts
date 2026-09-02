@@ -4,6 +4,7 @@ import {
   IDLE_STATE,
   mapTunerReading,
   targetFrequenciesFor,
+  tunerEngineOptionsFor,
   TUNER_ENGINE_OPTIONS,
 } from '../features/tuner/tunerReading';
 import { TUNING_PRESETS } from '../features/tuner/data/tunings';
@@ -34,19 +35,29 @@ function opts(patches: Partial<Parameters<typeof mapTunerReading>[1]> = {}) {
 }
 
 test('TUNER_ENGINE_OPTIONS pins the current native-engine contract', () => {
-  // This is the regression lock for bass. The engine handles sub-60 Hz, but
-  // the app deliberately stays guitar-focused until bass is designed for;
-  // changing the floor must be an explicit, test-driven decision.
+  // Do not pass `instrument`: the dependency applies that preset after the
+  // explicit config and would raise the floor above our C2/D2 tunings.
   assert.deepEqual(TUNER_ENGINE_OPTIONS, {
-    instrument: 'guitar',
     a4: 440,
-    minFrequency: 60,
+    minFrequency: 55,
     maxFrequency: 1400,
     confidenceThreshold: 0.75,
     noiseGateDb: -55,
     onsetDetection: true,
+    emaAlpha: 0.42,
+    hysteresisFrames: 2,
+    hpfCutoffHz: 40,
+    quality: 'balanced',
   });
-  assert.equal(TUNER_ENGINE_OPTIONS.minFrequency, 60);
+  assert.ok(!('instrument' in TUNER_ENGINE_OPTIONS));
+});
+
+test('reference-pitch calibration reaches the engine and target maths', () => {
+  assert.equal(tunerEngineOptionsFor(STANDARD_E, 442).a4, 442);
+  const a440 = targetFrequenciesFor(STANDARD_E, 440)[1];
+  const a442 = targetFrequenciesFor(STANDARD_E, 442)[1];
+  assert.equal(a440, 110);
+  assert.equal(a442, 110.5);
 });
 
 test('not listening reads exactly the idle state', () => {
@@ -77,6 +88,96 @@ test('a malformed frame is treated as "listening, nothing heard"', () => {
   assert.equal(state.isActive, true);
   assert.equal(state.stringIndex, null);
   assert.equal(state.cents, 0, 'NaN cents must not leak into the readout');
+});
+
+test('quiet and noisy no-pitch frames produce useful signal guidance', () => {
+  const quiet = mapTunerReading(
+    reading({ hasPitch: false, rmsDb: -78 }),
+    opts({ smoothHz: 0 }),
+  );
+  const noisy = mapTunerReading(
+    reading({ hasPitch: false, rmsDb: -35 }),
+    opts({ smoothHz: 0 }),
+  );
+  assert.equal(quiet.signal, 'quiet');
+  assert.equal(noisy.signal, 'noisy');
+});
+
+test('low-confidence or wandering readings are withheld as unstable', () => {
+  const target = noteToFrequency('E2');
+  const weak = mapTunerReading(
+    reading({ confidence: 0.74 }),
+    opts({ smoothHz: target, targetStringIndex: 0 }),
+  );
+  const wandering = mapTunerReading(
+    reading(),
+    opts({ smoothHz: target, targetStringIndex: 0, spreadCents: 25 }),
+  );
+  assert.equal(weak.signal, 'unstable');
+  assert.equal(weak.verdict, null);
+  assert.equal(wandering.signal, 'unstable');
+  assert.equal(wandering.verdict, null);
+});
+
+test('selected-string mode corrects an octave overtone without changing auto mode', () => {
+  const target = noteToFrequency('E2');
+  const selected = mapTunerReading(
+    reading({ noteName: 'E', octave: 3 }),
+    opts({ smoothHz: target * 2, targetStringIndex: 0 }),
+  );
+  const automatic = mapTunerReading(
+    reading({ noteName: 'E', octave: 3 }),
+    opts({ smoothHz: target * 2 }),
+  );
+  assert.equal(selected.frequency, target);
+  assert.equal(selected.harmonicRatio, 2);
+  assert.equal(selected.targetCents, 0);
+  assert.equal(automatic.harmonicRatio, 1);
+  assert.equal(automatic.frequency, target * 2);
+});
+
+test('chromatic mode grades the nearest semitone without a string target', () => {
+  const chromatic = TUNING_PRESETS.find((preset) => preset.id === 'chromatic');
+  assert.ok(chromatic);
+  const state = mapTunerReading(
+    reading({ noteName: 'C', octave: 4, cents: 7 }),
+    opts({
+      tuning: chromatic,
+      stringFrequencies: [],
+      smoothHz: noteToFrequency('C4') * 2 ** (7 / 1200),
+    }),
+  );
+  assert.equal(state.nearestTarget, 'C4');
+  assert.equal(state.targetCents, 7);
+  assert.equal(state.verdict, 'close');
+  assert.equal(state.stringIndex, null);
+});
+
+test('the selected in-tune window controls guided and chromatic verdicts', () => {
+  const e2 = noteToFrequency('E2');
+  const precise = mapTunerReading(
+    reading(),
+    opts({
+      smoothHz: e2 * 2 ** (3 / 1200),
+      targetStringIndex: 0,
+      inTuneCents: 1,
+    }),
+  );
+  assert.equal(precise.targetCents, 3);
+  assert.equal(precise.verdict, 'close');
+
+  const chromatic = TUNING_PRESETS.find((preset) => preset.id === 'chromatic');
+  assert.ok(chromatic);
+  const relaxed = mapTunerReading(
+    reading({ noteName: 'A', octave: 4, cents: 5 }),
+    opts({
+      tuning: chromatic,
+      stringFrequencies: [],
+      smoothHz: 440 * 2 ** (5 / 1200),
+      inTuneCents: 5,
+    }),
+  );
+  assert.equal(relaxed.verdict, 'in-tune');
 });
 
 test('every string of every preset maps its exact target to zero cents and in-tune', () => {

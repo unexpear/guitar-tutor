@@ -74,7 +74,13 @@ if (!fs.existsSync(outputDir)) {
 }
 
 let count = 0;
-for (let octave = 2; octave <= 6; octave++) {
+// B0 covers standard five/six-string bass. Octave 1 covers four-string bass,
+// baritone and extended-range guitar reference pitches.
+const b0 = generateWav(noteToFrequency('B', 0));
+fs.writeFileSync(path.join(outputDir, 'B0.wav'), b0);
+count++;
+
+for (let octave = 1; octave <= 6; octave++) {
   for (const note of NOTE_NAMES) {
     if (octave === 6 && NOTE_NAMES.indexOf(note) > 4) continue;
     const freq = noteToFrequency(note, octave);

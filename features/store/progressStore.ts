@@ -61,7 +61,7 @@ export const useProgressStore = create<ProgressState>()(
       currentStreak: 0,
       totalPracticeMinutes: 0,
       favoriteChords: [],
-      alternateTuning: 'Standard E',
+      alternateTuning: 'guitar-acoustic-standard',
       gameHighScores: {},
       practiceLog: {},
       lastPracticeDate: null,

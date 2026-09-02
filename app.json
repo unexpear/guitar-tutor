@@ -12,7 +12,7 @@
       [
         "react-native-tuner-engine",
         {
-          "microphonePermission": "StandardTune uses the microphone to detect your guitar’s pitch while tuning."
+          "microphonePermission": "StandardTune uses the microphone to detect your instrument’s pitch while tuning."
         }
       ],
       "expo-font",

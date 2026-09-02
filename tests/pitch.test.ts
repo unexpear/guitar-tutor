@@ -7,6 +7,8 @@ import {
   pushWindow,
   verdictForCents,
   nearestStringIndex,
+  correctSelectedStringHarmonic,
+  frequencySpreadCents,
   SMOOTH_WINDOW,
   OFF_CENTS,
   STRING_MATCH_CENTS,
@@ -69,6 +71,28 @@ test('the smoothing window keeps only the most recent readings', () => {
   assert.equal(w[0], 4, 'oldest readings should have fallen off');
 });
 
+test('frequency spread is measured in cents and ignores malformed entries', () => {
+  assert.equal(Math.round(frequencySpreadCents([440, 440, 0, NaN])), 0);
+  assert.equal(
+    Math.round(frequencySpreadCents([440, 440 * 2 ** (12 / 1200)])),
+    12,
+  );
+});
+
+test('selected-string correction recognizes overtones and period doubling', () => {
+  assert.equal(correctSelectedStringHarmonic(E2 * 2, E2).ratio, 2);
+  assert.equal(correctSelectedStringHarmonic(E2 * 3, E2).ratio, 3);
+  assert.equal(correctSelectedStringHarmonic(E2 * 4, E2).ratio, 4);
+  assert.equal(correctSelectedStringHarmonic(E2 / 2, E2).ratio, 0.5);
+});
+
+test('harmonic correction does not force an unrelated pitch onto the target', () => {
+  assert.deepEqual(correctSelectedStringHarmonic(A2, E2), {
+    frequency: A2,
+    ratio: 1,
+  });
+});
+
 test('a reading of zero cents is in tune, and matches what is displayed', () => {
   assert.equal(verdictForCents(0), 'in-tune');
   // Anything that rounds to 0 shows "0 cents", so it must look in tune too.
@@ -76,10 +100,23 @@ test('a reading of zero cents is in tune, and matches what is displayed', () => 
   assert.equal(verdictForCents(-0.4), 'in-tune');
 });
 
-test('one to nine cents out is close, either direction', () => {
-  for (const c of [1, 5, 9, -1, -5, -9]) {
+test('the default in-tune window is three cents', () => {
+  for (const c of [1, 3, -1, -3]) {
+    assert.equal(verdictForCents(c), 'in-tune', `${c} cents should be in tune`);
+  }
+});
+
+test('four to nine cents out is close by default, either direction', () => {
+  for (const c of [4, 5, 9, -4, -5, -9]) {
     assert.equal(verdictForCents(c), 'close', `${c} cents should be close`);
   }
+});
+
+test('the in-tune window is configurable and safely bounded', () => {
+  assert.equal(verdictForCents(1, 1), 'in-tune');
+  assert.equal(verdictForCents(2, 1), 'close');
+  assert.equal(verdictForCents(5, 99), 'in-tune');
+  assert.equal(verdictForCents(6, 99), 'close');
 });
 
 test('ten cents or more is off, either direction', () => {

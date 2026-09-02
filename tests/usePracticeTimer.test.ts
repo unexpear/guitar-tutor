@@ -6,12 +6,12 @@ import { createPracticeClock } from '../features/practice/practiceClock';
 // AsyncStorage at module scope; mock it before that can happen.
 const mem = new Map<string, string>();
 mock.module('@react-native-async-storage/async-storage', {
-  exports: {
-    default: {
-      getItem: async (key: string) => (mem.has(key) ? mem.get(key)! : null),
-      setItem: async (key: string, value: string) => void mem.set(key, value),
-      removeItem: async (key: string) => void mem.delete(key),
-    },
+  // Node 20 (the CI runtime) supports defaultExport, but not the newer
+  // `exports: { default: ... }` spelling introduced in later Node releases.
+  defaultExport: {
+    getItem: async (key: string) => (mem.has(key) ? mem.get(key)! : null),
+    setItem: async (key: string, value: string) => void mem.set(key, value),
+    removeItem: async (key: string) => void mem.delete(key),
   },
 });
 

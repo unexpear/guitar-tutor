@@ -83,6 +83,8 @@ export interface PitchSample {
 
 export interface MatcherConfig {
   mode: DetectionMode;
+  /** Concert pitch used to turn measured frequency into a MIDI-note offset. */
+  referencePitchHz: number;
   /** Ignore samples below this detector confidence. */
   minConfidence: number;
   /** Mono note-target tolerance in cents. */
@@ -103,6 +105,7 @@ export interface MatcherConfig {
 
 export const DEFAULT_CONFIG: MatcherConfig = {
   mode: 'mono',
+  referencePitchHz: 440,
   minConfidence: 0.6,
   noteToleranceCents: 60,
   allowOctaveUp: true,
@@ -290,8 +293,12 @@ export type MatchEvent = 'hit' | 'wrong' | null;
 
 type ArmState = 'provisional' | 'confirmed' | 'ringJoined' | 'disarmed';
 
-function frequencyToMidiFloat(frequency: number): number {
-  return 69 + 12 * Math.log2(frequency / 440);
+function frequencyToMidiFloat(frequency: number, referencePitchHz: number): number {
+  const a4 =
+    Number.isFinite(referencePitchHz) && referencePitchHz > 0
+      ? referencePitchHz
+      : 440;
+  return 69 + 12 * Math.log2(frequency / a4);
 }
 
 function pitchClassOf(midi: number): number {
@@ -404,7 +411,10 @@ export class TargetMatcher {
       this.lastUnvoicedRmsDb = sample.rmsDb;
       return null;
     }
-    const midiFloat = frequencyToMidiFloat(sample.frequency);
+    const midiFloat = frequencyToMidiFloat(
+      sample.frequency,
+      this.config.referencePitchHz,
+    );
     this.minMidiSeen =
       this.minMidiSeen === null ? midiFloat : Math.min(this.minMidiSeen, midiFloat);
     this.updateArming(midiFloat, sample.rmsDb, sample.tMs);

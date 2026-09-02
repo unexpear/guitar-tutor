@@ -13,11 +13,9 @@ import { TunerEngine } from 'react-native-tuner-engine';
 import type { PitchEvent, EngineStatus } from 'react-native-tuner-engine';
 
 // ---------------------------------------------------------------------------
-// Spike configuration — the exact values the brief asks to test.
-// Do NOT copy these into TUNER_ENGINE_OPTIONS (features/tuner/tunerReading.ts).
-// This screen is a throw-away harness: toggle `instrument: 'guitar'` back to
-// confirm you are not accidentally testing the production guitar tuning if
-// the table below ever stops matching these constants.
+// Dedicated low-frequency diagnostic. The production tuner now has explicit
+// instrument profiles; this screen remains useful because it exposes raw E1
+// readings and octave failures without any app-side correction.
 // ---------------------------------------------------------------------------
 const BASS_SPIKE_CONFIG = {
   instrument: 'bass' as const,
@@ -257,9 +255,9 @@ export default function BassSpikeScreen() {
         <View style={styles.warningBanner}>
           <Text style={styles.warningTitle}>⚠ TEMPORARY SPIKE — NOT PRODUCTION TUNER</Text>
           <Text style={styles.warningBody}>
-            This screen drives the singleton TunerEngine with bass values. Production{' '}
-            <Text style={styles.mono}>TUNER_ENGINE_OPTIONS</Text> stays on guitar (min 60 Hz). Starting here
-            reconfigures the engine; returning to Tuner and tapping start reapplies the guitar config.
+            This screen bypasses the production tuner and drives the singleton engine directly with
+            bass values. It intentionally shows raw readings without the production tuner&apos;s stability
+            and overtone correction. Returning to Tuner and tapping start applies the selected profile.
           </Text>
         </View>
 

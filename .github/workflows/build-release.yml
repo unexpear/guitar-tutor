@@ -46,6 +46,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Verify production JavaScript bundle
+        run: npm run bundle:check
+
       - name: Run Expo prebuild
         run: npx expo prebuild --platform android --clean
 
