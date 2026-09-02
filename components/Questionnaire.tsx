@@ -119,7 +119,7 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
         return (
           <Animated.View entering={FadeInDown.duration(400)}>
             <Text style={styles.questionTitle}>What's your experience level?</Text>
-            <Text style={styles.questionSubtitle}>This helps us adjust lesson detail</Text>
+            <Text style={styles.questionSubtitle}>This opens the best lesson path for your starting point</Text>
             <View style={styles.optionsList}>
               {EXPERIENCE_LEVELS.map((level) => (
                 <TouchableOpacity
@@ -390,6 +390,6 @@ const styles = StyleSheet.create({
   nextButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#071408',
   },
 });

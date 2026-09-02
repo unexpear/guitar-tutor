@@ -42,6 +42,14 @@ test('a song does not list the same chord twice', () => {
   }
 });
 
+test('signature beginner songs use their characteristic shapes', () => {
+  assert.deepEqual(getSong('2')?.chords, ['Em', 'D6/9/F#']);
+  assert.deepEqual(
+    getSong('6')?.chords,
+    ['Em7', 'G (320033)', 'Dsus4', 'A7sus4', 'Cadd9'],
+  );
+});
+
 const BARRE_CHORDS = new Set([
   'F', 'B', 'Bb', 'Eb', 'Ab', 'F#', 'Cm', 'Fm', 'Gm', 'F#m', 'G#m', 'C#m',
 ]);

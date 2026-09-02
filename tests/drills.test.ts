@@ -149,7 +149,26 @@ test('the family-of-G drill is exactly the chords in the key of G', () => {
   const d = getDrill('intermediate-music-theory');
   if (!d) throw new Error('theory drill missing');
   const names = d.targets.map((t) => (t.kind === 'chord' ? t.chordName : ''));
-  assert.deepEqual(names, ['G', 'Am', 'Bm', 'C', 'D', 'Em']);
+  assert.deepEqual(names, ['G', 'Am', 'Bm', 'C', 'D', 'Em', 'F#dim']);
+});
+
+test('the tab drill follows its lesson up and back down', () => {
+  const d = getDrill('beginner-reading-tabs');
+  if (!d) throw new Error('tab drill missing');
+  const route = d.targets.map((t) => t.kind === 'note' ? `${t.stringIndex}:${t.fret}` : '');
+  assert.deepEqual(route.slice(0, 12), [...route.slice(11).reverse()]);
+});
+
+test('the techniques drill completes every 5h7p5 figure', () => {
+  const d = getDrill('advanced-techniques');
+  if (!d) throw new Error('techniques drill missing');
+  for (let stringIndex = 0; stringIndex < 6; stringIndex += 1) {
+    assert.deepEqual(
+      d.targets.slice(stringIndex * 3, stringIndex * 3 + 3).map((t) =>
+        t.kind === 'note' ? [t.stringIndex, t.fret] : []),
+      [[stringIndex, 5], [stringIndex, 7], [stringIndex, 5]],
+    );
+  }
 });
 
 test('the barre drill only asks for barre chords, in full-chord mode', () => {

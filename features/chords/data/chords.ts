@@ -1,4 +1,4 @@
-export type ChordType = 'major' | 'minor' | '7th' | 'minor7th' | 'major7th' | 'dim';
+export type ChordType = 'major' | 'minor' | '7th' | 'minor7th' | 'major7th' | 'sus' | 'add' | 'dim';
 
 export interface Chord {
   name: string;
@@ -50,7 +50,14 @@ export const CHORDS: Chord[] = [
   // Minor 7th
   { name: 'Am7', type: 'minor7th', strings: [-1, 0, 2, 0, 1, 0], fingers: [0, 0, 2, 0, 1, 0] },
   { name: 'Dm7', type: 'minor7th', strings: [-1, -1, 0, 2, 1, 1], fingers: [0, 0, 0, 2, 1, 1] },
-  { name: 'Em7', type: 'minor7th', strings: [0, 2, 2, 0, 3, 0], fingers: [0, 2, 3, 0, 4, 0] },
+  { name: 'Em7', type: 'minor7th', strings: [0, 2, 2, 0, 3, 3], fingers: [0, 1, 2, 0, 3, 4] },
+
+  // Characteristic open voicings used by common beginner songs.
+  { name: 'Dsus4', type: 'sus', strings: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 3, 4] },
+  { name: 'A7sus4', type: 'sus', strings: [-1, 0, 2, 0, 3, 3], fingers: [0, 0, 1, 0, 3, 4] },
+  { name: 'Cadd9', type: 'add', strings: [-1, 3, 2, 0, 3, 3], fingers: [0, 2, 1, 0, 3, 4] },
+  { name: 'G (320033)', type: 'major', strings: [3, 2, 0, 0, 3, 3], fingers: [2, 1, 0, 0, 3, 4] },
+  { name: 'D6/9/F#', type: 'add', strings: [2, 0, 0, 2, 0, 0], fingers: [2, 0, 0, 3, 0, 0] },
 
   // Major 7th
   { name: 'Cmaj7', type: 'major7th', strings: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0] },
@@ -61,6 +68,7 @@ export const CHORDS: Chord[] = [
   { name: 'Adim', type: 'dim', strings: [-1, 0, 1, 2, 1, -1], fingers: [0, 0, 1, 3, 2, 0] },
   { name: 'Bdim', type: 'dim', strings: [-1, 2, 3, 4, 3, -1], fingers: [0, 1, 2, 4, 3, 0] },
   { name: 'Edim', type: 'dim', strings: [-1, -1, 2, 3, 5, 3], fingers: [0, 0, 1, 2, 4, 3] },
+  { name: 'F#dim', type: 'dim', strings: [-1, -1, 4, 2, 1, 2], fingers: [0, 0, 4, 2, 1, 3] },
 ];
 
 export function getChord(name: string): Chord | undefined {

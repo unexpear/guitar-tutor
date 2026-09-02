@@ -232,7 +232,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Keys and the chord family',
-      body: 'Harmonizing the major scale gives seven chords that all sound good together. In C: C, Dm, Em, F, G, Am, Bdim. The pattern (major, minor, minor, major, major, minor, diminished) is identical in every key. Musicians label the positions with Roman numerals: I, ii, iii, IV, V, vi, vii. To hear a key rather than label it, run this lesson’s Family of G practice drill: the six chords of the G family in order, each one checked that it rang.',
+      body: 'Harmonizing the major scale gives seven related chords. In C: C, Dm, Em, F, G, Am, Bdim. The pattern (major, minor, minor, major, major, minor, diminished) is identical in every key. Musicians label the positions with Roman numerals: I, ii, iii, IV, V, vi, vii°. To hear that family rather than only label it, run this lesson’s Family of G practice drill: all seven chords in order, including F#dim, each checked that it rang.',
     },
     {
       heading: 'Progressions you already know',

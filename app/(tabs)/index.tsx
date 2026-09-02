@@ -658,7 +658,7 @@ export default function TunerScreen() {
             <Text
               style={[
                 styles.tuneButtonText,
-                { color: tuner.isActive ? Colors.dark.text : '#fff' },
+                { color: tuner.isActive ? Colors.dark.text : '#071408' },
               ]}
             >
               {tuner.isStarting
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   modeButtons: { flexDirection: 'row', gap: 8, marginTop: 7 },
-  modeButton: { minHeight: 40, justifyContent: 'center', borderRadius: 18, paddingHorizontal: 13, borderWidth: 1, borderColor: Colors.dark.cardBorder },
+  modeButton: { minHeight: 48, justifyContent: 'center', borderRadius: 24, paddingHorizontal: 13, borderWidth: 1, borderColor: Colors.dark.cardBorder },
   modeButtonText: { color: Colors.dark.muted, fontSize: 12, fontWeight: '700' },
   tuningChevron: {
     color: Colors.dark.muted,
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
   tunedBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#fff',
+    color: '#071408',
   },
   bottomArea: {
     alignItems: 'center',

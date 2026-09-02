@@ -172,7 +172,11 @@ export default function PracticeGamesScreen() {
   );
   const cardGap = 14;
   const sidePadding = 20;
-  const cardWidth = (width - sidePadding * 2 - cardGap) / 2;
+  const columns = width >= 1000 ? 4 : width >= 700 ? 3 : 2;
+  const cardWidth = Math.min(
+    280,
+    (width - sidePadding * 2 - cardGap * (columns - 1)) / columns,
+  );
 
   const handleGamePress = useCallback((game: Game) => {
     setActiveGame(game.id);

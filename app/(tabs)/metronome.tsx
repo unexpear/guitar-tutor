@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.success,
   },
   timeSigButtonTextActive: {
-    color: '#FFFFFF',
+    color: '#071408',
   },
   timeSigButtonText: {
     fontSize: 16,

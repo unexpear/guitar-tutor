@@ -3,6 +3,7 @@ export type GuitarDesignRarity = 'Starter' | 'Rare' | 'Epic' | 'Legendary';
 export interface GuitarDesign {
   id: string;
   name: string;
+  guitarType: 'acoustic' | 'electric';
   unlockLevel: number;
   rarity: GuitarDesignRarity;
   faceTop: string;
@@ -80,6 +81,7 @@ function buildDesign(
   return {
     id: `${starter ? 'starter' : 'level'}-${index + 1}`,
     name,
+    guitarType: index % 2 === 0 ? 'acoustic' : 'electric',
     unlockLevel: starter ? 1 : index + 2,
     rarity,
     faceTop: top,

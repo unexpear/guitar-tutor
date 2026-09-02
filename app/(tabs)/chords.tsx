@@ -50,10 +50,12 @@ const CHORD_TYPE_LABELS: Record<ChordType, string> = {
   '7th': '7th',
   minor7th: 'm7',
   major7th: 'Maj7',
+  sus: 'Sus',
+  add: 'Added note',
   dim: 'Dim',
 };
 
-const CHORD_TYPE_ORDER: ChordType[] = ['major', 'minor', '7th', 'minor7th', 'major7th', 'dim'];
+const CHORD_TYPE_ORDER: ChordType[] = ['major', 'minor', '7th', 'minor7th', 'major7th', 'sus', 'add', 'dim'];
 
 
 function FilterButton({

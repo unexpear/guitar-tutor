@@ -10,7 +10,8 @@ function TabIcon({ name, color }: { name: MCIName; color: ColorValue }) {
 
 export default function TabLayout() {
   const router = useRouter();
-  const { fontScale } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  const usesSidebar = width >= 768;
 
   return (
     <Tabs
@@ -22,9 +23,13 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#0f0f23',
           borderTopColor: '#2a2a4a',
-          height: 84,
+          height: usesSidebar ? undefined : 84,
+          width: usesSidebar ? 104 : undefined,
           paddingTop: 8,
         },
+        tabBarPosition: usesSidebar ? 'left' : 'bottom',
+        tabBarVariant: usesSidebar ? 'material' : 'uikit',
+        tabBarLabelPosition: 'below-icon',
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#9ca3af',
         tabBarShowLabel: fontScale <= 1.4,
@@ -39,7 +44,7 @@ export default function TabLayout() {
           headerRight: () => (
             <Pressable
               onPress={() => router.push('/settings')}
-              style={{ marginRight: 16, padding: 8 }}
+              style={{ marginRight: 12, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
               accessibilityLabel="Settings"
               accessibilityRole="button"
             >

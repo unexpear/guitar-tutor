@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -439,8 +440,9 @@ function LessonDetail({
   const sections = LESSON_CONTENT[lesson.id] ?? [];
 
   return (
+    <Modal transparent animationType="fade" visible onRequestClose={onClose}>
     <View style={[styles.detailOverlay, styles.detailContainer]}>
-      <View style={[styles.detailCard, CARD_SHADOW]}>
+      <View style={[styles.detailCard, CARD_SHADOW]} accessibilityViewIsModal>
         <ScrollView
           style={styles.detailScroll}
           showsVerticalScrollIndicator={false}
@@ -486,7 +488,7 @@ function LessonDetail({
               completed ? 'Mark lesson complete again' : 'Mark lesson as complete'
             }
           >
-            <Text style={styles.startButtonText}>
+            <Text style={[styles.startButtonText, !completed && styles.successButtonText]}>
               {completed ? 'Mark Complete Again' : 'Mark as Complete'}
             </Text>
           </PressableScale>
@@ -501,6 +503,7 @@ function LessonDetail({
         </ScrollView>
       </View>
     </View>
+    </Modal>
   );
 }
 
@@ -520,6 +523,7 @@ export default function LessonsScreen() {
     hasCompletedQuestionnaire,
     hasHydrated,
     resetQuestionnaire,
+    experienceLevel,
   } = useUserPreferencesStore();
 
   // Derived from the store so "Retake Questionnaire" (here or in Settings)
@@ -528,11 +532,16 @@ export default function LessonsScreen() {
   const showQuestionnaire = hasHydrated && !hasCompletedQuestionnaire;
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['beginner']),
+    new Set([experienceLevel ?? 'beginner']),
   );
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeLessonContent, setActiveLessonContent] = useState<string | null>(null);
   const [practiceLesson, setPracticeLesson] = useState<Lesson | null>(null);
+
+  useEffect(() => {
+    if (!hasCompletedQuestionnaire) return;
+    setExpandedCategories((previous) => new Set(previous).add(experienceLevel));
+  }, [experienceLevel, hasCompletedQuestionnaire]);
 
   const completedCount = useMemo(
     () => Object.values(completedLessons).filter((l) => l.completed).length,
@@ -981,7 +990,7 @@ const styles = StyleSheet.create({
   completedBadgeText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: '#071408',
   },
   practiceButton: {
     flexDirection: 'row',
@@ -1010,8 +1019,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  successButtonText: {
+    color: '#071408',
+  },
   closeButton: {
-    paddingVertical: 10,
+    minHeight: 48,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {

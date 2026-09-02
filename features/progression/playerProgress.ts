@@ -23,9 +23,10 @@ export function levelProgress(totalXp: number): LevelProgress {
   };
 }
 
-/** Every completed round pays something; accuracy raises the reward. */
+/** A scored round pays participation XP; a zero-score abandon cannot be farmed. */
 export function xpForGameScore(score: number): number {
   const safeScore = Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0;
+  if (safeScore === 0) return 0;
   return 20 + Math.round(safeScore / 2);
 }
 

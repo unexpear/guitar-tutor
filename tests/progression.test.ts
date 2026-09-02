@@ -26,7 +26,7 @@ test('XP produces predictable 100-point levels and progress', () => {
 });
 
 test('round and lesson XP rewards are bounded', () => {
-  assert.equal(xpForGameScore(0), 20);
+  assert.equal(xpForGameScore(0), 0);
   assert.equal(xpForGameScore(100), 70);
   assert.equal(xpForGameScore(900), 70);
   assert.equal(xpForFirstLesson(100), 75);
@@ -40,6 +40,7 @@ test('locker has ten free and thirty level-locked designs', () => {
   assert.equal(GUITAR_DESIGNS.at(-1)?.unlockLevel, 31);
   assert.equal(GUITAR_DESIGNS.filter((design) => isDesignUnlocked(design, 1)).length, 10);
   assert.equal(GUITAR_DESIGNS.filter((design) => isDesignUnlocked(design, 31)).length, 40);
+  assert.equal(GUITAR_DESIGNS.filter((design) => design.guitarType === 'acoustic').length, 20);
+  assert.equal(GUITAR_DESIGNS.filter((design) => design.guitarType === 'electric').length, 20);
   assert.equal(guitarDesign('missing').id, GUITAR_DESIGNS[0].id);
 });
-

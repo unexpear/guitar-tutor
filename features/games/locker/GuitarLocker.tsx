@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, CARD_SHADOW } from '../../../constants/Colors';
 import PressableScale from '../../../components/PressableScale';
-import HeadstockSvg from '../../tuner/components/HeadstockSvg';
+import FullGuitarSvg from './FullGuitarSvg';
 import { GUITAR_DESIGNS, isDesignUnlocked } from '../../progression/guitarDesigns';
 import { levelFromXp } from '../../progression/playerProgress';
 import { useProgressStore } from '../../store/progressStore';
@@ -41,14 +41,14 @@ export default function GuitarLocker({ onExit }: { onExit: () => void }) {
                 disabled={!open}
                 style={[styles.card, active && styles.cardActive, CARD_SHADOW]}
                 accessibilityRole="button"
-                accessibilityLabel={`${design.name}, ${open ? active ? 'selected' : 'unlocked' : `unlocks at level ${design.unlockLevel}`}`}
+                accessibilityLabel={`${design.name} ${design.guitarType} guitar, ${open ? active ? 'selected' : 'unlocked' : `unlocks at level ${design.unlockLevel}`}`}
               >
                 <View style={styles.preview}>
-                  <HeadstockSvg design={design} width={76} height={122} />
+                  <FullGuitarSvg design={design} width={88} height={148} />
                   {!open && <View style={styles.lock}><Ionicons name="lock-closed" size={22} color="#fff" /></View>}
                 </View>
                 <Text style={styles.name} numberOfLines={1}>{design.name}</Text>
-                <Text style={[styles.rarity, { color: RARITY_COLOR[design.rarity] }]}>{design.rarity}</Text>
+                <Text style={[styles.rarity, { color: RARITY_COLOR[design.rarity] }]}>{design.rarity} · {design.guitarType === 'acoustic' ? 'Acoustic' : 'Electric'}</Text>
                 <Text style={styles.requirement}>{open ? active ? 'EQUIPPED' : 'Tap to equip' : `LEVEL ${design.unlockLevel}`}</Text>
               </PressableScale>
             );
@@ -68,12 +68,11 @@ const styles = StyleSheet.create({
   grid: { padding: 18, paddingBottom: 120 },
   help: { color: Colors.dark.muted, fontSize: 15, lineHeight: 22, marginBottom: 18 },
   cards: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '48%', minHeight: 218, borderRadius: 18, backgroundColor: Colors.dark.card, borderWidth: 1, borderColor: Colors.dark.cardBorder, padding: 12, alignItems: 'center' },
+  card: { width: '48%', minHeight: 242, borderRadius: 18, backgroundColor: Colors.dark.card, borderWidth: 1, borderColor: Colors.dark.cardBorder, padding: 12, alignItems: 'center' },
   cardActive: { borderColor: Colors.success, borderWidth: 2 },
-  preview: { height: 126, justifyContent: 'center', position: 'relative' },
-  lock: { position: 'absolute', left: 17, top: 43, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(5,6,14,0.82)', alignItems: 'center', justifyContent: 'center' },
+  preview: { height: 152, justifyContent: 'center', position: 'relative' },
+  lock: { position: 'absolute', left: 23, top: 55, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(5,6,14,0.82)', alignItems: 'center', justifyContent: 'center' },
   name: { color: Colors.dark.text, fontSize: 14, fontWeight: '900', maxWidth: '100%' },
   rarity: { fontSize: 12, fontWeight: '800', marginTop: 3 },
   requirement: { color: Colors.dark.muted, fontSize: 10, fontWeight: '900', letterSpacing: 0.8, marginTop: 6 },
 });
-

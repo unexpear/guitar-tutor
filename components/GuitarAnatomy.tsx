@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
   quizStartText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: '#071408',
   },
   quizCard: {
     backgroundColor: Colors.dark.card,
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
   numberBadgeText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#fff',
+    color: '#071408',
   },
   descriptionTitle: {
     fontSize: 18,

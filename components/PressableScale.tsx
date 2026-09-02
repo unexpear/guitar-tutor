@@ -16,6 +16,7 @@ export default function PressableScale({
   scale = 0.96,
   children,
   style,
+  hitSlop = 4,
   ...props
 }: PressableScaleProps) {
   const scaleValue = useSharedValue(1);
@@ -34,6 +35,7 @@ export default function PressableScale({
         scaleValue.value = withSpring(1, { damping: 15, stiffness: 400 });
       }}
       accessibilityRole="button"
+      hitSlop={hitSlop}
       {...props}
     >
       {children}

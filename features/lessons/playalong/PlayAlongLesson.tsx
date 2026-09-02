@@ -163,8 +163,10 @@ export default function PlayAlongLesson({
   const [mode, setMode] = useState<DetectionMode>(drill.defaultMode);
   const [pace, setPace] = useState<Pace>('wait');
   const [started, setStarted] = useState(false);
+  const [inputReady, setInputReady] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const startPendingRef = useRef(false);
+  const startErrorAtRef = useRef<Error | null>(null);
   const [idx, setIdx] = useState(0);
   const [statuses, setStatuses] = useState<TargetStatus[]>(() =>
     drill.targets.map(() => 'pending'),
@@ -184,6 +186,8 @@ export default function PlayAlongLesson({
   const [countIn, setCountIn] = useState<number | null>(null);
   const [beatInBar, setBeatInBar] = useState<number | null>(null);
   const [lastTiming, setLastTiming] = useState<TimingVerdict | null>(null);
+  const [timingPoints, setTimingPoints] = useState(0);
+  const [timingAttempts, setTimingAttempts] = useState(0);
   const lastBeatAtRef = useRef<number>(0);
   const clockRef = useRef<BeatClock | null>(null);
   const accentRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
@@ -256,7 +260,15 @@ export default function PlayAlongLesson({
 
   const registerHit = useCallback(() => {
     if (hasClick && lastBeatAtRef.current) {
-      setLastTiming(gradeTiming(Date.now() - lastBeatAtRef.current));
+      const beatMs = 60_000 / (drill.bpm ?? 70);
+      let offsetMs = Date.now() - lastBeatAtRef.current;
+      // A strum just before the next click is early for that click, not very
+      // late for the previous one.
+      if (offsetMs > beatMs / 2) offsetMs -= beatMs;
+      const verdict = gradeTiming(offsetMs);
+      setLastTiming(verdict);
+      setTimingAttempts((value) => value + 1);
+      setTimingPoints((value) => value + (verdict === 'perfect' ? 1 : verdict === 'good' ? 0.8 : 0.35));
     }
     const target = drill.targets[idxRef.current];
     if (target.kind === 'chord') recordChordAttempt(target.chordName, true);
@@ -283,7 +295,7 @@ export default function PlayAlongLesson({
       advance('hit');
       return 1;
     });
-  }, [advance, drill, zonePulse, hasClick]);
+  }, [advance, drill, zonePulse, hasClick, recordChordAttempt]);
 
   const registerWrong = useCallback(() => {
     const missed = drill.targets[idxRef.current];
@@ -301,7 +313,7 @@ export default function PlayAlongLesson({
 
   // Feed pitch events into the matcher.
   useEffect(() => {
-    if (!started || finished || !latest || !latest.hasPitch) return;
+    if (!started || !inputReady || finished || !latest || !latest.hasPitch) return;
     if (Date.now() < cooldownUntilRef.current) return;
     const matcher = matcherRef.current;
     if (!matcher) return;
@@ -323,7 +335,7 @@ export default function PlayAlongLesson({
 
   // Flow mode: the clock advances targets whether or not you hit them.
   useEffect(() => {
-    if (!started || finished || pace !== 'flow') return;
+    if (!started || !inputReady || finished || pace !== 'flow') return;
     const target = drill.targets[idx];
     const strums = target.kind === 'chord' ? target.strums ?? 1 : 1;
     const timer = setTimeout(() => {
@@ -331,12 +343,14 @@ export default function PlayAlongLesson({
       advance('miss');
     }, drill.secondsPerTarget * 1000 * Math.max(1, strums / 2));
     return () => clearTimeout(timer);
-  }, [started, finished, pace, idx, drill, advance]);
+  }, [started, inputReady, finished, pace, idx, drill, advance]);
 
   // Completion.
   const hits = statuses.filter((s) => s === 'hit').length;
   const attempts = hits + statuses.filter((s) => s === 'miss').length + wrongCount;
-  const scorePercent = attempts === 0 ? 0 : Math.round((hits / attempts) * 100);
+  const pitchScore = attempts === 0 ? 0 : (hits / attempts) * 100;
+  const timingScore = timingAttempts === 0 ? 0 : (timingPoints / timingAttempts) * 100;
+  const scorePercent = Math.round(hasClick ? pitchScore * 0.6 + timingScore * 0.4 : pitchScore);
   const completedRef = useRef(false);
   useEffect(() => {
     if (finished && !completedRef.current) {
@@ -352,43 +366,63 @@ export default function PlayAlongLesson({
   const handleStart = useCallback(async () => {
     if (startPendingRef.current || isRunning) return;
     startPendingRef.current = true;
+    startErrorAtRef.current = error;
     setIsStarting(true);
     try {
       await start();
-      setStarted(true);
-
-      if (hasClick) {
-        clockRef.current?.stop();
-        clockRef.current = createBeatClock({
-          getBpm: () => drill.bpm ?? 70,
-          getBeatsPerBar: () => drill.beatsPerBar ?? 4,
-          countInBeats: drill.beatsPerBar ?? 4,
-          onCountIn: (remaining) => {
-            setCountIn(remaining);
-            const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
-            if (!soundsEnabled) return;
-            const p = clickRef.current;
-            if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
-          },
-          onStart: () => setCountIn(null),
-          onBeat: (beat, scheduledAt) => {
-            lastBeatAtRef.current = scheduledAt;
-            setBeatInBar(beat);
-            const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
-            if (!soundsEnabled) return;
-            const p = beat === 0 ? accentRef.current : clickRef.current;
-            if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
-          },
-        });
-        clockRef.current.start();
-      }
     } catch {
-      // The tuner hook supplies its permission/start error to the UI below.
-    } finally {
       startPendingRef.current = false;
       setIsStarting(false);
     }
-  }, [start, isRunning, hasClick, drill]);
+  }, [start, isRunning, error]);
+
+  // react-native-tuner-engine reports start failures through hook state and
+  // resolves start(), so only enter the drill after isRunning confirms that
+  // native audio really started.
+  useEffect(() => {
+    if (!startPendingRef.current) return;
+    if (error && error !== startErrorAtRef.current) {
+      startPendingRef.current = false;
+      setIsStarting(false);
+      setStarted(false);
+      return;
+    }
+    if (!isRunning) return;
+
+    startPendingRef.current = false;
+    setIsStarting(false);
+    setStarted(true);
+    setInputReady(!hasClick);
+
+    if (hasClick) {
+      clockRef.current?.stop();
+      clockRef.current = createBeatClock({
+        getBpm: () => drill.bpm ?? 70,
+        getBeatsPerBar: () => drill.beatsPerBar ?? 4,
+        countInBeats: drill.beatsPerBar ?? 4,
+        onCountIn: (remaining) => {
+          setCountIn(remaining);
+          const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+          if (!soundsEnabled) return;
+          const p = clickRef.current;
+          if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
+        },
+        onStart: () => {
+          setCountIn(null);
+          setInputReady(true);
+        },
+        onBeat: (beat, scheduledAt) => {
+          lastBeatAtRef.current = scheduledAt;
+          setBeatInBar(beat);
+          const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+          if (!soundsEnabled) return;
+          const p = beat === 0 ? accentRef.current : clickRef.current;
+          if (p) { try { p.volume = sampleVolume / 100; p.seekTo(0); p.play(); } catch {} }
+        },
+      });
+      clockRef.current.start();
+    }
+  }, [drill.beatsPerBar, drill.bpm, error, hasClick, isRunning]);
 
   const conveyorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: conveyorX.value }],
@@ -645,6 +679,7 @@ export default function PlayAlongLesson({
                     ))}
                     {lastTiming && (
                       <Text
+                        accessibilityLiveRegion="polite"
                         style={[
                           styles.timingText,
                           (lastTiming === 'perfect' || lastTiming === 'good') &&
@@ -671,6 +706,7 @@ export default function PlayAlongLesson({
                 <View style={[styles.listenPill, isRunning && styles.listenPillLive]}>
                   <ListeningBars live={isRunning} />
                   <Text
+                    accessibilityLiveRegion="polite"
                     style={[styles.listenPillText, isRunning && styles.listenPillTextLive]}
                     numberOfLines={1}
                   >
@@ -722,9 +758,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: Colors.dark.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -763,6 +799,8 @@ const styles = StyleSheet.create({
     padding: 3,
   },
   toggleBtn: {
+    minHeight: 48,
+    justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -776,7 +814,7 @@ const styles = StyleSheet.create({
     color: Colors.dark.muted,
   },
   toggleTextActive: {
-    color: '#fff',
+    color: '#071408',
   },
   conveyorWrap: {
     marginTop: 18,
@@ -890,7 +928,7 @@ const styles = StyleSheet.create({
   startBtnText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#fff',
+    color: '#071408',
   },
   finishBox: {
     width: '100%',
@@ -1103,7 +1141,7 @@ const styles = StyleSheet.create({
   tabFretText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#fff',
+    color: '#071408',
   },
   pipsRow: {
     flexDirection: 'row',
@@ -1136,7 +1174,7 @@ const styles = StyleSheet.create({
     color: Colors.dark.muted,
   },
   pipTextHeard: {
-    color: '#fff',
+    color: '#071408',
   },
   listenPill: {
     flexDirection: 'row',

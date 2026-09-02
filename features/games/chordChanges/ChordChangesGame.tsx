@@ -61,6 +61,7 @@ export default function ChordChangesGame({
   const [beatBest, setBeatBest] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const startPendingRef = useRef(false);
+  const startErrorAtRef = useRef<Error | null>(null);
 
   const chords = useMemo(
     () => names.map((n) => getChord(n)).filter((c): c is Chord => !!c),
@@ -94,25 +95,38 @@ export default function ChordChangesGame({
   const begin = useCallback(async () => {
     if (chords.length < 2 || startPendingRef.current || isRunning) return;
     startPendingRef.current = true;
+    startErrorAtRef.current = error;
     setIsStarting(true);
     try {
       await start();
-      setCount(0);
-      countRef.current = 0;
-      setCurrent(0);
-      currentRef.current = 0;
-      setSecondsLeft(ROUND_SECONDS);
-      setBeatBest(false);
-      armFor(0);
-      setPhase('running');
     } catch {
-      // The engine exposes the actionable permission/start error in `error`.
-      // Stay on setup instead of starting a timer with no microphone.
-    } finally {
       startPendingRef.current = false;
       setIsStarting(false);
     }
-  }, [armFor, chords.length, isRunning, start]);
+  }, [chords.length, error, isRunning, start]);
+
+  // The tuner hook resolves start() even when native audio reports an error.
+  // Do not start the one-minute clock until the live state confirms the mic.
+  useEffect(() => {
+    if (!startPendingRef.current) return;
+    if (error && error !== startErrorAtRef.current) {
+      startPendingRef.current = false;
+      setIsStarting(false);
+      return;
+    }
+    if (!isRunning) return;
+
+    startPendingRef.current = false;
+    setIsStarting(false);
+    setCount(0);
+    countRef.current = 0;
+    setCurrent(0);
+    currentRef.current = 0;
+    setSecondsLeft(ROUND_SECONDS);
+    setBeatBest(false);
+    armFor(0);
+    setPhase('running');
+  }, [armFor, error, isRunning]);
 
   const finish = useCallback(() => {
     stop();
@@ -414,9 +428,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.dark.surfaceElevated,
