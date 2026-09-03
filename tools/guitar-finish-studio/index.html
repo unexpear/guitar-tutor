@@ -152,16 +152,47 @@
 
         <section class="card mesh-card">
           <div class="section-heading"><h2>Static 3D mesh</h2><span class="new-badge">BETA</span></div>
-          <p class="help">Export real low-poly geometry with separate body, neck, headstock, bridge, and string objects. Includes UVs, an MTL material, and the current finish texture—no armature or animation.</p>
+          <p class="help">Start from a researched instrument blueprint, then export separate body, tapered neck, correctly spaced frets, hardware, and strings. Includes UVs, an MTL material, and the current finish texture—no armature or animation.</p>
+          <label>Instrument blueprint
+            <select id="mesh-blueprint">
+              <option value="steel-acoustic">Steel-string dreadnought</option>
+              <option value="longscale-electric">25.5 in double-cut electric</option>
+              <option value="shortscale-electric">24.75 in single-cut electric</option>
+              <option value="longscale-bass">34 in electric bass</option>
+              <option value="custom">Custom dimensions</option>
+            </select>
+          </label>
           <div class="field-row">
             <label>Body profile
-              <select id="mesh-profile"><option value="acoustic">Acoustic</option><option value="electric">Electric</option></select>
+              <select id="mesh-profile">
+                <option value="acoustic-dreadnought">Acoustic dreadnought</option>
+                <option value="acoustic-cutaway">Acoustic cutaway</option>
+                <option value="electric-doublecut">Electric double-cut</option>
+                <option value="electric-singlecut">Electric single-cut</option>
+                <option value="bass-doublecut">Bass double-cut</option>
+              </select>
             </label>
             <label>Strings
               <select id="mesh-strings"><option>4</option><option selected>6</option><option>7</option><option>8</option><option>12</option></select>
             </label>
           </div>
-          <label class="range-label"><span>Body depth <output id="mesh-depth-value">7.0 cm</output></span><input id="mesh-depth" type="range" min="4" max="9" value="7" step="0.5" /></label>
+          <div class="field-row mesh-row">
+            <label>Handedness<select id="mesh-handedness"><option value="right">Right-handed</option><option value="left">Left-handed</option></select></label>
+            <label>Pickup layout<select id="mesh-pickups"><option value="none">None / acoustic</option><option value="sss">Three single-coils</option><option value="hh">Two humbuckers</option><option value="p">Split-coil bass</option><option value="pj">Split + bridge single-coil (P/J)</option></select></label>
+          </div>
+          <details class="advanced-settings">
+            <summary>Construction dimensions</summary>
+            <div class="field-row">
+              <label>Scale length (mm)<input id="mesh-scale" type="number" min="300" max="900" step="0.1" value="645.2" inputmode="decimal" /></label>
+              <label>Total frets<input id="mesh-frets" type="number" min="12" max="24" step="1" value="20" inputmode="numeric" /></label>
+            </div>
+            <div class="field-row mesh-row">
+              <label>Nut width (mm)<input id="mesh-nut-width" type="number" min="32" max="55" step="0.1" value="44.5" inputmode="decimal" /></label>
+              <label>Bridge spacing (mm)<input id="mesh-bridge-spacing" type="number" min="30" max="65" step="0.1" value="54.8" inputmode="decimal" /></label>
+            </div>
+            <label class="range-label"><span>Body depth <output id="mesh-depth-value">10.0 cm</output></span><input id="mesh-depth" type="range" min="3.5" max="12" value="10" step="0.5" /></label>
+            <p id="mesh-spec-note" class="spec-note">25.4 in scale · 20 frets · neck joins at fret 14</p>
+          </details>
           <button id="export-mesh" class="button button-secondary wide-button" type="button">Download OBJ mesh ZIP</button>
           <p id="mesh-status" class="help batch-status" role="status" aria-live="polite">Best for Blender, game engines, and further hand-detailing.</p>
         </section>

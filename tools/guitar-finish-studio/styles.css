@@ -74,6 +74,11 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .help { margin: -5px 0 12px; color: var(--muted); font-size: .8rem; line-height: 1.45; }
 .new-badge { padding: 4px 7px; border-radius: 6px; background: #342813; color: var(--gold); font-size: .62rem; font-weight: 900; letter-spacing: .1em; }
 .batch-row { margin-top: 12px; }
+.mesh-row { margin-top: 12px; }
+.advanced-settings { margin-top: 13px; padding: 11px 12px; border: 1px solid #333844; border-radius: 12px; background: #111319; }
+.advanced-settings summary { color: var(--text); font-size: .8rem; font-weight: 800; cursor: pointer; }
+.advanced-settings[open] summary { margin-bottom: 12px; }
+.spec-note { margin: 11px 0 0; color: var(--gold); font-size: .72rem; line-height: 1.4; }
 .check-card { display: flex; min-height: 42px; padding: 8px 10px; border: 1px solid #383d49; border-radius: 10px; align-items: center; gap: 9px; background: #0e1015; cursor: pointer; }
 .check-card input { flex: none; accent-color: var(--gold); }
 .check-card strong, .check-card small { display: block; }

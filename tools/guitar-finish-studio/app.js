@@ -13,6 +13,12 @@
     { name: 'Ocean Brushed', primary: '#145DA0', accent: '#7DE2D1', primaryFinish: 'Brushed Metal', accentFinish: 'Pearlescent', pattern: 'Center Stripe', seed: 9320 },
     { name: 'Forest Carbon', primary: '#176B45', accent: '#B8FF55', primaryFinish: 'Carbon Weave', accentFinish: 'Matte', pattern: 'Diagonal Band', seed: 2638 },
   ];
+  const meshBlueprints = {
+    'steel-acoustic': { profile: 'acoustic-dreadnought', strings: 6, scale: 645.2, frets: 20, nutWidth: 44.5, bridgeSpacing: 54.8, depth: 10, pickups: 'none', joinFret: 14, note: '25.4 in scale · 20 frets · neck joins at fret 14' },
+    'longscale-electric': { profile: 'electric-doublecut', strings: 6, scale: 648, frets: 22, nutWidth: 42.8, bridgeSpacing: 52.4, depth: 4.5, pickups: 'sss', joinFret: 17, note: '25.5 in scale · 22 frets · three single-coil layout' },
+    'shortscale-electric': { profile: 'electric-singlecut', strings: 6, scale: 628.7, frets: 22, nutWidth: 42.9, bridgeSpacing: 52, depth: 5, pickups: 'hh', joinFret: 16, note: '24.75 in scale · 22 frets · two humbucker layout' },
+    'longscale-bass': { profile: 'bass-doublecut', strings: 4, scale: 864, frets: 20, nutWidth: 41.3, bridgeSpacing: 57, depth: 4.5, pickups: 'p', joinFret: 16, note: '34 in scale · 20 frets · split-coil pickup' },
+  };
 
   const el = (id) => document.getElementById(id);
   const canvas = el('preview');
@@ -113,8 +119,8 @@
     }
     maskCtx.globalCompositeOperation = 'source-over';
     sourceKind = 'sample';
-    meshProfile = kind;
-    el('mesh-profile').value = kind;
+    meshProfile = isAcoustic ? 'acoustic-dreadnought' : 'electric-singlecut';
+    applyMeshBlueprint(isAcoustic ? 'steel-acoustic' : 'shortscale-electric');
     el('source-name').textContent = `Built-in ${kind} sample`;
     el('dimensions').textContent = '512 × 768 canvas';
     undoStack = []; updateUndo(); render();
@@ -150,7 +156,7 @@
       maskCtx.fillRect(241, 245, 42, 260); maskCtx.roundRect(227, 496, 61, 36, 5); maskCtx.fill(); maskCtx.roundRect(227, 570, 61, 36, 5); maskCtx.fill(); maskCtx.roundRect(229, 615, 58, 29, 4); maskCtx.fill();
       [[331,599,10],[350,635,7],[332,669,10],[260,35,7],[257,51,7],[254,67,7],[250,83,7],[247,99,7],[243,115,7]].forEach(([x,y,r]) => { maskCtx.beginPath(); maskCtx.arc(x,y,r,0,Math.PI*2); maskCtx.fill(); });
     }
-    maskCtx.globalCompositeOperation = 'source-over'; meshProfile = profile; el('mesh-profile').value = profile; undoStack = []; updateUndo(); render(); return true;
+    maskCtx.globalCompositeOperation = 'source-over'; meshProfile = profile === 'acoustic' ? 'acoustic-dreadnought' : 'electric-singlecut'; applyMeshBlueprint(profile === 'acoustic' ? 'steel-acoustic' : 'shortscale-electric'); undoStack = []; updateUndo(); render(); return true;
   }
 
   function accentMask(pattern, scale, paintMask = mask) {
@@ -270,7 +276,7 @@
       if (!recognized) autoMask();
       el('source-name').textContent = file.name;
       el('dimensions').textContent = `${WIDTH} × ${HEIGHT} working canvas`;
-      setStatus(recognized ? `Photoreal ${meshProfile} profile recognized; its fitted hardware mask is active.` : 'Imported. Use Protect mode to brush over hardware before exporting.');
+      setStatus(recognized ? `Photoreal ${meshProfile.startsWith('acoustic') ? 'acoustic' : 'electric'} profile recognized; its fitted hardware mask is active.` : 'Imported. Use Protect mode to brush over hardware before exporting.');
     } catch { setStatus('That image could not be opened. Try another PNG or WebP.', true); }
   }
 
@@ -440,16 +446,43 @@
     return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
   }
 
-  function buildStaticMesh(profile, bodyDepth, stringCount) {
+  function applyMeshBlueprint(name) {
+    const blueprint = meshBlueprints[name];
+    if (!blueprint) return;
+    el('mesh-blueprint').value = name; el('mesh-profile').value = blueprint.profile; el('mesh-strings').value = String(blueprint.strings);
+    el('mesh-scale').value = blueprint.scale; el('mesh-frets').value = blueprint.frets; el('mesh-nut-width').value = blueprint.nutWidth;
+    el('mesh-bridge-spacing').value = blueprint.bridgeSpacing; el('mesh-depth').value = blueprint.depth; el('mesh-pickups').value = blueprint.pickups;
+    el('mesh-depth-value').textContent = `${blueprint.depth.toFixed(1)} cm`; el('mesh-spec-note').textContent = blueprint.note; meshProfile = blueprint.profile;
+  }
+
+  function meshConfiguration() {
+    const preset = meshBlueprints[el('mesh-blueprint').value];
+    const config = {
+      blueprint: el('mesh-blueprint').value, profile: el('mesh-profile').value, strings: Number(el('mesh-strings').value),
+      scaleLengthMm: Number(el('mesh-scale').value), frets: Number(el('mesh-frets').value), nutWidthMm: Number(el('mesh-nut-width').value),
+      bridgeSpacingMm: Number(el('mesh-bridge-spacing').value), bodyDepthMeters: Number(el('mesh-depth').value) / 100,
+      pickups: el('mesh-pickups').value, handedness: el('mesh-handedness').value, joinFret: preset?.joinFret || Math.min(16, Number(el('mesh-frets').value)),
+    };
+    const valid = Number.isInteger(config.frets) && config.frets >= 12 && config.frets <= 24 && [4,6,7,8,12].includes(config.strings)
+      && config.scaleLengthMm >= 300 && config.scaleLengthMm <= 900 && config.nutWidthMm >= 32 && config.nutWidthMm <= 55
+      && config.bridgeSpacingMm >= 30 && config.bridgeSpacingMm <= 65 && config.bodyDepthMeters >= .035 && config.bodyDepthMeters <= .12;
+    if (!valid) throw new Error('Check the construction dimensions and try again.');
+    return config;
+  }
+
+  function buildStaticMesh(config) {
     const vertices = []; const textureCoordinates = []; const sections = [];
-    const scale = profile === 'electric' ? .00132 : .00136;
-    const mapPoint = ([x, y]) => [(x - 256) * scale, (740 - y) * scale];
-    const bodyOutline = profile === 'acoustic'
-      ? [[184,379],[158,394],[153,438],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[319,727],[370,700],[394,654],[390,607],[367,548],[348,498],[354,452],[344,418],[316,408],[290,405],[276,379]]
-      : [[187,418],[158,425],[150,470],[153,520],[140,570],[132,635],[140,690],[179,727],[259,742],[337,728],[378,694],[385,642],[376,585],[365,536],[367,493],[356,453],[335,449],[310,463],[290,482],[270,490],[253,490],[231,460],[210,428]];
-    const headOutline = profile === 'acoustic'
-      ? [[224,18],[242,10],[273,10],[290,20],[298,119],[276,143],[238,143],[216,119]]
-      : [[274,7],[285,20],[283,108],[271,136],[236,136],[230,119],[242,78],[255,38]];
+    const isBass = config.profile === 'bass-doublecut'; const isAcoustic = config.profile.startsWith('acoustic'); const mirror = config.handedness === 'left' ? -1 : 1;
+    const scale = isBass ? .0015 : isAcoustic ? .00136 : .00132;
+    const mapPoint = ([x, y]) => [(x - 256) * scale * mirror, (740 - y) * scale];
+    const outlines = {
+      'acoustic-dreadnought': [[184,379],[157,397],[151,441],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[318,730],[369,704],[396,657],[396,605],[370,530],[348,485],[361,441],[355,397],[328,379]],
+      'acoustic-cutaway': [[184,379],[158,394],[153,438],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[319,727],[370,700],[394,654],[390,607],[367,548],[348,498],[354,452],[344,418],[316,408],[290,405],[276,379]],
+      'electric-singlecut': [[187,418],[158,425],[150,470],[153,520],[140,570],[132,635],[140,690],[179,727],[259,742],[337,728],[378,694],[385,642],[376,585],[365,536],[367,493],[356,453],[335,449],[310,463],[290,482],[270,490],[253,490],[231,460],[210,428]],
+      'electric-doublecut': [[223,414],[187,398],[158,421],[154,463],[183,488],[151,532],[137,604],[145,682],[187,724],[256,741],[325,724],[367,682],[375,604],[361,532],[329,488],[358,463],[354,421],[325,398],[289,414],[278,470],[234,470]],
+      'bass-doublecut': [[225,406],[187,388],[154,414],[151,463],[184,492],[151,538],[136,616],[147,690],[193,728],[256,741],[319,728],[365,690],[376,616],[361,538],[328,492],[361,463],[358,414],[325,388],[287,406],[277,468],[235,468]],
+    };
+    const bodyOutline = outlines[config.profile] || outlines['electric-doublecut'];
 
     function triangulate(points) {
       const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
@@ -474,10 +507,10 @@
       return triangles;
     }
 
-    function addExtruded(name, points2d, depth, material) {
-      const points = points2d.map(mapPoint); const start = vertices.length + 1; const frontY = depth / 2; const backY = -depth / 2;
-      points.forEach(([x,z], index) => { vertices.push([x,frontY,z]); textureCoordinates.push([points2d[index][0] / WIDTH, 1 - points2d[index][1] / HEIGHT]); });
-      points.forEach(([x,z], index) => { vertices.push([x,backY,z]); textureCoordinates.push([points2d[index][0] / WIDTH, 1 - points2d[index][1] / HEIGHT]); });
+    function addMeterExtruded(name, points, depth, material, texturePoints = null, centerY = 0) {
+      const start = vertices.length + 1; const frontY = centerY + depth / 2; const backY = centerY - depth / 2;
+      points.forEach(([x,z], index) => { vertices.push([x,frontY,z]); textureCoordinates.push(texturePoints ? [texturePoints[index][0] / WIDTH, 1 - texturePoints[index][1] / HEIGHT] : [.5 + x, Math.max(0, Math.min(1, z))]); });
+      points.forEach(([x,z], index) => { vertices.push([x,backY,z]); textureCoordinates.push(texturePoints ? [texturePoints[index][0] / WIDTH, 1 - texturePoints[index][1] / HEIGHT] : [.5 + x, Math.max(0, Math.min(1, z))]); });
       const front = points.map((_, index) => start + index); const back = points.map((_, index) => start + points.length + index);
       const triangles = triangulate(points);
       const faces = triangles.flatMap((triangle) => [
@@ -488,6 +521,8 @@
       sections.push(`g ${name}\nusemtl ${material}\ns 1\n${faces.join('\n')}`);
     }
 
+    function addExtruded(name, points2d, depth, material) { addMeterExtruded(name, points2d.map(mapPoint), depth, material, points2d); }
+
     function addBox(name, minX, maxX, minY, maxY, minZ, maxZ, material) {
       const start = vertices.length + 1;
       [[minX,minY,minZ],[maxX,minY,minZ],[maxX,maxY,minZ],[minX,maxY,minZ],[minX,minY,maxZ],[maxX,minY,maxZ],[maxX,maxY,maxZ],[minX,maxY,maxZ]].forEach(([x,y,z]) => { vertices.push([x,y,z]); textureCoordinates.push([.5 + x, Math.max(0, Math.min(1, z))]); });
@@ -495,35 +530,84 @@
       sections.push(`g ${name}\nusemtl ${material}\ns off\n${[face(0,1,2,3),face(4,7,6,5),face(0,4,5,1),face(1,5,6,2),face(2,6,7,3),face(4,0,3,7)].join('\n')}`);
     }
 
+    function addSlopedRibbon(name, startPoint, endPoint, width, thickness, material) {
+      const [startX,startY,startZ] = startPoint; const [endX,endY,endZ] = endPoint; const dx = endX - startX; const dz = endZ - startZ; const length = Math.hypot(dx,dz);
+      const px = -dz / length * width; const pz = dx / length * width; const start = vertices.length + 1;
+      [[startX+px,startY,startZ+pz],[endX+px,endY,endZ+pz],[endX-px,endY,endZ-pz],[startX-px,startY,startZ-pz],[startX+px,startY+thickness,startZ+pz],[endX+px,endY+thickness,endZ+pz],[endX-px,endY+thickness,endZ-pz],[startX-px,startY+thickness,startZ-pz]].forEach(([x,y,z]) => { vertices.push([x,y,z]); textureCoordinates.push([.5 + x, Math.max(0, Math.min(1,z))]); });
+      const face = (...indices) => `f ${indices.map((index) => `${start+index}/${start+index}`).join(' ')}`;
+      sections.push(`g ${name}\nusemtl ${material}\ns off\n${[face(0,1,2,3),face(4,7,6,5),face(0,4,5,1),face(1,5,6,2),face(2,6,7,3),face(4,0,3,7)].join('\n')}`);
+    }
+
+    function addCylinderY(name, centerX, centerZ, minY, maxY, radius, material, sides = 20) {
+      const start = vertices.length + 1;
+      for (const y of [minY, maxY]) for (let index = 0; index < sides; index += 1) { const angle = index / sides * Math.PI * 2; vertices.push([centerX + Math.cos(angle) * radius, y, centerZ + Math.sin(angle) * radius]); textureCoordinates.push([.5 + Math.cos(angle) * .5, .5 + Math.sin(angle) * .5]); }
+      const faces = []; const front = Array.from({length: sides}, (_, index) => start + index); const back = Array.from({length: sides}, (_, index) => start + sides + index);
+      faces.push(`f ${front.map((value) => `${value}/${value}`).join(' ')}`, `f ${back.slice().reverse().map((value) => `${value}/${value}`).join(' ')}`);
+      for (let index = 0; index < sides; index += 1) { const next = (index + 1) % sides; faces.push(`f ${front[index]}/${front[index]} ${front[next]}/${front[next]} ${back[next]}/${back[next]} ${back[index]}/${back[index]}`); }
+      sections.push(`g ${name}\nusemtl ${material}\ns 1\n${faces.join('\n')}`);
+    }
+
+    const bodyDepth = config.bodyDepthMeters; const scaleLength = config.scaleLengthMm / 1000; const nutWidth = config.nutWidthMm / 1000; const bridgeSpacing = config.bridgeSpacingMm / 1000;
+    const bridgeZ = .19; const nutZ = bridgeZ + scaleLength; const joinDistance = scaleLength * (1 - 2 ** (-config.joinFret / 12)); const jointZ = nutZ - joinDistance;
+    const heelWidth = Math.max(nutWidth + .012, bridgeSpacing * .92); const front = bodyDepth / 2 + .002;
     addExtruded('Body', bodyOutline, bodyDepth, 'Finish');
-    addExtruded('Neck', [[240,130],[276,130],[276,500],[240,500]], bodyDepth * .42, 'NeckWood');
-    addExtruded('Headstock', headOutline, bodyDepth * .48, 'Finish');
-    const front = bodyDepth / 2 + .002; addBox('Bridge', -.07, .07, front, front + .012, .17, .205, 'Hardware');
-    for (let index = 0; index < stringCount; index += 1) {
-      const ratio = stringCount === 1 ? .5 : index / (stringCount - 1); const x = -.012 + ratio * .024; const width = .00035 + ratio * .00045;
-      addBox(`String_${index + 1}`, x - width, x + width, front + .013, front + .014, .19, .98, 'Strings');
+    const neckDepth = bodyDepth * .30; const neckCenterY = bodyDepth / 2 - neckDepth / 2;
+    addMeterExtruded('Neck', [[-nutWidth/2,nutZ],[nutWidth/2,nutZ],[heelWidth/2,jointZ],[-heelWidth/2,jointZ]].map(([x,z]) => [x * mirror,z]), neckDepth, 'NeckWood', null, neckCenterY);
+    const headWidth = Math.max(nutWidth * 1.35, .058); const headLength = isBass ? .205 : .175;
+    const headDepth = bodyDepth * .34; const headCenterY = bodyDepth / 2 - headDepth / 2;
+    addMeterExtruded('Headstock', [[-nutWidth/2,nutZ],[nutWidth/2,nutZ],[headWidth*.58,nutZ+headLength],[-headWidth*.42,nutZ+headLength]].map(([x,z]) => [x * mirror,z]), headDepth, 'Finish', null, headCenterY);
+    addBox('Nut', -nutWidth/2, nutWidth/2, front, front + .005, nutZ - .002, nutZ + .002, 'Nut');
+    const bridgeHalfWidth = isAcoustic ? .075 : isBass ? .05 : .045;
+    addBox('Bridge', -bridgeHalfWidth, bridgeHalfWidth, front, front + .012, bridgeZ - (isAcoustic ? .014 : .010), bridgeZ + (isAcoustic ? .014 : .010), 'Hardware');
+
+    const fretPositions = [];
+    for (let fret = 1; fret <= config.frets; fret += 1) {
+      const fromNut = scaleLength * (1 - 2 ** (-fret / 12)); const z = nutZ - fromNut; const neckRatio = Math.min(1, fromNut / Math.max(.001, joinDistance));
+      const halfWidth = (nutWidth / 2 + (heelWidth - nutWidth) / 2 * neckRatio) * .98;
+      addBox(`Fret_${String(fret).padStart(2,'0')}`, -halfWidth, halfWidth, front + .005, front + .007, z - .0007, z + .0007, 'Frets'); fretPositions.push({ fret, fromNutMm: Number((fromNut * 1000).toFixed(2)) });
+    }
+
+    for (let index = 0; index < config.strings; index += 1) {
+      const ratio = config.strings === 1 ? .5 : index / (config.strings - 1); const bridgeX = (-bridgeSpacing / 2 + ratio * bridgeSpacing) * mirror; const nutX = (-nutWidth * .42 + ratio * nutWidth * .84) * mirror;
+      const width = (isBass ? .00045 : .00022) + ratio * (isBass ? .00065 : .00032);
+      addSlopedRibbon(`String_${index + 1}`, [nutX,front+.008,nutZ], [bridgeX,front+.013,bridgeZ], width, .0008, 'Strings');
+      const tunerSide = isAcoustic ? (index % 2 ? 1 : -1) : (mirror > 0 ? 1 : -1); const tunerZ = nutZ + .035 + Math.floor(isAcoustic ? index / 2 : index) * (headLength - .06) / Math.max(1, isAcoustic ? Math.ceil(config.strings/2)-1 : config.strings-1);
+      addBox(`Tuner_${index + 1}`, tunerSide * headWidth*.42 - .006, tunerSide * headWidth*.42 + .006, front - .002, front + .009, tunerZ - .006, tunerZ + .006, 'Hardware');
+    }
+
+    if (isAcoustic) addCylinderY('Soundhole', 0, .345, front, front + .002, .047, 'Dark');
+    if (config.pickups === 'sss') [.27,.34,.41].forEach((z, index) => addBox(`Pickup_${index + 1}`, -.038, .038, front, front + .012, z - .009, z + .009, 'Pickup'));
+    if (config.pickups === 'hh') [.285,.405].forEach((z, index) => addBox(`Pickup_${index + 1}`, -.046, .046, front, front + .014, z - .019, z + .019, 'Pickup'));
+    if (config.pickups === 'p' || config.pickups === 'pj') {
+      addBox('Pickup_P_Bass', -.052, .004, front, front + .014, .325, .343, 'Pickup'); addBox('Pickup_P_Treble', -.004, .052, front, front + .014, .341, .359, 'Pickup');
+      if (config.pickups === 'pj') addBox('Pickup_J', -.052, .052, front, front + .012, .275, .293, 'Pickup');
+    }
+    if (!isAcoustic) {
+      const side = config.handedness === 'left' ? -1 : 1;
+      const controlsLayout = config.pickups === 'hh' ? [[.09,.26],[.125,.29],[.09,.34],[.125,.37]] : config.pickups === 'p' || config.pickups === 'pj' ? [[.108,.27],[.118,.33]] : [[.102,.25],[.118,.31],[.108,.37]];
+      controlsLayout.forEach(([x,z], index) => addCylinderY(`Control_${index + 1}`, x * side, z, front, front + .014, .009, 'Control', 16));
     }
     const vertexLines = vertices.map((value) => `v ${value.map((part) => part.toFixed(6)).join(' ')}`);
     const uvLines = textureCoordinates.map((value) => `vt ${value.map((part) => part.toFixed(6)).join(' ')}`);
-    const object = [`# Guitar Finish Studio static mesh`, `# Units: meters`, `mtllib guitar.mtl`, `o ${profile === 'acoustic' ? 'Acoustic_Guitar' : 'Electric_Guitar'}`, ...vertexLines, ...uvLines, ...sections, ''].join('\n');
-    const material = `newmtl Finish\nKa 0.100 0.100 0.100\nKd 1.000 1.000 1.000\nKs 0.350 0.350 0.350\nNs 220\nillum 2\nmap_Kd guitar-finish.png\n\nnewmtl NeckWood\nKa 0.080 0.050 0.030\nKd 0.260 0.140 0.080\nKs 0.120 0.120 0.120\nNs 40\nillum 2\n\nnewmtl Hardware\nKa 0.120 0.120 0.120\nKd 0.520 0.500 0.450\nKs 0.800 0.800 0.800\nNs 500\nillum 2\n\nnewmtl Strings\nKa 0.200 0.200 0.200\nKd 0.720 0.700 0.640\nKs 0.900 0.900 0.900\nNs 700\nillum 2\n`;
-    return { object, material, vertexCount: vertices.length, groupCount: 4 + stringCount };
+    const objectName = config.profile.replaceAll('-', '_'); const object = [`# Guitar Finish Studio static mesh`, `# Dimensions are stored in meters`, `mtllib guitar.mtl`, `o ${objectName}`, ...vertexLines, ...uvLines, ...sections, ''].join('\n');
+    const material = `newmtl Finish\nKa 0.100 0.100 0.100\nKd 1.000 1.000 1.000\nKs 0.350 0.350 0.350\nNs 220\nillum 2\nmap_Kd guitar-finish.png\n\nnewmtl NeckWood\nKa 0.080 0.050 0.030\nKd 0.260 0.140 0.080\nKs 0.120 0.120 0.120\nNs 40\nillum 2\n\nnewmtl Hardware\nKa 0.120 0.120 0.120\nKd 0.520 0.500 0.450\nKs 0.800 0.800 0.800\nNs 500\nillum 2\n\nnewmtl Strings\nKa 0.200 0.200 0.200\nKd 0.720 0.700 0.640\nKs 0.900 0.900 0.900\nNs 700\nillum 2\n\nnewmtl Frets\nKd 0.720 0.720 0.700\nKs 0.900 0.900 0.900\nNs 600\nillum 2\n\nnewmtl Nut\nKd 0.900 0.870 0.760\nKs 0.200 0.200 0.200\nNs 100\nillum 2\n\nnewmtl Dark\nKd 0.025 0.020 0.018\nKs 0.050 0.050 0.050\nNs 20\nillum 2\n\nnewmtl Pickup\nKd 0.780 0.750 0.680\nKs 0.850 0.850 0.850\nNs 500\nillum 2\n\nnewmtl Control\nKd 0.720 0.570 0.220\nKs 0.900 0.800 0.500\nNs 500\nillum 2\n`;
+    return { object, material, vertexCount: vertices.length, groupCount: sections.length, fretPositions };
   }
 
   async function exportStaticMesh() {
     const button = el('export-mesh'); button.disabled = true; el('mesh-status').textContent = 'Building mesh and texture…';
     try {
-      const profile = el('mesh-profile').value; const depth = Number(el('mesh-depth').value) / 100; const strings = Number(el('mesh-strings').value);
-      const mesh = buildStaticMesh(profile, depth, strings); const textureCanvas = document.createElement('canvas'); textureCanvas.width = WIDTH; textureCanvas.height = HEIGHT; renderDesign(textureCanvas, recipe());
+      const config = meshConfiguration(); const mesh = buildStaticMesh(config); const textureCanvas = document.createElement('canvas'); textureCanvas.width = WIDTH; textureCanvas.height = HEIGHT; renderDesign(textureCanvas, recipe());
+      if (config.handedness === 'left') { const copy = document.createElement('canvas'); copy.width = WIDTH; copy.height = HEIGHT; copy.getContext('2d').drawImage(textureCanvas, 0, 0); const output = textureCanvas.getContext('2d'); output.clearRect(0,0,WIDTH,HEIGHT); output.save(); output.translate(WIDTH,0); output.scale(-1,1); output.drawImage(copy,0,0); output.restore(); }
       const entries = [
         { name: 'guitar.obj', data: new TextEncoder().encode(mesh.object) },
         { name: 'guitar.mtl', data: new TextEncoder().encode(mesh.material) },
         { name: 'guitar-finish.png', data: new Uint8Array(await (await canvasBlob(textureCanvas)).arrayBuffer()) },
-        { name: 'mesh-info.json', data: new TextEncoder().encode(`${JSON.stringify({ format: 'guitar-finish-studio-static-mesh', version: 1, profile, units: 'meters', bodyDepthMeters: depth, strings, vertices: mesh.vertexCount, groups: mesh.groupCount, static: true, rigged: false, recipe: recipe() }, null, 2)}\n`) },
+        { name: 'mesh-info.json', data: new TextEncoder().encode(`${JSON.stringify({ format: 'guitar-finish-studio-static-mesh', version: 2, ...config, units: 'meters', vertices: mesh.vertexCount, groups: mesh.groupCount, fretPositions: mesh.fretPositions, static: true, rigged: false, recipe: recipe(), references: ['https://www.stewmac.com/fret-calculator/', 'https://www.martinguitar.com/10Y25D28.html', 'https://www.fender.com/products/american-professional-ii-stratocaster', 'https://www.fender.com/products/american-professional-classic-precision-bass', 'https://images.gibson.com/Products/Electric-Guitars/2018/Custom/59-LP-Standard/Documents/59-LP-Standard-One-Sheet.pdf'] }, null, 2)}\n`) },
       ];
-      const blob = storeZip(entries); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `guitar-static-mesh-${profile}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const blob = storeZip(entries); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `guitar-static-mesh-${config.profile}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
       el('mesh-status').textContent = `${mesh.vertexCount} vertices across ${mesh.groupCount} named objects downloaded.`;
-    } catch { el('mesh-status').textContent = 'The mesh could not be exported. Try again with the built-in sample.'; }
+    } catch (error) { el('mesh-status').textContent = error instanceof Error ? error.message : 'The mesh could not be exported. Try again with a built-in blueprint.'; }
     button.disabled = false;
   }
 
@@ -599,8 +683,11 @@
   el('brush-size').addEventListener('input', () => { el('brush-value').textContent = `${el('brush-size').value} px`; });
   el('generate-batch').addEventListener('click', generateBatch);
   el('export-batch').addEventListener('click', exportBatch);
-  el('mesh-profile').addEventListener('change', (event) => { meshProfile = event.target.value; });
-  el('mesh-depth').addEventListener('input', () => { el('mesh-depth-value').textContent = `${Number(el('mesh-depth').value).toFixed(1)} cm`; });
+  el('mesh-blueprint').addEventListener('change', (event) => { if (event.target.value !== 'custom') applyMeshBlueprint(event.target.value); });
+  ['mesh-profile','mesh-strings','mesh-scale','mesh-frets','mesh-nut-width','mesh-bridge-spacing','mesh-pickups'].forEach((id) => el(id).addEventListener('input', () => {
+    el('mesh-blueprint').value = 'custom'; meshProfile = el('mesh-profile').value; el('mesh-spec-note').textContent = 'Custom dimensions · verify against your intended instrument before manufacturing.';
+  }));
+  el('mesh-depth').addEventListener('input', () => { el('mesh-blueprint').value = 'custom'; el('mesh-depth-value').textContent = `${Number(el('mesh-depth').value).toFixed(1)} cm`; el('mesh-spec-note').textContent = 'Custom dimensions · verify against your intended instrument before manufacturing.'; });
   el('export-mesh').addEventListener('click', exportStaticMesh);
   document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); } });
   ['dragenter','dragover'].forEach((name) => canvas.parentElement.addEventListener(name, (event) => { event.preventDefault(); el('drop-hint').hidden = false; }));
