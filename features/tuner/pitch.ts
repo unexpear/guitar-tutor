@@ -87,25 +87,27 @@ export type TuneVerdict = 'in-tune' | 'close' | 'off';
 /**
  * How the tuner reports a reading.
  *
- * Measured against the displayed (rounded) cents, so the colour always
- * agrees with the number on screen — a readout of 0 that glowed amber would
- * just look broken.
+ * Measured to tenth-cent precision, matching the most precise readout the app
+ * exposes. This is a threshold, not a hardware-accuracy claim.
  *
  *   0 - chosen tolerance  in tune
  *   up to 9                close
  *   10+      off, in either direction
  */
 export const OFF_CENTS = 10;
-export const DEFAULT_IN_TUNE_CENTS = 3;
+export const DEFAULT_IN_TUNE_CENTS = 1;
 
 export function verdictForCents(
   cents: number,
   inTuneCents = DEFAULT_IN_TUNE_CENTS,
 ): TuneVerdict {
-  const rounded = Math.abs(Math.round(cents));
-  const tolerance = Math.max(1, Math.min(5, Math.round(inTuneCents)));
-  if (rounded <= tolerance) return 'in-tune';
-  return rounded >= OFF_CENTS ? 'off' : 'close';
+  const deviation = Number.isFinite(cents) ? Math.abs(cents) : Number.POSITIVE_INFINITY;
+  const requestedTolerance = Number.isFinite(inTuneCents)
+    ? inTuneCents
+    : DEFAULT_IN_TUNE_CENTS;
+  const tolerance = Math.max(0.5, Math.min(5, requestedTolerance));
+  if (deviation <= tolerance) return 'in-tune';
+  return deviation >= OFF_CENTS ? 'off' : 'close';
 }
 
 /**

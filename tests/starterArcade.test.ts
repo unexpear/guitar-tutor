@@ -12,8 +12,9 @@ import {
 
 test('tune sense teaches flat up, sharp down, and a centered tolerance', () => {
   assert.equal(tuneChoiceForCents(-20), 'Tune up');
-  assert.equal(tuneChoiceForCents(-3), 'In tune');
-  assert.equal(tuneChoiceForCents(3), 'In tune');
+  assert.equal(tuneChoiceForCents(-1), 'In tune');
+  assert.equal(tuneChoiceForCents(1), 'In tune');
+  assert.equal(tuneChoiceForCents(1.01), 'Tune down');
   assert.equal(tuneChoiceForCents(20), 'Tune down');
 });
 

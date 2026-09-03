@@ -208,6 +208,31 @@ test('the selected in-tune window controls guided and chromatic verdicts', () =>
   assert.equal(relaxed.verdict, 'in-tune');
 });
 
+test('expert half-cent window keeps decimal precision through the verdict', () => {
+  const e2 = noteToFrequency('E2');
+  const exactEdge = mapTunerReading(
+    reading(),
+    opts({
+      smoothHz: e2 * 2 ** (0.5 / 1200),
+      targetStringIndex: 0,
+      inTuneCents: 0.5,
+    }),
+  );
+  assert.equal(exactEdge.targetCents, 0.5);
+  assert.equal(exactEdge.verdict, 'in-tune');
+
+  const outside = mapTunerReading(
+    reading(),
+    opts({
+      smoothHz: e2 * 2 ** (0.6 / 1200),
+      targetStringIndex: 0,
+      inTuneCents: 0.5,
+    }),
+  );
+  assert.equal(outside.targetCents, 0.6);
+  assert.equal(outside.verdict, 'close');
+});
+
 test('every string of every preset maps its exact target to zero cents and in-tune', () => {
   for (const tuning of TUNING_PRESETS) {
     const stringFrequencies = targetFrequenciesFor(tuning);

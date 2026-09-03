@@ -95,19 +95,18 @@ test('harmonic correction does not force an unrelated pitch onto the target', ()
 
 test('a reading of zero cents is in tune, and matches what is displayed', () => {
   assert.equal(verdictForCents(0), 'in-tune');
-  // Anything that rounds to 0 shows "0 cents", so it must look in tune too.
   assert.equal(verdictForCents(0.4), 'in-tune');
   assert.equal(verdictForCents(-0.4), 'in-tune');
 });
 
-test('the default in-tune window is three cents', () => {
-  for (const c of [1, 3, -1, -3]) {
+test('the default in-tune window is one cent', () => {
+  for (const c of [0.01, 1, -0.01, -1]) {
     assert.equal(verdictForCents(c), 'in-tune', `${c} cents should be in tune`);
   }
 });
 
-test('four to nine cents out is close by default, either direction', () => {
-  for (const c of [4, 5, 9, -4, -5, -9]) {
+test('more than one but less than ten cents is close by default', () => {
+  for (const c of [1.01, 5, 9.99, -1.01, -5, -9.99]) {
     assert.equal(verdictForCents(c), 'close', `${c} cents should be close`);
   }
 });
@@ -117,6 +116,8 @@ test('the in-tune window is configurable and safely bounded', () => {
   assert.equal(verdictForCents(2, 1), 'close');
   assert.equal(verdictForCents(5, 99), 'in-tune');
   assert.equal(verdictForCents(6, 99), 'close');
+  assert.equal(verdictForCents(0.5, 0.5), 'in-tune');
+  assert.equal(verdictForCents(0.6, 0.5), 'close');
 });
 
 test('ten cents or more is off, either direction', () => {
@@ -125,9 +126,9 @@ test('ten cents or more is off, either direction', () => {
   }
 });
 
-test('the boundary sits exactly where the spec puts it', () => {
-  assert.equal(verdictForCents(9.4), 'close', '9.4 displays as 9');
-  assert.equal(verdictForCents(9.5), 'off', '9.5 displays as 10');
+test('the off boundary sits exactly at ten cents', () => {
+  assert.equal(verdictForCents(9.99), 'close');
+  assert.equal(verdictForCents(10), 'off');
 });
 
 test('the nearest string is the one actually being played', () => {

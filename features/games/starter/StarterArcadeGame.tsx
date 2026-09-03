@@ -24,7 +24,7 @@ const COPY: Record<StarterGameId, { title: string; intro: string }> = {
   },
   'tune-sense': {
     title: 'Tune Sense',
-    intro: 'Read a tuner like a guitarist: flat means tune the pitch up, sharp means bring it down, and ±3 cents is in tune.',
+    intro: 'Read a tuner like a guitarist: flat means tune the pitch up, sharp means bring it down, and ±1 cent is in tune.',
   },
 };
 

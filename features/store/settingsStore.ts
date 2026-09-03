@@ -48,7 +48,7 @@ const BEGINNER_DEFAULTS: SettingsValues = {
   sampleVolume: 75,
   practiceGoalMinutes: 15,
   referencePitchHz: 440,
-  inTuneToleranceCents: 3,
+  inTuneToleranceCents: 1,
   tunerSensitivity: 'normal',
   meterStyle: 'needle',
   leftHanded: false,
@@ -62,10 +62,13 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       ...BEGINNER_DEFAULTS,
 
-      setSettingsMode: (settingsMode) =>
+      setSettingsMode: (settingsMode) => set((state) =>
         settingsMode === 'beginner'
-          ? set({ ...BEGINNER_DEFAULTS })
-          : set({ settingsMode }),
+          ? { ...BEGINNER_DEFAULTS }
+          : state.settingsMode === 'advanced'
+            ? { settingsMode }
+            : { settingsMode, inTuneToleranceCents: 0.5 },
+      ),
       resetToBeginnerDefaults: () => set({ ...BEGINNER_DEFAULTS }),
 
       setSoundsEnabled: (enabled: boolean) => set({ soundsEnabled: enabled }),
@@ -77,7 +80,10 @@ export const useSettingsStore = create<SettingsState>()(
         set({ referencePitchHz: Math.max(430, Math.min(450, Math.round(hz))) }),
       setInTuneToleranceCents: (cents: number) =>
         set({
-          inTuneToleranceCents: Math.max(1, Math.min(5, Math.round(cents))),
+          inTuneToleranceCents: Math.max(
+            0.5,
+            Math.min(5, Math.round(cents * 10) / 10),
+          ),
         }),
       setTunerSensitivity: (tunerSensitivity) => set({ tunerSensitivity }),
       setMeterStyle: (meterStyle) => set({ meterStyle }),

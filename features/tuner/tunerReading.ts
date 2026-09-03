@@ -133,7 +133,7 @@ export function mapTunerReading(
     tuning,
     stringFrequencies,
     spreadCents = 0,
-    inTuneCents = 3,
+    inTuneCents = 1,
     minimumConfidence = 0.75,
   } = opts;
 
@@ -161,7 +161,7 @@ export function mapTunerReading(
   // the reading toward an instrument string.
   if (tuning.strings.length === 0) {
     const chromaticCents = Number.isFinite(reading.cents)
-      ? Math.round(reading.cents)
+      ? Math.round(reading.cents * 10) / 10
       : 0;
     return {
       note: reading.noteName,
@@ -198,14 +198,14 @@ export function mapTunerReading(
   return {
     note: reading.noteName,
     octave: reading.octave,
-    cents: Number.isFinite(reading.cents) ? Math.round(reading.cents) : 0,
+    cents: Number.isFinite(reading.cents) ? Math.round(reading.cents * 10) / 10 : 0,
     frequency: corrected.frequency,
     confidence: reading.confidence,
     rmsDb: reading.rmsDb ?? -120,
     isActive: true,
     stringIndex: idx,
     nearestTarget: idx !== null ? tuning.strings[idx] : null,
-    targetCents: signed === null ? null : Math.round(signed),
+    targetCents: signed === null ? null : Math.round(signed * 10) / 10,
     verdict:
       signed === null ? null : verdictForCents(signed, inTuneCents),
     signal: 'clear',

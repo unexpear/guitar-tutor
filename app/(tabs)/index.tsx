@@ -227,11 +227,13 @@ export default function TunerScreen() {
     hasPitch && tuner.verdict ? VERDICT_COLORS[tuner.verdict] : Colors.dark.muted;
   const noteColor = isTuned ? Colors.success : Colors.dark.text;
 
+  const centsPrecision = 1;
+  const formattedCents = displayCents.toFixed(centsPrecision);
   const centsDisplay = hasPitch
     ? displayCents > 0
-      ? `+${displayCents}`
-      : `${displayCents}`
-    : '0';
+      ? `+${formattedCents}`
+      : formattedCents
+    : (0).toFixed(centsPrecision);
   const centsLabel = !hasPitch
     ? tuner.isActive
       ? 'Listening…'
@@ -564,7 +566,7 @@ export default function TunerScreen() {
             style={[styles.noteText, { color: noteColor }]}
             accessibilityLabel={
               hasPitch
-                ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents)} cents`
+                ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents).toFixed(centsPrecision)} cents`
                 : tuner.isActive
                 ? 'Listening for a note'
                 : 'Tuner inactive'

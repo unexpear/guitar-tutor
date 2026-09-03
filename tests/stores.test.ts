@@ -343,7 +343,7 @@ test('settings start with sane defaults', () => {
   assert.equal(s.sampleVolume, 75);
   assert.equal(s.practiceGoalMinutes, 15);
   assert.equal(s.referencePitchHz, 440);
-  assert.equal(s.inTuneToleranceCents, 3);
+  assert.equal(s.inTuneToleranceCents, 1);
   assert.equal(s.tunerSensitivity, 'normal');
   assert.equal(s.meterStyle, 'needle');
   assert.equal(s.leftHanded, false);
@@ -361,12 +361,14 @@ test('advanced mode preserves choices and beginner mode restores reliable defaul
   s.setHapticsEnabled(false);
   s.setAutoAdvanceStrings(false);
   assert.equal(useSettingsStore.getState().settingsMode, 'advanced');
+  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 0.5);
 
   useSettingsStore.getState().setSettingsMode('beginner');
   const beginner = useSettingsStore.getState();
   assert.equal(beginner.settingsMode, 'beginner');
   assert.equal(beginner.soundsEnabled, true);
   assert.equal(beginner.referencePitchHz, 440);
+  assert.equal(beginner.inTuneToleranceCents, 1);
   assert.equal(beginner.tunerSensitivity, 'normal');
   assert.equal(beginner.hapticsEnabled, true);
   assert.equal(beginner.autoAdvanceStrings, true);
@@ -438,9 +440,11 @@ test('tuner calibration settings are rounded and clamped', () => {
   assert.equal(useSettingsStore.getState().referencePitchHz, 450);
 
   s.setInTuneToleranceCents(0);
-  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 1);
+  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 0.5);
+  s.setInTuneToleranceCents(0.56);
+  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 0.6);
   s.setInTuneToleranceCents(3.7);
-  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 4);
+  assert.equal(useSettingsStore.getState().inTuneToleranceCents, 3.7);
   s.setInTuneToleranceCents(20);
   assert.equal(useSettingsStore.getState().inTuneToleranceCents, 5);
 });

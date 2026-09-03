@@ -17,7 +17,7 @@ export const STRING_NAMES = [
 
 export type TuneChoice = 'Tune up' | 'In tune' | 'Tune down';
 
-export function tuneChoiceForCents(cents: number, tolerance = 3): TuneChoice {
+export function tuneChoiceForCents(cents: number, tolerance = 1): TuneChoice {
   if (cents < -tolerance) return 'Tune up';
   if (cents > tolerance) return 'Tune down';
   return 'In tune';
@@ -43,8 +43,8 @@ export function stringQuestion(
   };
 }
 
-const GUIDED_CENTS = [-28, -16, 0, 2, 17, 31] as const;
-const CHALLENGE_CENTS = [-28, -16, -8, -4, -3, -2, 0, 2, 3, 4, 9, 17, 31] as const;
+const GUIDED_CENTS = [-28, -16, -1, 0, 1, 17] as const;
+const CHALLENGE_CENTS = [-28, -16, -8, -4, -2, -1, 0, 1, 2, 4, 9, 17, 31] as const;
 
 export function tuneQuestion(
   seed: number,
@@ -68,7 +68,7 @@ export function starterFeedback(
   if (gameId === 'string-scout') {
     return `${answer}. Guitar strings count from the thinnest string (1) toward the thickest (6).`;
   }
-  if (answer === 'In tune') return `${cents ?? 0}¢ is inside the ±3¢ in-tune zone.`;
+  if (answer === 'In tune') return `${cents ?? 0}¢ is inside the ±1¢ in-tune zone.`;
   return `${cents && cents > 0 ? '+' : ''}${cents ?? 0}¢ is ${answer === 'Tune up' ? 'flat, so raise the pitch' : 'sharp, so lower the pitch'}.`;
 }
 

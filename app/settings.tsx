@@ -175,7 +175,7 @@ function CustomSlider({
   );
 }
 
-function ChoiceButtons<T extends string>({
+function ChoiceButtons<T extends string | number>({
   value,
   options,
   onChange,
@@ -528,8 +528,8 @@ export default function SettingsScreen() {
           />
           <Text style={styles.hint}>
             {settingsMode === 'beginner'
-              ? 'Recommended. Sound, tuner accuracy, haptic confirmation, and guided string advance are ready without setup.'
-              : 'All calibration, audio, tuner display, and testing controls are available below.'}
+              ? 'Recommended. Sound, a precise ±1¢ target, haptic confirmation, and guided string advance are ready without setup.'
+              : 'Expert ±0.5¢ target plus all calibration, audio, tuner display, and testing controls.'}
           </Text>
         </SectionCard>
 
@@ -565,19 +565,22 @@ export default function SettingsScreen() {
                 label="In-Tune Window"
                 accessibilityLabel={`In-tune window: plus or minus ${inTuneToleranceCents} cents`}
                 right={
-                  <NumericStepper
+                  <ChoiceButtons
                     value={inTuneToleranceCents}
-                    min={1}
-                    max={5}
-                    unit="¢"
-                    label="in-tune window"
+                    options={[
+                      { value: 0.5, label: '0.5¢' },
+                      { value: 1, label: '1¢' },
+                      { value: 3, label: '3¢' },
+                      { value: 5, label: '5¢' },
+                    ]}
                     onChange={setInTuneToleranceCents}
+                    label="In-tune window"
                   />
                 }
               />
               <Text style={styles.hint}>
-                A4 defaults to the ISO 440 Hz standard. Use ±1 cent for precise
-                setup or a wider window for easier everyday tuning.
+                A4 defaults to the ISO 440 Hz standard. Use 0.5¢ for a strict
+                setup target or a wider window for unstable instruments and noisy rooms.
               </Text>
               <SettingRow
                 label="Room sensitivity"
