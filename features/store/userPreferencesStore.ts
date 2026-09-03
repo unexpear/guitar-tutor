@@ -45,7 +45,13 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       setTuningPreference: (tuning: TuningPreference) => set({ tuningPreference: tuning }),
       
       completeQuestionnaire: () => set({ hasCompletedQuestionnaire: true }),
-      resetQuestionnaire: () => set({ hasCompletedQuestionnaire: false }),
+      resetQuestionnaire: () =>
+        set({
+          guitarType: 'acoustic',
+          experienceLevel: 'beginner',
+          tuningPreference: 'standard',
+          hasCompletedQuestionnaire: false,
+        }),
       
     }),
     {

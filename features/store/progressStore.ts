@@ -9,9 +9,15 @@ import {
   minutesFrom,
 } from '../practice/streak';
 import { ChordStats, recordAttempt } from '../practice/chordStats';
-import { levelFromXp, xpForFirstLesson, xpForGameScore } from '../progression/playerProgress';
+import {
+  XP_PER_LEVEL,
+  levelFromXp,
+  xpForFirstLesson,
+  xpForGameScore,
+} from '../progression/playerProgress';
 import {
   DEFAULT_GUITAR_DESIGN_ID,
+  GUITAR_DESIGNS,
   guitarDesign,
   isDesignUnlocked,
 } from '../progression/guitarDesigns';
@@ -29,7 +35,7 @@ export interface LessonProgress {
   score: number;
 }
 
-interface ProgressState {
+interface ProgressData {
   completedLessons: Record<string, LessonProgress>;
   currentStreak: number;
   /** Lifetime total, retained even when old daily log entries are pruned. */
@@ -52,6 +58,9 @@ interface ProgressState {
   longestStreak: number;
   /** How each chord is going, keyed by chord name. */
   chordStats: ChordStats;
+}
+
+interface ProgressState extends ProgressData {
 
   completeLesson: (lessonId: string, score: number) => void;
   /** Records a completed round, awards XP, and returns true for a new best. */
@@ -77,26 +86,42 @@ interface ProgressState {
   liveStreak: (now?: Date) => number;
   getLessonScore: (lessonId: string) => number;
   isLessonCompleted: (lessonId: string) => boolean;
+  /** Raises XP just enough to inspect every level-gated cosmetic. */
+  unlockAllForTesting: () => void;
+  /** Restores all learning, practice, score, and cosmetic progress defaults. */
+  resetProgress: () => void;
+}
+
+const MAX_GUITAR_DESIGN_LEVEL = Math.max(
+  ...GUITAR_DESIGNS.map((design) => design.unlockLevel),
+);
+
+export const TESTER_UNLOCK_XP = (MAX_GUITAR_DESIGN_LEVEL - 1) * XP_PER_LEVEL;
+
+function initialProgressState(): ProgressData {
+  return {
+    completedLessons: {},
+    currentStreak: 0,
+    lifetimePracticeSeconds: 0,
+    totalPracticeMinutes: 0,
+    favoriteChords: [],
+    alternateTuning: 'guitar-acoustic-standard',
+    gameHighScores: {},
+    totalXp: 0,
+    gamePlays: {},
+    selectedGuitarDesignId: DEFAULT_GUITAR_DESIGN_ID,
+    selectedGuitarModelIds: { ...DEFAULT_GUITAR_MODEL_IDS },
+    practiceLog: {},
+    lastPracticeDate: null,
+    longestStreak: 0,
+    chordStats: {},
+  };
 }
 
 export const useProgressStore = create<ProgressState>()(
   persist(
     (set, get) => ({
-      completedLessons: {},
-      currentStreak: 0,
-      lifetimePracticeSeconds: 0,
-      totalPracticeMinutes: 0,
-      favoriteChords: [],
-      alternateTuning: 'guitar-acoustic-standard',
-      gameHighScores: {},
-      totalXp: 0,
-      gamePlays: {},
-      selectedGuitarDesignId: DEFAULT_GUITAR_DESIGN_ID,
-      selectedGuitarModelIds: DEFAULT_GUITAR_MODEL_IDS,
-      practiceLog: {},
-      lastPracticeDate: null,
-      longestStreak: 0,
-      chordStats: {},
+      ...initialProgressState(),
 
       completeLesson: (lessonId: string, score: number) =>
         set((state) => {
@@ -207,6 +232,11 @@ export const useProgressStore = create<ProgressState>()(
 
       isLessonCompleted: (lessonId: string) =>
         get().completedLessons[lessonId]?.completed ?? false,
+
+      unlockAllForTesting: () =>
+        set((state) => ({ totalXp: Math.max(state.totalXp, TESTER_UNLOCK_XP) })),
+
+      resetProgress: () => set(initialProgressState()),
     }),
     {
       name: 'standardtune-progress',

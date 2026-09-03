@@ -15,7 +15,11 @@ import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { Colors, CARD_SHADOW } from '../constants/Colors';
 import PressableScale from '../components/PressableScale';
-import { useProgressStore } from '../features/store/progressStore';
+import {
+  TESTER_UNLOCK_XP,
+  useProgressStore,
+} from '../features/store/progressStore';
+import { levelFromXp } from '../features/progression/playerProgress';
 import { minutesFrom } from '../features/practice/streak';
 import * as Linking from 'expo-linking';
 import { useUserPreferencesStore } from '../features/store/userPreferencesStore';
@@ -369,6 +373,9 @@ export default function SettingsScreen() {
   const longestStreak = useProgressStore((s) => s.longestStreak);
   const practiceSecondsToday = useProgressStore((s) => s.practiceSecondsToday);
   const liveStreak = useProgressStore((s) => s.liveStreak);
+  const totalXp = useProgressStore((s) => s.totalXp);
+  const unlockAllForTesting = useProgressStore((s) => s.unlockAllForTesting);
+  const resetProgress = useProgressStore((s) => s.resetProgress);
   // practiceLog is read so this recomputes when a session is logged.
   void practiceLog;
   const minutesToday = minutesFrom(practiceSecondsToday());
@@ -420,6 +427,34 @@ export default function SettingsScreen() {
           },
         },
       ]
+    );
+  };
+
+  const handleUnlockAllForTesting = () => {
+    unlockAllForTesting();
+    Alert.alert(
+      'Review access unlocked',
+      'Every level-gated guitar finish is now available. Lessons, songs, and games were already open.',
+    );
+  };
+
+  const handleResetToStart = () => {
+    Alert.alert(
+      'Reset to the beginning?',
+      'This permanently clears lesson results, XP, game records, practice history, favourites, guitar choices, and questionnaire answers on this device. Audio and accessibility settings are kept.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset Everything',
+          style: 'destructive',
+          onPress: () => {
+            resetProgress();
+            resetQuestionnaire();
+            router.replace('/(tabs)/lessons');
+          },
+        },
+      ],
+      { cancelable: true },
     );
   };
 
@@ -647,6 +682,37 @@ export default function SettingsScreen() {
             accessibilityRole="button"
           >
             <Text style={styles.retakeButtonText}>Retake Questionnaire</Text>
+          </TouchableOpacity>
+        </SectionCard>
+
+        <SectionCard title="Tester tools">
+          <SettingRow
+            label="Review access"
+            accessibilityLabel={`Review access: ${totalXp >= TESTER_UNLOCK_XP ? 'all cosmetics unlocked' : `level ${levelFromXp(totalXp)}`}`}
+            right={
+              <Text style={styles.rowValue}>
+                {totalXp >= TESTER_UNLOCK_XP ? 'All unlocked' : `Level ${levelFromXp(totalXp)}`}
+              </Text>
+            }
+          />
+          <Text style={styles.hint}>
+            These tools only change data on this device. Unlocking adds the XP needed to inspect every guitar finish without marking lessons or games complete.
+          </Text>
+          <TouchableOpacity
+            style={styles.retakeButton}
+            onPress={handleUnlockAllForTesting}
+            accessibilityLabel="Unlock every level-gated guitar finish for testing"
+            accessibilityRole="button"
+          >
+            <Text style={styles.retakeButtonText}>Unlock All for Testing</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.retakeButton, styles.resetButton]}
+            onPress={handleResetToStart}
+            accessibilityLabel="Reset all learning progress and questionnaire answers"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.retakeButtonText, styles.resetButtonText]}>Reset to First Launch</Text>
           </TouchableOpacity>
         </SectionCard>
 
@@ -973,6 +1039,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.success,
     textAlign: 'center',
+  },
+  resetButton: {
+    borderColor: Colors.danger,
+  },
+  resetButtonText: {
+    color: Colors.danger,
   },
   bottomSpacer: {
     height: 40,

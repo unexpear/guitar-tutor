@@ -112,6 +112,45 @@ test('lesson XP is awarded once and guitar designs respect level locks', () => {
   assert.equal(state.selectGuitarDesign('not-real'), false);
 });
 
+test('tester unlock reaches every cosmetic level without completing content', () => {
+  resetProgress();
+  useProgressStore.getState().unlockAllForTesting();
+  const state = useProgressStore.getState();
+  assert.equal(state.totalXp, 3_000);
+  assert.deepEqual(state.completedLessons, {});
+  assert.deepEqual(state.gameHighScores, {});
+  assert.equal(state.selectGuitarDesign('level-30'), true);
+});
+
+test('progress reset restores the real first-launch learning state', () => {
+  resetProgress();
+  const state = useProgressStore.getState();
+  state.completeLesson('beginner-tuning-up', 100);
+  state.recordGameScore('chord-quiz', 90);
+  state.recordPractice(180, DAY);
+  state.addFavoriteChord('Em');
+  state.selectGuitarModel('electric-singlecut');
+  state.unlockAllForTesting();
+  state.selectGuitarDesign('level-30');
+
+  useProgressStore.getState().resetProgress();
+  const reset = useProgressStore.getState();
+  assert.deepEqual(reset.completedLessons, {});
+  assert.equal(reset.totalXp, 0);
+  assert.deepEqual(reset.gameHighScores, {});
+  assert.deepEqual(reset.gamePlays, {});
+  assert.deepEqual(reset.practiceLog, {});
+  assert.equal(reset.lifetimePracticeSeconds, 0);
+  assert.equal(reset.currentStreak, 0);
+  assert.deepEqual(reset.favoriteChords, []);
+  assert.equal(reset.alternateTuning, 'guitar-acoustic-standard');
+  assert.equal(reset.selectedGuitarDesignId, 'starter-1');
+  assert.deepEqual(reset.selectedGuitarModelIds, {
+    acoustic: 'acoustic-grand',
+    electric: 'electric-doublecut',
+  });
+});
+
 test('guitar model choices persist independently for acoustic and electric', () => {
   resetProgress();
   const state = useProgressStore.getState();
@@ -372,7 +411,11 @@ test('questionnaire setters write through and can be re-run', () => {
   assert.equal(state.hasCompletedQuestionnaire, true);
 
   state.resetQuestionnaire();
-  assert.equal(useUserPreferencesStore.getState().hasCompletedQuestionnaire, false);
+  state = useUserPreferencesStore.getState();
+  assert.equal(state.guitarType, 'acoustic');
+  assert.equal(state.experienceLevel, 'beginner');
+  assert.equal(state.tuningPreference, 'standard');
+  assert.equal(state.hasCompletedQuestionnaire, false);
 });
 
 test('the hydration flag is transient and never persisted', async () => {
