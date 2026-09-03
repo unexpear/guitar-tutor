@@ -106,6 +106,49 @@
             <button id="reset-all" class="button button-danger" type="button">Reset design</button>
           </div>
         </section>
+
+        <section class="card batch-card">
+          <div class="section-heading"><h2>Rule-based batch lab</h2><span class="new-badge">BATCH</span></div>
+          <p class="help">Build a repeatable collection from design rules. The same colors, rules, and seed always produce the same set.</p>
+          <div class="field-row">
+            <label>Color harmony
+              <select id="batch-color-rule">
+                <option value="complementary">Complementary</option>
+                <option value="analogous">Analogous</option>
+                <option value="triadic">Triadic</option>
+                <option value="monochrome">Monochrome</option>
+                <option value="curated">Curated palette</option>
+              </select>
+            </label>
+            <label>Finish rule
+              <select id="batch-finish-rule">
+                <option value="balanced">Balanced rotation</option>
+                <option value="glossy">Showroom gloss</option>
+                <option value="textured">Texture-forward</option>
+                <option value="mixed">Fully mixed</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-row batch-row">
+            <label>Pattern rule
+              <select id="batch-pattern-rule">
+                <option value="all">All patterns</option>
+                <option value="stripes">Stripes only</option>
+                <option value="bold">Bold panels</option>
+                <option value="subtle">Subtle accents</option>
+              </select>
+            </label>
+            <label>Design count<input id="batch-count" type="number" min="2" max="36" value="12" inputmode="numeric" /></label>
+          </div>
+          <div class="field-row batch-row">
+            <label>Batch seed<input id="batch-seed" type="number" min="1" max="999999" value="42173" inputmode="numeric" /></label>
+            <label class="check-card"><input id="batch-contrast" type="checkbox" checked /><span><strong>Keep colors distinct</strong><small>Correct weak color separation.</small></span></label>
+          </div>
+          <button id="generate-batch" class="button button-primary wide-button" type="button">Generate collection</button>
+          <p id="batch-status" class="help batch-status" role="status" aria-live="polite">No batch generated yet.</p>
+          <div id="batch-gallery" class="batch-gallery" aria-label="Generated designs"></div>
+          <button id="export-batch" class="button button-secondary wide-button" type="button" disabled>Download batch ZIP</button>
+        </section>
       </aside>
     </main>
 

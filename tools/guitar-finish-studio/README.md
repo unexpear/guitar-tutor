@@ -8,6 +8,10 @@ Open `index.html` in a current browser, or run the repository's local preview co
 
 The built-in samples are deliberately simple demonstrations. Users are responsible for having permission to modify and redistribute imported artwork.
 
+### Rule-based batches
+
+The Batch Lab creates 2–36 deterministic variations using color-harmony, finish, pattern, minimum-separation, quantity, and seed rules. Batch export produces a single ZIP containing transparent PNGs and a `manifest.json` with the exact rules and recipes required to reproduce the collection.
+
 ## itch.io release
 
 Run `npm run guitars:studio:package` on Windows. Upload `dist-itch/guitar-finish-studio.zip` as an HTML project. The archive contains `index.html` at its root and only uses relative paths.

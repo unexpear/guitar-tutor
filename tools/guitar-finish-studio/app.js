@@ -29,6 +29,7 @@
   let lastPoint = null;
   let undoStack = [];
   let sourceKind = 'sample';
+  let batchResults = [];
 
   const controls = {
     primary: el('primary-color'), accent: el('accent-color'), primaryFinish: el('primary-finish'),
@@ -127,7 +128,7 @@
     updateUndo(); render();
   }
 
-  function accentMask(pattern, scale) {
+  function accentMask(pattern, scale, paintMask = mask) {
     const result = document.createElement('canvas'); result.width = WIDTH; result.height = HEIGHT;
     const rctx = result.getContext('2d');
     const s = scale / 100;
@@ -144,7 +145,7 @@
       gradient.addColorStop(0, '#0000'); gradient.addColorStop(.58, '#0000'); gradient.addColorStop(1, '#fff');
       rctx.fillStyle = gradient; rctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
-    rctx.globalCompositeOperation = 'destination-in'; rctx.drawImage(mask, 0, 0);
+    rctx.globalCompositeOperation = 'destination-in'; rctx.drawImage(paintMask, 0, 0);
     return result;
   }
 
@@ -174,7 +175,7 @@
     target.globalAlpha = 1; target.globalCompositeOperation = 'destination-in'; target.drawImage(layerMask, 0, 0); target.restore();
   }
 
-  function tintedLayer(color, layerMask, finish, seed) {
+  function tintedLayer(color, layerMask, finish, seed, strength) {
     const base = sourceCtx.getImageData(0, 0, WIDTH, HEIGHT);
     const maskData = layerMask.getContext('2d').getImageData(0, 0, WIDTH, HEIGHT).data;
     const output = workCtx.createImageData(WIDTH, HEIGHT);
@@ -191,21 +192,25 @@
     const layer = document.createElement('canvas'); layer.width = WIDTH; layer.height = HEIGHT;
     const layerCtx = layer.getContext('2d'); layerCtx.putImageData(output, 0, 0);
     const texture = document.createElement('canvas'); texture.width = WIDTH; texture.height = HEIGHT;
-    drawFinish(texture.getContext('2d'), finish, Number(controls.strength.value), Number(seed), layerMask);
+    drawFinish(texture.getContext('2d'), finish, Number(strength), Number(seed), layerMask);
     layerCtx.globalCompositeOperation = finish === 'Matte' ? 'soft-light' : 'overlay'; layerCtx.drawImage(texture, 0, 0);
     return layer;
   }
 
-  function render() {
-    ctx.clearRect(0, 0, WIDTH, HEIGHT); ctx.drawImage(source, 0, 0);
-    const primary = tintedLayer(controls.primary.value, mask, controls.primaryFinish.value, Number(controls.seed.value));
-    ctx.drawImage(primary, 0, 0);
-    const accent = accentMask(controls.pattern.value, Number(controls.scale.value));
-    if (controls.pattern.value !== 'No Accent') ctx.drawImage(tintedLayer(controls.accent.value, accent, controls.accentFinish.value, Number(controls.seed.value) + 17), 0, 0);
-    ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(source, 0, 0); ctx.globalCompositeOperation = 'source-over';
-    if (controls.showMask.checked || brushMode !== 'off') {
-      ctx.save(); ctx.globalAlpha = .32; ctx.globalCompositeOperation = 'screen'; ctx.drawImage(mask, 0, 0); ctx.restore();
+  function renderDesign(target, design, showMask = false) {
+    const targetCtx = target.getContext('2d');
+    targetCtx.clearRect(0, 0, WIDTH, HEIGHT); targetCtx.globalCompositeOperation = 'source-over'; targetCtx.drawImage(source, 0, 0);
+    targetCtx.drawImage(tintedLayer(design.primary, mask, design.primaryFinish, design.seed, design.textureStrength), 0, 0);
+    const accent = accentMask(design.pattern, design.patternScale);
+    if (design.pattern !== 'No Accent') targetCtx.drawImage(tintedLayer(design.accent, accent, design.accentFinish, design.seed + 17, design.textureStrength), 0, 0);
+    targetCtx.globalCompositeOperation = 'destination-in'; targetCtx.drawImage(source, 0, 0); targetCtx.globalCompositeOperation = 'source-over';
+    if (showMask) {
+      targetCtx.save(); targetCtx.globalAlpha = .32; targetCtx.globalCompositeOperation = 'screen'; targetCtx.drawImage(mask, 0, 0); targetCtx.restore();
     }
+  }
+
+  function render() {
+    renderDesign(canvas, recipe(), controls.showMask.checked || brushMode !== 'off');
     el('primary-hex').textContent = controls.primary.value.toUpperCase();
     el('accent-hex').textContent = controls.accent.value.toUpperCase();
     el('texture-value').textContent = `${controls.strength.value}%`;
@@ -282,6 +287,150 @@
     return { format: 'guitar-finish-studio', version: 1, primary: controls.primary.value, accent: controls.accent.value, primaryFinish: controls.primaryFinish.value, accentFinish: controls.accentFinish.value, pattern: controls.pattern.value, textureStrength: Number(controls.strength.value), patternScale: Number(controls.scale.value), seed: Number(controls.seed.value) };
   }
 
+  function rgbToHsl([red, green, blue]) {
+    const r = red / 255; const g = green / 255; const b = blue / 255;
+    const max = Math.max(r, g, b); const min = Math.min(r, g, b); const delta = max - min;
+    let hue = 0;
+    if (delta) hue = max === r ? 60 * (((g - b) / delta) % 6) : max === g ? 60 * ((b - r) / delta + 2) : 60 * ((r - g) / delta + 4);
+    const light = (max + min) / 2;
+    const saturation = delta ? delta / (1 - Math.abs(2 * light - 1)) : 0;
+    return [(hue + 360) % 360, saturation * 100, light * 100];
+  }
+
+  function colorContrast(first, second) {
+    const luminance = (hex) => {
+      const channels = hexToRgb(hex).map((value) => { const channel = value / 255; return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4; });
+      return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+    };
+    const a = luminance(first); const b = luminance(second); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+  }
+
+  function batchRules() {
+    return {
+      format: 'guitar-finish-studio-batch', version: 1, colorRule: el('batch-color-rule').value,
+      finishRule: el('batch-finish-rule').value, patternRule: el('batch-pattern-rule').value,
+      count: Math.max(2, Math.min(36, Number(el('batch-count').value) || 12)),
+      seed: Math.max(1, Math.min(999999, Number(el('batch-seed').value) || 1)),
+      keepDistinct: el('batch-contrast').checked, basePrimary: controls.primary.value, baseAccent: controls.accent.value,
+      textureStrength: Number(controls.strength.value), patternScale: Number(controls.scale.value),
+    };
+  }
+
+  function buildBatch(rules) {
+    const random = rng(rules.seed);
+    const [baseHue, baseSaturation, baseLight] = rgbToHsl(hexToRgb(rules.basePrimary));
+    const curated = ['#A51931','#FFD166','#4568DC','#B06AB3','#145DA0','#7DE2D1','#176B45','#B8FF55','#D98516','#59D9FF'];
+    const finishSets = {
+      balanced: [['Gloss','Metallic Flake'],['Matte','Gloss'],['Pearlescent','Gloss'],['Brushed Metal','Matte'],['Carbon Weave','Pearlescent']],
+      glossy: [['Gloss','Gloss'],['Pearlescent','Gloss'],['Gloss','Metallic Flake']],
+      textured: [['Brushed Metal','Carbon Weave'],['Carbon Weave','Matte'],['Metallic Flake','Pearlescent']],
+      mixed: finishes.flatMap((primary) => finishes.map((accent) => [primary, accent])),
+    };
+    const patternSets = {
+      all: patterns.slice(0, -1), stripes: ['Center Stripe','Pinstripes','Diagonal Band'],
+      bold: ['Split','Chevron','Quarter Panels'], subtle: ['Edge Burst','Pinstripes','No Accent'],
+    };
+    const chosenFinishes = finishSets[rules.finishRule]; const chosenPatterns = patternSets[rules.patternRule];
+    const results = []; const seen = new Set(); let attempts = 0;
+    while (results.length < rules.count && attempts < rules.count * 20) {
+      const index = attempts++; const jitter = (random() - .5) * 20;
+      let primary; let accent;
+      if (rules.colorRule === 'curated') {
+        primary = curated[(index + Math.floor(random() * curated.length)) % curated.length];
+        accent = curated[(index * 3 + 1) % curated.length];
+      } else if (rules.colorRule === 'monochrome') {
+        primary = hslHex(baseHue + jitter, Math.max(30, baseSaturation), 26 + random() * 22);
+        accent = hslHex(baseHue - jitter, Math.max(25, baseSaturation - 15), 64 + random() * 22);
+      } else {
+        const shift = rules.colorRule === 'complementary' ? 180 : rules.colorRule === 'triadic' ? (index % 2 ? 120 : 240) : (index % 2 ? 34 : -34);
+        primary = hslHex(baseHue + jitter, Math.max(42, baseSaturation), Math.max(26, Math.min(58, baseLight + (random() - .5) * 18)));
+        accent = hslHex(baseHue + shift - jitter, 62 + random() * 24, 52 + random() * 24);
+      }
+      if (rules.keepDistinct && colorContrast(primary, accent) < 3) {
+        const primaryLight = rgbToHsl(hexToRgb(primary))[2]; const accentHsl = rgbToHsl(hexToRgb(accent));
+        accent = hslHex(accentHsl[0], Math.max(58, accentHsl[1]), primaryLight > 50 ? 18 : 84);
+      }
+      const finishPair = chosenFinishes[(index + Math.floor(random() * chosenFinishes.length)) % chosenFinishes.length];
+      const pattern = chosenPatterns[(index + Math.floor(random() * chosenPatterns.length)) % chosenPatterns.length];
+      const result = { format: 'guitar-finish-studio', version: 1, primary, accent, primaryFinish: finishPair[0], accentFinish: finishPair[1], pattern, textureStrength: rules.textureStrength, patternScale: rules.patternScale, seed: Math.floor(1 + random() * 999998) };
+      const key = [primary, accent, ...finishPair, pattern].join('|');
+      if (!seen.has(key)) { seen.add(key); results.push(result); }
+    }
+    return results;
+  }
+
+  async function generateBatch() {
+    const button = el('generate-batch'); button.disabled = true; el('export-batch').disabled = true;
+    const rules = batchRules(); el('batch-count').value = String(rules.count); el('batch-seed').value = String(rules.seed);
+    el('batch-status').textContent = 'Building rule-based collection…';
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    batchResults = buildBatch(rules); const gallery = el('batch-gallery'); gallery.replaceChildren();
+    batchResults.forEach((design, index) => {
+      const item = document.createElement('div'); item.className = 'batch-item';
+      const preview = document.createElement('canvas'); preview.width = WIDTH; preview.height = HEIGHT; renderDesign(preview, design);
+      const label = document.createElement('span'); label.textContent = `${String(index + 1).padStart(2, '0')} · ${design.pattern}`; label.title = `${design.primary} + ${design.accent}, ${design.primaryFinish} / ${design.accentFinish}`;
+      item.append(preview, label); gallery.append(item);
+    });
+    el('batch-status').textContent = `${batchResults.length} unique designs ready. Seed ${rules.seed}.`;
+    el('export-batch').disabled = batchResults.length === 0; button.disabled = false;
+  }
+
+  function canvasBlob(target) {
+    return new Promise((resolve, reject) => target.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG export failed')), 'image/png'));
+  }
+
+  const crcTable = Array.from({ length: 256 }, (_, value) => {
+    let crc = value; for (let bit = 0; bit < 8; bit += 1) crc = (crc & 1) ? 0xEDB88320 ^ (crc >>> 1) : crc >>> 1; return crc >>> 0;
+  });
+
+  function crc32(bytes) {
+    let crc = 0xFFFFFFFF; for (const byte of bytes) crc = crcTable[(crc ^ byte) & 255] ^ (crc >>> 8); return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function zipHeader(size, writer) {
+    const bytes = new Uint8Array(size); writer(new DataView(bytes.buffer)); return bytes;
+  }
+
+  function storeZip(entries) {
+    const encoder = new TextEncoder(); const localParts = []; const centralParts = []; let offset = 0; let centralSize = 0;
+    entries.forEach((entry) => {
+      const name = encoder.encode(entry.name); const checksum = crc32(entry.data);
+      const local = zipHeader(30 + name.length, (view) => {
+        view.setUint32(0, 0x04034B50, true); view.setUint16(4, 20, true); view.setUint16(6, 0x0800, true); view.setUint16(8, 0, true);
+        view.setUint16(10, 0, true); view.setUint16(12, 33, true); view.setUint32(14, checksum, true); view.setUint32(18, entry.data.length, true);
+        view.setUint32(22, entry.data.length, true); view.setUint16(26, name.length, true); view.setUint16(28, 0, true); new Uint8Array(view.buffer).set(name, 30);
+      });
+      const central = zipHeader(46 + name.length, (view) => {
+        view.setUint32(0, 0x02014B50, true); view.setUint16(4, 20, true); view.setUint16(6, 20, true); view.setUint16(8, 0x0800, true);
+        view.setUint16(10, 0, true); view.setUint16(12, 0, true); view.setUint16(14, 33, true); view.setUint32(16, checksum, true);
+        view.setUint32(20, entry.data.length, true); view.setUint32(24, entry.data.length, true); view.setUint16(28, name.length, true);
+        view.setUint16(30, 0, true); view.setUint16(32, 0, true); view.setUint16(34, 0, true); view.setUint16(36, 0, true);
+        view.setUint32(38, 0, true); view.setUint32(42, offset, true); new Uint8Array(view.buffer).set(name, 46);
+      });
+      localParts.push(local, entry.data); centralParts.push(central); offset += local.length + entry.data.length; centralSize += central.length;
+    });
+    const end = zipHeader(22, (view) => { view.setUint32(0, 0x06054B50, true); view.setUint16(4, 0, true); view.setUint16(6, 0, true); view.setUint16(8, entries.length, true); view.setUint16(10, entries.length, true); view.setUint32(12, centralSize, true); view.setUint32(16, offset, true); view.setUint16(20, 0, true); });
+    return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
+  }
+
+  async function exportBatch() {
+    if (!batchResults.length) return;
+    const button = el('export-batch'); button.disabled = true; const entries = [];
+    try {
+      for (let index = 0; index < batchResults.length; index += 1) {
+        el('batch-status').textContent = `Rendering ${index + 1} of ${batchResults.length}…`;
+        const output = document.createElement('canvas'); output.width = WIDTH; output.height = HEIGHT; renderDesign(output, batchResults[index]);
+        entries.push({ name: `designs/guitar-finish-${String(index + 1).padStart(2, '0')}.png`, data: new Uint8Array(await (await canvasBlob(output)).arrayBuffer()) });
+        if (index % 4 === 3) await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+      const manifest = { format: 'guitar-finish-studio-collection', version: 1, createdBy: 'Guitar Finish Studio', rules: batchRules(), designs: batchResults };
+      entries.push({ name: 'manifest.json', data: new TextEncoder().encode(`${JSON.stringify(manifest, null, 2)}\n`) });
+      const blob = storeZip(entries); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `guitar-finish-batch-${batchRules().seed}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      el('batch-status').textContent = `${batchResults.length} PNGs and manifest downloaded as one ZIP.`;
+    } catch { el('batch-status').textContent = 'The batch could not be exported. Try a smaller collection.'; }
+    button.disabled = false;
+  }
+
   function downloadRecipe() {
     const blob = new Blob([`${JSON.stringify(recipe(), null, 2)}\n`], { type: 'application/json' });
     const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'guitar-finish-recipe.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -317,7 +466,7 @@
     controls.primaryFinish.value = finishes[Math.floor(Math.random() * finishes.length)]; controls.accentFinish.value = finishes[Math.floor(Math.random() * finishes.length)];
     controls.pattern.value = patterns[Math.floor(Math.random() * (patterns.length - 1))]; controls.seed.value = Math.floor(1 + Math.random() * 999998); render(); setStatus('New original combination generated.');
   });
-  function hslHex(h, s, l) { s /= 100; l /= 100; const c = (1 - Math.abs(2 * l - 1)) * s; const x = c * (1 - Math.abs((h / 60) % 2 - 1)); const m = l - c / 2; let rgb = h < 60 ? [c,x,0] : h < 120 ? [x,c,0] : h < 180 ? [0,c,x] : h < 240 ? [0,x,c] : h < 300 ? [x,0,c] : [c,0,x]; return `#${rgb.map((v) => Math.round((v + m) * 255).toString(16).padStart(2,'0')).join('')}`; }
+  function hslHex(h, s, l) { h = ((h % 360) + 360) % 360; s /= 100; l /= 100; const c = (1 - Math.abs(2 * l - 1)) * s; const x = c * (1 - Math.abs((h / 60) % 2 - 1)); const m = l - c / 2; const rgb = h < 60 ? [c,x,0] : h < 120 ? [x,c,0] : h < 180 ? [0,c,x] : h < 240 ? [0,x,c] : h < 300 ? [x,0,c] : [c,0,x]; return `#${rgb.map((v) => Math.round((v + m) * 255).toString(16).padStart(2,'0')).join('')}`; }
   document.querySelectorAll('[data-brush]').forEach((button) => button.addEventListener('click', () => {
     brushMode = button.dataset.brush; document.querySelectorAll('[data-brush]').forEach((item) => item.classList.toggle('active', item === button));
     canvas.classList.toggle('editing', brushMode !== 'off'); controls.showMask.checked = brushMode !== 'off'; render();
@@ -334,6 +483,8 @@
   el('save-recipe').addEventListener('click', downloadRecipe);
   el('reset-all').addEventListener('click', () => { controls.preset.value = '0'; applyPreset(0); drawSample(el('sample-model').value); setStatus('Design reset.'); });
   el('brush-size').addEventListener('input', () => { el('brush-value').textContent = `${el('brush-size').value} px`; });
+  el('generate-batch').addEventListener('click', generateBatch);
+  el('export-batch').addEventListener('click', exportBatch);
   document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); } });
   ['dragenter','dragover'].forEach((name) => canvas.parentElement.addEventListener(name, (event) => { event.preventDefault(); el('drop-hint').hidden = false; }));
   ['dragleave','drop'].forEach((name) => canvas.parentElement.addEventListener(name, (event) => { event.preventDefault(); el('drop-hint').hidden = true; }));

@@ -72,6 +72,19 @@ input[type="range"] { width: 100%; accent-color: var(--gold); }
 .text-button { border: 0; padding: 5px; background: transparent; color: var(--gold); font-size: .78rem; font-weight: 800; cursor: pointer; }
 button:disabled { opacity: .4; cursor: not-allowed; }
 .help { margin: -5px 0 12px; color: var(--muted); font-size: .8rem; line-height: 1.45; }
+.new-badge { padding: 4px 7px; border-radius: 6px; background: #342813; color: var(--gold); font-size: .62rem; font-weight: 900; letter-spacing: .1em; }
+.batch-row { margin-top: 12px; }
+.check-card { display: flex; min-height: 42px; padding: 8px 10px; border: 1px solid #383d49; border-radius: 10px; align-items: center; gap: 9px; background: #0e1015; cursor: pointer; }
+.check-card input { flex: none; accent-color: var(--gold); }
+.check-card strong, .check-card small { display: block; }
+.check-card strong { color: var(--text); font-size: .76rem; }
+.check-card small { margin-top: 2px; font-weight: 500; }
+.wide-button { width: 100%; margin-top: 14px; }
+.batch-status { margin: 10px 0; text-align: center; }
+.batch-gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.batch-item { min-width: 0; padding: 5px; border: 1px solid #333844; border-radius: 10px; background: #0e1015; }
+.batch-item canvas { display: block; width: 100%; height: auto; border-radius: 6px; background: repeating-conic-gradient(#252933 0 25%, #1c2028 0 50%) 50% / 12px 12px; }
+.batch-item span { display: block; overflow: hidden; margin-top: 5px; color: var(--muted); font-size: .62rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 footer { max-width: 1300px; margin: auto; padding: 0 28px 30px; color: #777b86; font-size: .75rem; text-align: center; }
 
 @media (max-width: 850px) {
@@ -86,6 +99,7 @@ footer { max-width: 1300px; margin: auto; padding: 0 28px 30px; color: #777b86; 
 @media (max-width: 480px) {
   .field-row { grid-template-columns: 1fr; }
   .paint-grid { gap: 8px; }
+  .batch-gallery { grid-template-columns: repeat(3, 1fr); }
   .preview-panel, .card { padding: 14px; border-radius: 15px; }
   .canvas-toolbar { align-items: start; }
 }
