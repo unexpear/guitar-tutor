@@ -12,6 +12,12 @@ The built-in samples are deliberately simple demonstrations. Users are responsib
 
 The Batch Lab creates 2–36 deterministic variations using color-harmony, finish, pattern, minimum-separation, quantity, and seed rules. Batch export produces a single ZIP containing transparent PNGs and a `manifest.json` with the exact rules and recipes required to reproduce the collection.
 
+### Static 3D mesh export
+
+The beta mesh exporter produces an actual low-poly Wavefront OBJ with UV coordinates and named body, neck, headstock, bridge, and string objects. Its ZIP also includes an MTL material library, the current transparent finish texture, and machine-readable mesh metadata. It intentionally exports static geometry without an armature or animation. The generated shape is a clean starting point for Blender or a game engine, not a replacement for hand-authored production topology.
+
+The studio recognizes this project's `acoustic-cutaway-*` and `electric-singlecut-*` photoreal filenames and automatically applies their fitted paint/hardware masks. Other imported images use the visible silhouette and can be corrected with the Protect/Paint brushes or a custom mask.
+
 ## itch.io release
 
 Run `npm run guitars:studio:package` on Windows. Upload `dist-itch/guitar-finish-studio.zip` as an HTML project. The archive contains `index.html` at its root and only uses relative paths.

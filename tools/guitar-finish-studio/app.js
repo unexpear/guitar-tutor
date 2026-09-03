@@ -30,6 +30,7 @@
   let undoStack = [];
   let sourceKind = 'sample';
   let batchResults = [];
+  let meshProfile = 'acoustic';
 
   const controls = {
     primary: el('primary-color'), accent: el('accent-color'), primaryFinish: el('primary-finish'),
@@ -112,6 +113,8 @@
     }
     maskCtx.globalCompositeOperation = 'source-over';
     sourceKind = 'sample';
+    meshProfile = kind;
+    el('mesh-profile').value = kind;
     el('source-name').textContent = `Built-in ${kind} sample`;
     el('dimensions').textContent = '512 × 768 canvas';
     undoStack = []; updateUndo(); render();
@@ -126,6 +129,28 @@
     maskCtx.putImageData(next, 0, 0);
     if (clearHistory) undoStack = [];
     updateUndo(); render();
+  }
+
+  function applyKnownPhotoMask(filename) {
+    const normalized = filename.toLowerCase();
+    const profile = normalized.includes('acoustic-cutaway') ? 'acoustic' : normalized.includes('electric-singlecut') ? 'electric' : null;
+    if (!profile) return false;
+    const body = profile === 'acoustic'
+      ? path('M184 379C154 379 148 415 156 458C164 499 123 540 115 610C108 684 161 730 256 739C351 730 402 682 392 610C384 552 346 506 351 468C358 432 343 410 315 410C292 410 284 394 276 379Z')
+      : path('M187 418C156 413 148 451 151 504C154 552 128 600 133 662C138 718 184 739 259 742C338 739 382 713 384 660C387 598 364 548 366 504C369 470 356 444 335 449C307 456 297 485 271 490H253C233 466 215 425 187 418Z');
+    const head = profile === 'acoustic'
+      ? path('M224 18C242 10 273 10 290 20L298 119C297 132 286 139 276 143H238C228 139 217 132 216 119Z')
+      : path('M274 7C282 10 286 18 285 29L283 108L271 136H236L230 119C242 99 254 49 274 7Z');
+    maskCtx.clearRect(0, 0, WIDTH, HEIGHT); maskCtx.fillStyle = '#fff'; maskCtx.fill(body); maskCtx.fill(head);
+    maskCtx.globalCompositeOperation = 'destination-out';
+    if (profile === 'acoustic') {
+      maskCtx.fillRect(237, 132, 42, 365); maskCtx.beginPath(); maskCtx.arc(256, 494, 41, 0, Math.PI * 2); maskCtx.fill(); maskCtx.roundRect(207, 585, 100, 27, 7); maskCtx.fill();
+      [[239,55],[274,55],[239,88],[274,88],[239,121],[274,121]].forEach(([x,y]) => { maskCtx.beginPath(); maskCtx.arc(x,y,8,0,Math.PI*2); maskCtx.fill(); });
+    } else {
+      maskCtx.fillRect(241, 245, 42, 260); maskCtx.roundRect(227, 496, 61, 36, 5); maskCtx.fill(); maskCtx.roundRect(227, 570, 61, 36, 5); maskCtx.fill(); maskCtx.roundRect(229, 615, 58, 29, 4); maskCtx.fill();
+      [[331,599,10],[350,635,7],[332,669,10],[260,35,7],[257,51,7],[254,67,7],[250,83,7],[247,99,7],[243,115,7]].forEach(([x,y,r]) => { maskCtx.beginPath(); maskCtx.arc(x,y,r,0,Math.PI*2); maskCtx.fill(); });
+    }
+    maskCtx.globalCompositeOperation = 'source-over'; meshProfile = profile; el('mesh-profile').value = profile; undoStack = []; updateUndo(); render(); return true;
   }
 
   function accentMask(pattern, scale, paintMask = mask) {
@@ -240,10 +265,12 @@
   async function importSource(file) {
     if (!file || !/^image\/(png|webp)$/.test(file.type)) return setStatus('Choose a PNG or WebP image.', true);
     try {
-      await loadBitmap(file, source); sourceKind = 'import'; autoMask();
+      await loadBitmap(file, source); sourceKind = 'import';
+      const recognized = applyKnownPhotoMask(file.name);
+      if (!recognized) autoMask();
       el('source-name').textContent = file.name;
       el('dimensions').textContent = `${WIDTH} × ${HEIGHT} working canvas`;
-      setStatus('Imported. Use Protect mode to brush over hardware before exporting.');
+      setStatus(recognized ? `Photoreal ${meshProfile} profile recognized; its fitted hardware mask is active.` : 'Imported. Use Protect mode to brush over hardware before exporting.');
     } catch { setStatus('That image could not be opened. Try another PNG or WebP.', true); }
   }
 
@@ -413,6 +440,93 @@
     return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
   }
 
+  function buildStaticMesh(profile, bodyDepth, stringCount) {
+    const vertices = []; const textureCoordinates = []; const sections = [];
+    const scale = profile === 'electric' ? .00132 : .00136;
+    const mapPoint = ([x, y]) => [(x - 256) * scale, (740 - y) * scale];
+    const bodyOutline = profile === 'acoustic'
+      ? [[184,379],[158,394],[153,438],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[319,727],[370,700],[394,654],[390,607],[367,548],[348,498],[354,452],[344,418],[316,408],[290,405],[276,379]]
+      : [[187,418],[158,425],[150,470],[153,520],[140,570],[132,635],[140,690],[179,727],[259,742],[337,728],[378,694],[385,642],[376,585],[365,536],[367,493],[356,453],[335,449],[310,463],[290,482],[270,490],[253,490],[231,460],[210,428]];
+    const headOutline = profile === 'acoustic'
+      ? [[224,18],[242,10],[273,10],[290,20],[298,119],[276,143],[238,143],[216,119]]
+      : [[274,7],[285,20],[283,108],[271,136],[236,136],[230,119],[242,78],[255,38]];
+
+    function triangulate(points) {
+      const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+      const area = points.reduce((sum, point, index) => { const next = points[(index + 1) % points.length]; return sum + point[0] * next[1] - next[0] * point[1]; }, 0);
+      const orientation = area >= 0 ? 1 : -1; const remaining = points.map((_, index) => index); const triangles = [];
+      const inside = (point, a, b, c) => {
+        const first = cross(a, b, point) * orientation; const second = cross(b, c, point) * orientation; const third = cross(c, a, point) * orientation;
+        return first >= -1e-7 && second >= -1e-7 && third >= -1e-7;
+      };
+      let guard = points.length * points.length;
+      while (remaining.length > 3 && guard-- > 0) {
+        let clipped = false;
+        for (let index = 0; index < remaining.length; index += 1) {
+          const previous = remaining[(index - 1 + remaining.length) % remaining.length]; const current = remaining[index]; const next = remaining[(index + 1) % remaining.length];
+          if (cross(points[previous], points[current], points[next]) * orientation <= 1e-7) continue;
+          if (remaining.some((candidate) => candidate !== previous && candidate !== current && candidate !== next && inside(points[candidate], points[previous], points[current], points[next]))) continue;
+          triangles.push([previous, current, next]); remaining.splice(index, 1); clipped = true; break;
+        }
+        if (!clipped) throw new Error('The selected body outline could not be triangulated.');
+      }
+      if (remaining.length === 3) triangles.push(remaining);
+      return triangles;
+    }
+
+    function addExtruded(name, points2d, depth, material) {
+      const points = points2d.map(mapPoint); const start = vertices.length + 1; const frontY = depth / 2; const backY = -depth / 2;
+      points.forEach(([x,z], index) => { vertices.push([x,frontY,z]); textureCoordinates.push([points2d[index][0] / WIDTH, 1 - points2d[index][1] / HEIGHT]); });
+      points.forEach(([x,z], index) => { vertices.push([x,backY,z]); textureCoordinates.push([points2d[index][0] / WIDTH, 1 - points2d[index][1] / HEIGHT]); });
+      const front = points.map((_, index) => start + index); const back = points.map((_, index) => start + points.length + index);
+      const triangles = triangulate(points);
+      const faces = triangles.flatMap((triangle) => [
+        `f ${triangle.map((index) => `${front[index]}/${front[index]}`).join(' ')}`,
+        `f ${triangle.slice().reverse().map((index) => `${back[index]}/${back[index]}`).join(' ')}`,
+      ]);
+      for (let index = 0; index < points.length; index += 1) { const next = (index + 1) % points.length; faces.push(`f ${front[index]}/${front[index]} ${front[next]}/${front[next]} ${back[next]}/${back[next]} ${back[index]}/${back[index]}`); }
+      sections.push(`g ${name}\nusemtl ${material}\ns 1\n${faces.join('\n')}`);
+    }
+
+    function addBox(name, minX, maxX, minY, maxY, minZ, maxZ, material) {
+      const start = vertices.length + 1;
+      [[minX,minY,minZ],[maxX,minY,minZ],[maxX,maxY,minZ],[minX,maxY,minZ],[minX,minY,maxZ],[maxX,minY,maxZ],[maxX,maxY,maxZ],[minX,maxY,maxZ]].forEach(([x,y,z]) => { vertices.push([x,y,z]); textureCoordinates.push([.5 + x, Math.max(0, Math.min(1, z))]); });
+      const face = (...indices) => `f ${indices.map((index) => `${start+index}/${start+index}`).join(' ')}`;
+      sections.push(`g ${name}\nusemtl ${material}\ns off\n${[face(0,1,2,3),face(4,7,6,5),face(0,4,5,1),face(1,5,6,2),face(2,6,7,3),face(4,0,3,7)].join('\n')}`);
+    }
+
+    addExtruded('Body', bodyOutline, bodyDepth, 'Finish');
+    addExtruded('Neck', [[240,130],[276,130],[276,500],[240,500]], bodyDepth * .42, 'NeckWood');
+    addExtruded('Headstock', headOutline, bodyDepth * .48, 'Finish');
+    const front = bodyDepth / 2 + .002; addBox('Bridge', -.07, .07, front, front + .012, .17, .205, 'Hardware');
+    for (let index = 0; index < stringCount; index += 1) {
+      const ratio = stringCount === 1 ? .5 : index / (stringCount - 1); const x = -.012 + ratio * .024; const width = .00035 + ratio * .00045;
+      addBox(`String_${index + 1}`, x - width, x + width, front + .013, front + .014, .19, .98, 'Strings');
+    }
+    const vertexLines = vertices.map((value) => `v ${value.map((part) => part.toFixed(6)).join(' ')}`);
+    const uvLines = textureCoordinates.map((value) => `vt ${value.map((part) => part.toFixed(6)).join(' ')}`);
+    const object = [`# Guitar Finish Studio static mesh`, `# Units: meters`, `mtllib guitar.mtl`, `o ${profile === 'acoustic' ? 'Acoustic_Guitar' : 'Electric_Guitar'}`, ...vertexLines, ...uvLines, ...sections, ''].join('\n');
+    const material = `newmtl Finish\nKa 0.100 0.100 0.100\nKd 1.000 1.000 1.000\nKs 0.350 0.350 0.350\nNs 220\nillum 2\nmap_Kd guitar-finish.png\n\nnewmtl NeckWood\nKa 0.080 0.050 0.030\nKd 0.260 0.140 0.080\nKs 0.120 0.120 0.120\nNs 40\nillum 2\n\nnewmtl Hardware\nKa 0.120 0.120 0.120\nKd 0.520 0.500 0.450\nKs 0.800 0.800 0.800\nNs 500\nillum 2\n\nnewmtl Strings\nKa 0.200 0.200 0.200\nKd 0.720 0.700 0.640\nKs 0.900 0.900 0.900\nNs 700\nillum 2\n`;
+    return { object, material, vertexCount: vertices.length, groupCount: 4 + stringCount };
+  }
+
+  async function exportStaticMesh() {
+    const button = el('export-mesh'); button.disabled = true; el('mesh-status').textContent = 'Building mesh and texture…';
+    try {
+      const profile = el('mesh-profile').value; const depth = Number(el('mesh-depth').value) / 100; const strings = Number(el('mesh-strings').value);
+      const mesh = buildStaticMesh(profile, depth, strings); const textureCanvas = document.createElement('canvas'); textureCanvas.width = WIDTH; textureCanvas.height = HEIGHT; renderDesign(textureCanvas, recipe());
+      const entries = [
+        { name: 'guitar.obj', data: new TextEncoder().encode(mesh.object) },
+        { name: 'guitar.mtl', data: new TextEncoder().encode(mesh.material) },
+        { name: 'guitar-finish.png', data: new Uint8Array(await (await canvasBlob(textureCanvas)).arrayBuffer()) },
+        { name: 'mesh-info.json', data: new TextEncoder().encode(`${JSON.stringify({ format: 'guitar-finish-studio-static-mesh', version: 1, profile, units: 'meters', bodyDepthMeters: depth, strings, vertices: mesh.vertexCount, groups: mesh.groupCount, static: true, rigged: false, recipe: recipe() }, null, 2)}\n`) },
+      ];
+      const blob = storeZip(entries); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `guitar-static-mesh-${profile}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      el('mesh-status').textContent = `${mesh.vertexCount} vertices across ${mesh.groupCount} named objects downloaded.`;
+    } catch { el('mesh-status').textContent = 'The mesh could not be exported. Try again with the built-in sample.'; }
+    button.disabled = false;
+  }
+
   async function exportBatch() {
     if (!batchResults.length) return;
     const button = el('export-batch'); button.disabled = true; const entries = [];
@@ -485,6 +599,9 @@
   el('brush-size').addEventListener('input', () => { el('brush-value').textContent = `${el('brush-size').value} px`; });
   el('generate-batch').addEventListener('click', generateBatch);
   el('export-batch').addEventListener('click', exportBatch);
+  el('mesh-profile').addEventListener('change', (event) => { meshProfile = event.target.value; });
+  el('mesh-depth').addEventListener('input', () => { el('mesh-depth-value').textContent = `${Number(el('mesh-depth').value).toFixed(1)} cm`; });
+  el('export-mesh').addEventListener('click', exportStaticMesh);
   document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); } });
   ['dragenter','dragover'].forEach((name) => canvas.parentElement.addEventListener(name, (event) => { event.preventDefault(); el('drop-hint').hidden = false; }));
   ['dragleave','drop'].forEach((name) => canvas.parentElement.addEventListener(name, (event) => { event.preventDefault(); el('drop-hint').hidden = true; }));
