@@ -36,6 +36,7 @@
     "@jest/types": "^30.4.1",
     "@types/node": "^26.2.0",
     "@types/react": "~19.2.2",
+    "sharp": "^0.35.4",
     "tsx": "^4.23.12",
     "typescript": "~6.0.3"
   },
@@ -47,6 +48,10 @@
     "test": "node --import tsx --experimental-test-module-mocks --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "bundle:check": "expo export --platform android --output-dir dist",
+    "guitars:generate": "node scripts/generate-guitar-models.mjs",
+    "guitars:check": "node scripts/generate-guitar-models.mjs --check",
+    "guitars:paint": "node scripts/generate-guitar-models.mjs --paint",
+    "guitars:paint:check": "node scripts/generate-guitar-models.mjs --paint --check",
     "release": "node scripts/release.mjs"
   },
   "private": true,

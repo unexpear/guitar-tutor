@@ -15,6 +15,13 @@ import {
   guitarDesign,
   isDesignUnlocked,
 } from '../progression/guitarDesigns';
+import {
+  DEFAULT_GUITAR_MODEL_IDS,
+  guitarModel,
+  selectedModelId,
+  type GuitarModelId,
+  type GuitarType,
+} from '../progression/guitarModels';
 
 export interface LessonProgress {
   lessonId: string;
@@ -37,6 +44,7 @@ interface ProgressState {
   /** Completed rounds by game id, used for the player's own records. */
   gamePlays: Record<string, number>;
   selectedGuitarDesignId: string;
+  selectedGuitarModelIds: Record<GuitarType, GuitarModelId>;
   /** Seconds practised per local calendar day, YYYY-MM-DD keyed. */
   practiceLog: Record<string, number>;
   /** Local day of the most recent session, or null if there has never been one. */
@@ -50,6 +58,8 @@ interface ProgressState {
   recordGameScore: (gameId: string, score: number) => boolean;
   /** Selects a collected design; locked or unknown ids are rejected. */
   selectGuitarDesign: (designId: string) => boolean;
+  /** Selects a free physical model for its acoustic or electric family. */
+  selectGuitarModel: (modelId: string) => boolean;
   addFavoriteChord: (chordName: string) => void;
   removeFavoriteChord: (chordName: string) => void;
   setAlternateTuning: (tuning: string) => void;
@@ -82,6 +92,7 @@ export const useProgressStore = create<ProgressState>()(
       totalXp: 0,
       gamePlays: {},
       selectedGuitarDesignId: DEFAULT_GUITAR_DESIGN_ID,
+      selectedGuitarModelIds: DEFAULT_GUITAR_MODEL_IDS,
       practiceLog: {},
       lastPracticeDate: null,
       longestStreak: 0,
@@ -125,6 +136,18 @@ export const useProgressStore = create<ProgressState>()(
           return false;
         }
         set({ selectedGuitarDesignId: designId });
+        return true;
+      },
+
+      selectGuitarModel: (modelId: string) => {
+        const model = guitarModel(modelId);
+        if (!model) return false;
+        set((state) => ({
+          selectedGuitarModelIds: {
+            ...state.selectedGuitarModelIds,
+            [model.guitarType]: model.id,
+          },
+        }));
         return true;
       },
 
@@ -188,7 +211,7 @@ export const useProgressStore = create<ProgressState>()(
     {
       name: 'standardtune-progress',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         const state = persistedState as Partial<ProgressState>;
         const lifetimePracticeSeconds =
@@ -210,6 +233,10 @@ export const useProgressStore = create<ProgressState>()(
           totalXp: typeof state.totalXp === 'number' ? Math.max(0, state.totalXp) : 0,
           gamePlays: state.gamePlays ?? {},
           selectedGuitarDesignId: state.selectedGuitarDesignId ?? DEFAULT_GUITAR_DESIGN_ID,
+          selectedGuitarModelIds: {
+            acoustic: selectedModelId(state.selectedGuitarModelIds, 'acoustic'),
+            electric: selectedModelId(state.selectedGuitarModelIds, 'electric'),
+          },
         } as ProgressState;
       },
     }

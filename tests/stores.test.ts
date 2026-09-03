@@ -54,6 +54,10 @@ function resetProgress() {
     totalXp: 0,
     gamePlays: {},
     selectedGuitarDesignId: 'starter-1',
+    selectedGuitarModelIds: {
+      acoustic: 'acoustic-grand',
+      electric: 'electric-doublecut',
+    },
     practiceLog: {},
     lastPracticeDate: null,
     longestStreak: 0,
@@ -106,6 +110,18 @@ test('lesson XP is awarded once and guitar designs respect level locks', () => {
   assert.equal(state.selectGuitarDesign('level-1'), true);
   assert.equal(useProgressStore.getState().selectedGuitarDesignId, 'level-1');
   assert.equal(state.selectGuitarDesign('not-real'), false);
+});
+
+test('guitar model choices persist independently for acoustic and electric', () => {
+  resetProgress();
+  const state = useProgressStore.getState();
+  assert.equal(state.selectGuitarModel('acoustic-cutaway'), true);
+  assert.equal(state.selectGuitarModel('electric-singlecut'), true);
+  assert.deepEqual(useProgressStore.getState().selectedGuitarModelIds, {
+    acoustic: 'acoustic-cutaway',
+    electric: 'electric-singlecut',
+  });
+  assert.equal(state.selectGuitarModel('made-up'), false);
 });
 
 test('favourites are a simple toggle list', () => {

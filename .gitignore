@@ -54,3 +54,6 @@ keystore-base64.txt
 
 # downloaded build artifacts
 dist-play/
+
+# Local procedural paint previews
+/art/guitar-models/paint-previews/

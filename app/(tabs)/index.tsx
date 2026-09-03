@@ -45,6 +45,8 @@ import { useUserPreferencesStore } from '../../features/store/userPreferencesSto
 import { useSettingsStore } from '../../features/store/settingsStore';
 import { useTuningStore } from '../../features/store/tuningStore';
 import { guitarDesign } from '../../features/progression/guitarDesigns';
+import { guitarModel, selectedModelId } from '../../features/progression/guitarModels';
+import GuitarModelPicker from '../../features/games/locker/GuitarModelPicker';
 
 const SECTIONS = INSTRUMENT_PROFILES.map((profile) => ({
   title: profile.name,
@@ -160,6 +162,7 @@ export default function TunerScreen() {
   const alternateTuning = useProgressStore((s) => s.alternateTuning);
   const setAlternateTuning = useProgressStore((s) => s.setAlternateTuning);
   const selectedGuitarDesignId = useProgressStore((s) => s.selectedGuitarDesignId);
+  const selectedGuitarModelIds = useProgressStore((s) => s.selectedGuitarModelIds);
   const selectedGuitarDesign = guitarDesign(selectedGuitarDesignId);
   const guitarType = useUserPreferencesStore((s) => s.guitarType);
   const customTunings = useTuningStore((s) => s.customTunings);
@@ -171,6 +174,7 @@ export default function TunerScreen() {
     () => customTunings.find((item) => item.id === alternateTuning) ?? findTuningPreset(alternateTuning, guitarType) ?? TUNING_PRESETS[0],
   );
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [modelPickerVisible, setModelPickerVisible] = useState(false);
   const [diagnosticsVisible, setDiagnosticsVisible] = useState(false);
   const [stageVisible, setStageVisible] = useState(false);
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
@@ -191,6 +195,10 @@ export default function TunerScreen() {
   useMicReleaseOnLeave(tuner.stopListening, tuner.isActive);
   const { playNote } = useGuitarSound();
   const profile = instrumentProfile(tuning.instrumentId);
+  const activeModelId = profile.headstock
+    ? selectedModelId(selectedGuitarModelIds, profile.headstock)
+    : undefined;
+  const activeModel = activeModelId ? guitarModel(activeModelId) : undefined;
 
   // Peg labels follow the selected tuning (e.g. Drop D shows D A D G B E).
   const stringLabels = tuning.strings.map((n, i) => {
@@ -436,6 +444,16 @@ export default function TunerScreen() {
           <PressableScale onPress={() => setDiagnosticsVisible(true)} style={styles.modeButton} accessibilityRole="button">
             <Text style={styles.modeButtonText}>Signal help</Text>
           </PressableScale>
+          {profile.headstock && (
+            <PressableScale
+              onPress={() => setModelPickerVisible(true)}
+              style={styles.modeButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Current guitar model: ${activeModel?.name ?? 'default'}. Tap to change.`}
+            >
+              <Text style={styles.modeButtonText}>Model · {activeModel?.name ?? 'Default'}</Text>
+            </PressableScale>
+          )}
         </View>
       </View>
 
@@ -472,6 +490,7 @@ export default function TunerScreen() {
           <HeadstockSvg
             guitarType={profile.headstock ?? 'acoustic'}
             design={selectedGuitarDesign}
+            modelId={activeModelId}
             highlightColor={aimedColor}
             highlightedPeg={aimedString ?? undefined}
             width={compactLayout ? 150 : 200}
@@ -758,6 +777,13 @@ export default function TunerScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      {profile.headstock && (
+        <GuitarModelPicker
+          visible={modelPickerVisible}
+          onClose={() => setModelPickerVisible(false)}
+          guitarType={profile.headstock}
+        />
+      )}
       {stageVisible && <StageMode note={displayNote} cents={centsDisplay} label={centsLabel} color={centsColor} onClose={() => setStageVisible(false)} />}
     </View>
   );
@@ -799,7 +825,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 5,
   },
-  modeButtons: { flexDirection: 'row', gap: 8, marginTop: 7 },
+  modeButtons: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 7, paddingHorizontal: 12 },
   modeButton: { minHeight: 48, justifyContent: 'center', borderRadius: 24, paddingHorizontal: 13, borderWidth: 1, borderColor: Colors.dark.cardBorder },
   modeButtonText: { color: Colors.dark.muted, fontSize: 12, fontWeight: '700' },
   tuningChevron: {
