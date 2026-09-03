@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0c10" />
+    <meta name="description" content="Design original guitar paint, material, and accent combinations in your browser." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%2252%22 font-size=%2252%22>🎸</text></svg>" />
+    <title>Guitar Finish Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">FREE BROWSER TOOL</p>
+        <h1>Guitar Finish Studio</h1>
+        <p class="subtitle">Import a transparent guitar PNG, protect the hardware, then explore paint and material combinations.</p>
+      </div>
+      <div class="privacy-pill" title="Images never leave this browser">Local only · no uploads</div>
+    </header>
+
+    <main class="layout">
+      <section class="preview-panel" aria-label="Guitar preview">
+        <div class="canvas-toolbar">
+          <div>
+            <strong id="source-name">Built-in acoustic sample</strong>
+            <span id="dimensions">512 × 768 PNG</span>
+          </div>
+          <label class="toggle"><input id="show-mask" type="checkbox" /> Show paint mask</label>
+        </div>
+        <div class="canvas-shell">
+          <canvas id="preview" width="512" height="768" aria-label="Live guitar finish preview"></canvas>
+          <div id="drop-hint" class="drop-hint" hidden>Drop a transparent PNG</div>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite">Ready. Try a preset or import your own guitar.</p>
+        <div class="primary-actions">
+          <label class="button button-secondary" for="source-file">Import guitar PNG</label>
+          <input id="source-file" type="file" accept="image/png,image/webp" hidden />
+          <button id="export-png" class="button button-primary" type="button">Export transparent PNG</button>
+        </div>
+      </section>
+
+      <aside class="controls" aria-label="Finish controls">
+        <section class="card welcome-card">
+          <div class="step"><span>1</span><div><strong>Choose a guitar</strong><small>Use a sample or import a transparent render.</small></div></div>
+          <div class="step"><span>2</span><div><strong>Protect the hardware</strong><small>Brush over strings, pickups, and anything that should keep its original color.</small></div></div>
+          <div class="step"><span>3</span><div><strong>Design and export</strong><small>Everything updates live. PNG export preserves transparency.</small></div></div>
+        </section>
+
+        <section class="card">
+          <div class="section-heading"><h2>Starting point</h2><button id="randomize" class="text-button" type="button">Surprise me</button></div>
+          <div class="field-row">
+            <label>Sample
+              <select id="sample-model"><option value="acoustic">Acoustic</option><option value="electric">Electric</option></select>
+            </label>
+            <label>Preset
+              <select id="preset"></select>
+            </label>
+          </div>
+        </section>
+
+        <section class="card paint-card">
+          <div class="section-heading"><h2>Paint layers</h2><button id="swap-colors" class="text-button" type="button">Swap colors</button></div>
+          <div class="paint-grid">
+            <fieldset>
+              <legend>Primary</legend>
+              <label class="color-field"><input id="primary-color" type="color" value="#A51931" /><span id="primary-hex">#A51931</span></label>
+              <label>Finish<select id="primary-finish"></select></label>
+            </fieldset>
+            <fieldset>
+              <legend>Accent</legend>
+              <label class="color-field"><input id="accent-color" type="color" value="#FFD166" /><span id="accent-hex">#FFD166</span></label>
+              <label>Finish<select id="accent-finish"></select></label>
+            </fieldset>
+          </div>
+          <label>Accent pattern<select id="pattern"></select></label>
+          <label class="range-label"><span>Texture strength <output id="texture-value">55%</output></span><input id="texture-strength" type="range" min="0" max="100" value="55" /></label>
+          <label class="range-label"><span>Pattern size <output id="pattern-value">100%</output></span><input id="pattern-scale" type="range" min="50" max="180" value="100" /></label>
+          <label>Texture seed<input id="seed" type="number" min="1" max="999999" value="1847" inputmode="numeric" /></label>
+        </section>
+
+        <section class="card">
+          <div class="section-heading"><h2>Paint mask</h2><button id="undo-mask" class="text-button" type="button" disabled>Undo</button></div>
+          <p class="help">A mask tells the studio what may be recolored. Imported images start with every visible pixel selected.</p>
+          <div class="segmented" role="group" aria-label="Mask brush mode">
+            <button type="button" data-brush="off" class="active">Preview</button>
+            <button type="button" data-brush="protect">Protect</button>
+            <button type="button" data-brush="paint">Paint</button>
+          </div>
+          <label class="range-label"><span>Brush size <output id="brush-value">36 px</output></span><input id="brush-size" type="range" min="8" max="120" value="36" /></label>
+          <div class="small-actions">
+            <button id="reset-mask" class="button button-secondary" type="button">Auto-select visible</button>
+            <label class="button button-secondary" for="mask-file">Import mask</label>
+            <input id="mask-file" type="file" accept="image/png,image/webp" hidden />
+            <button id="export-mask" class="button button-secondary" type="button">Export mask</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Recipe</h2>
+          <p class="help">Recipes save paint choices, not your source image or mask.</p>
+          <div class="small-actions">
+            <button id="save-recipe" class="button button-secondary" type="button">Save recipe</button>
+            <label class="button button-secondary" for="recipe-file">Load recipe</label>
+            <input id="recipe-file" type="file" accept="application/json" hidden />
+            <button id="reset-all" class="button button-danger" type="button">Reset design</button>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <footer>Original output depends on the source image you provide. Only use artwork you have permission to modify.</footer>
+    <script src="app.js"></script>
+  </body>
+</html>

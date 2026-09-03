@@ -57,3 +57,10 @@ dist-play/
 
 # Local procedural paint previews
 /art/guitar-models/paint-previews/
+
+# itch.io release artifacts
+/dist-itch/
+
+# Local browser-test artifacts
+/.playwright-cli/
+/output/playwright/
