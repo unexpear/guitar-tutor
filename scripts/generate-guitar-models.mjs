@@ -3,12 +3,13 @@ import path from 'node:path';
 import process from 'node:process';
 import sharp from 'sharp';
 import { FINISH_FAMILIES, GUITAR_MODEL_PIPELINE } from './guitar-models.config.mjs';
-import { runPaintSystem } from './guitar-paint-system.mjs';
+import { runPaintSystem, runPlayerSkinSystem } from './guitar-paint-system.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUTPUT = path.join(ROOT, 'assets', 'guitars');
 const CHECK_ONLY = process.argv.includes('--check');
 const PAINT_MODE = process.argv.includes('--paint');
+const PLAYER_SKIN_MODE = process.argv.includes('--player-skins');
 const SIZE = { width: 512, height: 768 };
 
 function argumentAfter(flag) {
@@ -17,9 +18,10 @@ function argumentAfter(flag) {
 }
 
 function assetPaths(model, family) {
+  const stem = model.assetStem ?? model.id;
   return {
-    full: path.join(OUTPUT, `${model.id}-${family}.png`),
-    headstock: path.join(OUTPUT, `headstock-${model.id}-${family}.png`),
+    full: path.join(OUTPUT, `${stem}-${family}.png`),
+    headstock: path.join(OUTPUT, `headstock-${stem}-${family}.png`),
   };
 }
 
@@ -62,6 +64,7 @@ async function validatePng(file, label) {
 }
 
 async function generateModel(model) {
+  if (model.preserveBaseAssets) return;
   for (const family of FINISH_FAMILIES) {
     const source = await sourceFor(model, family);
     const paths = assetPaths(model, family);
@@ -89,7 +92,13 @@ async function validateModel(model) {
   }
 }
 
-if (PAINT_MODE) {
+if (PLAYER_SKIN_MODE) {
+  await runPlayerSkinSystem({
+    root: ROOT,
+    checkOnly: CHECK_ONLY,
+    modelId: argumentAfter('--model'),
+  });
+} else if (PAINT_MODE) {
   await runPaintSystem({
     root: ROOT,
     checkOnly: CHECK_ONLY,
@@ -98,9 +107,10 @@ if (PAINT_MODE) {
   });
 } else {
   await mkdir(OUTPUT, { recursive: true });
-  for (const model of GUITAR_MODEL_PIPELINE) {
+  const generatedModels = GUITAR_MODEL_PIPELINE.filter((model) => !model.preserveBaseAssets);
+  for (const model of generatedModels) {
     if (!CHECK_ONLY) await generateModel(model);
     await validateModel(model);
   }
-  console.log(`${CHECK_ONLY ? 'Validated' : 'Generated and validated'} ${GUITAR_MODEL_PIPELINE.length} models × ${FINISH_FAMILIES.length} finishes.`);
+  console.log(`${CHECK_ONLY ? 'Validated' : 'Generated and validated'} ${generatedModels.length} models × ${FINISH_FAMILIES.length} finishes.`);
 }

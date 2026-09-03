@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import Svg, { Defs, Image as SvgImage, LinearGradient, Path, Stop } from 'react-native-svg';
 import type { GuitarDesign } from '../../progression/guitarDesigns';
 import { DEFAULT_GUITAR_MODEL_IDS, type GuitarModelId } from '../../progression/guitarModels';
-import { FULL_GUITAR_MODEL_ASSETS, type GuitarFinishFamily } from '../../progression/guitarModelAssets';
+import { FULL_GUITAR_MODEL_ASSETS, FULL_GUITAR_PLAYER_SKINS, type GuitarFinishFamily } from '../../progression/guitarModelAssets';
 
 const ACOUSTIC_BODY =
   'M 72 164 C 61 164 59 177 63 190 C 67 204 51 226 51 253 C 51 284 70 300 100 304 C 130 300 149 284 149 253 C 149 226 133 204 137 190 C 141 177 139 164 128 164 C 116 164 110 172 100 172 C 90 172 84 164 72 164 Z';
@@ -30,7 +30,8 @@ export default function FullGuitarSvg({ design, modelId, width = 92, height = 15
     : DEFAULT_GUITAR_MODEL_IDS[design.guitarType];
   const body = BODY_PATHS[compatibleModelId]
     ?? (design.guitarType === 'acoustic' ? ACOUSTIC_BODY : ELECTRIC_BODY);
-  const asset = FULL_GUITAR_MODEL_ASSETS[compatibleModelId][finishFamily(design)];
+  const bakedSkin = FULL_GUITAR_PLAYER_SKINS[compatibleModelId][design.id];
+  const asset = bakedSkin ?? FULL_GUITAR_MODEL_ASSETS[compatibleModelId][finishFamily(design)];
   return (
     <View style={{ width, height }}>
       <Svg width={width} height={height} viewBox="0 0 200 320" accessibilityLabel={`${design.name} ${design.guitarType} guitar`}>
@@ -42,7 +43,7 @@ export default function FullGuitarSvg({ design, modelId, width = 92, height = 15
           </LinearGradient>
         </Defs>
         <SvgImage href={asset} x={0} y={0} width={200} height={320} preserveAspectRatio="xMidYMid meet" />
-        <Path d={body} fill={`url(#${gradientId})`} opacity={design.rarity === 'Legendary' ? 0.18 : 0.3} />
+        {!bakedSkin && <Path d={body} fill={`url(#${gradientId})`} opacity={design.rarity === 'Legendary' ? 0.18 : 0.3} />}
       </Svg>
     </View>
   );

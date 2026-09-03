@@ -1,20 +1,22 @@
-import { access, mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { access, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
-import { GUITAR_MODEL_PIPELINE, PAINT_FINISHES, PAINT_PRESETS } from './guitar-models.config.mjs';
+import { GUITAR_MODEL_PIPELINE, PAINT_FINISHES, PAINT_PRESETS, PLAYER_SKIN_RECIPES } from './guitar-models.config.mjs';
 
 const SIZE = { width: 512, height: 768 };
 const PATTERNS = ['center-stripe', 'split', 'edge-burst', 'pinstripes'];
 
 function validateRecipe(recipe) {
-  if (!/^[a-z0-9-]+$/.test(recipe.id)) throw new Error(`Invalid paint preset id: ${recipe.id}`);
+  const id = recipe.id ?? recipe.designId;
+  if (!/^[a-z0-9-]+$/.test(id)) throw new Error(`Invalid paint preset id: ${id}`);
   if (!/^#[0-9A-F]{6}$/i.test(recipe.primary) || !/^#[0-9A-F]{6}$/i.test(recipe.accent)) {
-    throw new Error(`${recipe.id}: paint colors must be six-digit hex values`);
+    throw new Error(`${id}: paint colors must be six-digit hex values`);
   }
   if (!PAINT_FINISHES.includes(recipe.primaryFinish) || !PAINT_FINISHES.includes(recipe.accentFinish)) {
-    throw new Error(`${recipe.id}: unknown paint finish`);
+    throw new Error(`${id}: unknown paint finish`);
   }
-  if (!PATTERNS.includes(recipe.pattern)) throw new Error(`${recipe.id}: unknown accent pattern`);
+  if (!PATTERNS.includes(recipe.pattern)) throw new Error(`${id}: unknown accent pattern`);
 }
 
 function zones(model) {
@@ -68,11 +70,17 @@ async function validateOutput(file, label) {
   if (metadata.width !== SIZE.width || metadata.height !== SIZE.height || !metadata.hasAlpha) {
     throw new Error(`${label}: expected a transparent 512x768 PNG`);
   }
-  if ((await sharp(file).stats()).isOpaque) throw new Error(`${label}: alpha channel is fully opaque`);
+  const stats = await sharp(file).stats();
+  if (stats.isOpaque) throw new Error(`${label}: alpha channel is fully opaque`);
+  if (stats.channels[3]?.max === 0) throw new Error(`${label}: image is fully transparent`);
 }
 
 async function renderPaint(model, recipe, output) {
-  const base = path.resolve(model.root, model.sources.wood);
+  const basePath = path.resolve(model.root, model.sources.wood);
+  const base = await sharp(basePath)
+    .resize(SIZE.width, SIZE.height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
   const primaryMask = fullMask(model);
   const secondaryMask = accentMask(model, recipe.pattern);
   const primary = await maskedLayer(base, recipe.primary, primaryMask);
@@ -121,4 +129,27 @@ export async function runPaintSystem({ root, checkOnly = false, modelId, presetI
     }
   }
   console.log(`${checkOnly ? 'Validated' : 'Generated and validated'} ${models.length} models × ${presets.length} layered paint presets.`);
+}
+
+export async function runPlayerSkinSystem({ root, checkOnly = false, modelId } = {}) {
+  const models = modelId ? GUITAR_MODEL_PIPELINE.filter((model) => model.id === modelId) : GUITAR_MODEL_PIPELINE;
+  if (models.length === 0) throw new Error(`Unknown model: ${modelId}`);
+  const outputDirectory = path.join(root, 'assets', 'guitars', 'player-skins');
+  await mkdir(outputDirectory, { recursive: true });
+  PLAYER_SKIN_RECIPES.forEach(validateRecipe);
+
+  for (const configuredModel of models) {
+    const recipes = PLAYER_SKIN_RECIPES.filter((recipe) => recipe.guitarType === configuredModel.guitarType);
+    if (recipes.length !== 10) throw new Error(`${configuredModel.id}: expected exactly 10 player skin recipes, got ${recipes.length}`);
+    const model = { ...configuredModel, root };
+    const hashes = new Set();
+    for (const recipe of recipes) {
+      const output = path.join(outputDirectory, `${model.id}--${recipe.designId}.png`);
+      if (!checkOnly) await renderPaint(model, recipe, output);
+      await validateOutput(output, `${model.id}/${recipe.designId}`);
+      hashes.add(createHash('sha256').update(await readFile(output)).digest('hex'));
+    }
+    if (hashes.size !== recipes.length) throw new Error(`${model.id}: player skins must be visually distinct files`);
+  }
+  console.log(`${checkOnly ? 'Validated' : 'Generated and validated'} ${models.length} guitar shapes × 10 bundled player skins.`);
 }

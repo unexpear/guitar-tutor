@@ -36,3 +36,11 @@ materials are gloss, matte, metallic flake, pearlescent, brushed, and carbon wea
 Available accent masks are center stripe, split, edge burst, and pinstripes. The tool
 rejects unsafe names, malformed colors, unknown finishes, missing output, opaque
 backgrounds, and incorrect dimensions.
+
+## Bundled player skins
+
+`npm run guitars:skins` generates ten shape-specific PNG skins for each of the four
+player-selectable guitar models. Unlike paint previews, these files are committed under
+`assets/guitars/player-skins` and statically registered for Expo bundling. The existing
+wood, metallic, and crystal model assets remain available as fallback for every other
+locker design. Run `npm run guitars:skins:check` before release.

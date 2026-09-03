@@ -52,6 +52,8 @@
     "guitars:check": "node scripts/generate-guitar-models.mjs --check",
     "guitars:paint": "node scripts/generate-guitar-models.mjs --paint",
     "guitars:paint:check": "node scripts/generate-guitar-models.mjs --paint --check",
+    "guitars:skins": "node scripts/generate-guitar-models.mjs --player-skins",
+    "guitars:skins:check": "node scripts/generate-guitar-models.mjs --player-skins --check",
     "guitars:studio:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-guitar-finish-studio.ps1",
     "release": "node scripts/release.mjs"
   },
