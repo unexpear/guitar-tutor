@@ -111,6 +111,39 @@ export function verdictForCents(
 }
 
 /**
+ * Hysteresis for the tuner's confirmation hold.
+ *
+ * A hold may begin only inside the chosen in-tune window. Once acquired, a
+ * small amount of natural string movement is tolerated so one wavering frame
+ * does not restart the confirmation timer. A different string must acquire
+ * the strict window for itself.
+ */
+export function nextTunerHoldString(
+  currentStringIndex: number | null,
+  detectedStringIndex: number | null,
+  cents: number,
+  inTuneCents: number,
+): number | null {
+  if (
+    detectedStringIndex === null ||
+    !Number.isInteger(detectedStringIndex) ||
+    detectedStringIndex < 0 ||
+    !Number.isFinite(cents)
+  ) {
+    return null;
+  }
+
+  const enterTolerance = Math.max(0.5, Math.min(5, inTuneCents));
+  const releaseTolerance = Math.min(9, enterTolerance * 2);
+  const deviation = Math.abs(cents);
+
+  if (currentStringIndex === detectedStringIndex) {
+    return deviation <= releaseTolerance ? currentStringIndex : null;
+  }
+  return deviation <= enterTolerance ? detectedStringIndex : null;
+}
+
+/**
  * Which string a pitch is nearest, for the auto-detect mode. Returns null
  * when nothing is close enough to be a plausible attempt at a string.
  */

@@ -37,7 +37,7 @@ import {
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
-import { TuneVerdict } from '../../features/tuner/pitch';
+import { nextTunerHoldString, TuneVerdict } from '../../features/tuner/pitch';
 import { useProgressStore } from '../../features/store/progressStore';
 import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
 import { useMicReleaseOnLeave } from '../../features/audio/useMicReleaseOnLeave';
@@ -178,6 +178,7 @@ export default function TunerScreen() {
   const [diagnosticsVisible, setDiagnosticsVisible] = useState(false);
   const [stageVisible, setStageVisible] = useState(false);
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
+  const [holdStringIndex, setHoldStringIndex] = useState<number | null>(null);
   const [pitchHistory, setPitchHistory] = useState<number[]>([]);
   /** The string the user picked, or null to let the tuner guess. */
   const [selectedString, setSelectedString] = useState<number | null>(null);
@@ -288,10 +289,23 @@ export default function TunerScreen() {
   }));
   const strobeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: strobeX.value }] }));
 
-  // Mark a string as tuned once it holds "in tune" for a moment.
+  // Acquire only inside the strict green window, then use a wider release
+  // boundary so normal string shimmer does not restart the hold timer.
   useEffect(() => {
-    if (!isTuned || tuner.stringIndex === null) return;
-    const stringIndex = tuner.stringIndex;
+    setHoldStringIndex((current) =>
+      nextTunerHoldString(
+        current,
+        hasPitch ? tuner.stringIndex : null,
+        clampedCents,
+        tuner.inTuneCents,
+      ),
+    );
+  }, [clampedCents, hasPitch, tuner.inTuneCents, tuner.stringIndex]);
+
+  // Mark a string as tuned once the hysteresis latch holds for a moment.
+  useEffect(() => {
+    if (holdStringIndex === null) return;
+    const stringIndex = holdStringIndex;
     const timer = setTimeout(() => {
       setTunedStrings((prev) => {
         if (prev.has(stringIndex)) return prev;
@@ -306,7 +320,7 @@ export default function TunerScreen() {
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [autoAdvanceStrings, hapticsEnabled, isTuned, selectedString, spokenFeedbackEnabled, tuner.stringIndex, tuning.strings]);
+  }, [autoAdvanceStrings, hapticsEnabled, holdStringIndex, selectedString, spokenFeedbackEnabled, tuning.strings]);
 
   const startPulse = useCallback(() => {
     pulseValue.value = withRepeat(

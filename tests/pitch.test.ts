@@ -9,6 +9,7 @@ import {
   nearestStringIndex,
   correctSelectedStringHarmonic,
   frequencySpreadCents,
+  nextTunerHoldString,
   SMOOTH_WINDOW,
   OFF_CENTS,
   STRING_MATCH_CENTS,
@@ -129,6 +130,24 @@ test('ten cents or more is off, either direction', () => {
 test('the off boundary sits exactly at ten cents', () => {
   assert.equal(verdictForCents(9.99), 'close');
   assert.equal(verdictForCents(10), 'off');
+});
+
+test('tuner hold must enter strictly but tolerates natural movement after acquisition', () => {
+  assert.equal(nextTunerHoldString(null, 2, 1.1, 1), null, 'cannot begin outside beginner green');
+  assert.equal(nextTunerHoldString(null, 2, 1, 1), 2, 'begins at the strict edge');
+  assert.equal(nextTunerHoldString(2, 2, 2, 1), 2, 'beginner hold survives through two cents');
+  assert.equal(nextTunerHoldString(2, 2, 2.1, 1), null, 'beginner hold releases past two cents');
+
+  assert.equal(nextTunerHoldString(null, 4, 0.5, 0.5), 4, 'expert hold begins at half a cent');
+  assert.equal(nextTunerHoldString(4, 4, 1, 0.5), 4, 'expert hold survives through one cent');
+  assert.equal(nextTunerHoldString(4, 4, 1.1, 0.5), null, 'expert hold releases past one cent');
+});
+
+test('tuner hold cannot carry its latch to another string or invalid reading', () => {
+  assert.equal(nextTunerHoldString(2, 3, 1.1, 1), null);
+  assert.equal(nextTunerHoldString(2, 3, 0.8, 1), 3);
+  assert.equal(nextTunerHoldString(2, null, 0, 1), null);
+  assert.equal(nextTunerHoldString(2, 2, Number.NaN, 1), null);
 });
 
 test('the nearest string is the one actually being played', () => {
