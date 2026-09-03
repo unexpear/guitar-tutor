@@ -336,7 +336,9 @@ test('rehydrating restores previously persisted lesson progress', async () => {
 // ---------------------------------------------------------------------------
 
 test('settings start with sane defaults', () => {
+  useSettingsStore.getState().resetToBeginnerDefaults();
   const s = useSettingsStore.getState();
+  assert.equal(s.settingsMode, 'beginner');
   assert.equal(s.soundsEnabled, true);
   assert.equal(s.sampleVolume, 75);
   assert.equal(s.practiceGoalMinutes, 15);
@@ -345,9 +347,64 @@ test('settings start with sane defaults', () => {
   assert.equal(s.tunerSensitivity, 'normal');
   assert.equal(s.meterStyle, 'needle');
   assert.equal(s.leftHanded, false);
+  assert.equal(s.hapticsEnabled, true);
+  assert.equal(s.spokenFeedbackEnabled, false);
+  assert.equal(s.autoAdvanceStrings, true);
+});
+
+test('advanced mode preserves choices and beginner mode restores reliable defaults', () => {
+  const s = useSettingsStore.getState();
+  s.setSettingsMode('advanced');
+  s.setSoundsEnabled(false);
+  s.setReferencePitchHz(442);
+  s.setTunerSensitivity('noisy');
+  s.setHapticsEnabled(false);
+  s.setAutoAdvanceStrings(false);
+  assert.equal(useSettingsStore.getState().settingsMode, 'advanced');
+
+  useSettingsStore.getState().setSettingsMode('beginner');
+  const beginner = useSettingsStore.getState();
+  assert.equal(beginner.settingsMode, 'beginner');
+  assert.equal(beginner.soundsEnabled, true);
+  assert.equal(beginner.referencePitchHz, 440);
+  assert.equal(beginner.tunerSensitivity, 'normal');
+  assert.equal(beginner.hapticsEnabled, true);
+  assert.equal(beginner.autoAdvanceStrings, true);
+});
+
+test('legacy settings retain their values and migrate to advanced mode', async () => {
+  mem.entries.set(
+    'standardtune-settings',
+    JSON.stringify({
+      state: {
+        soundsEnabled: false,
+        sampleVolume: 25,
+        practiceGoalMinutes: 30,
+        referencePitchHz: 442,
+        inTuneToleranceCents: 2,
+        tunerSensitivity: 'quiet',
+        meterStyle: 'strobe',
+        leftHanded: true,
+        hapticsEnabled: false,
+        spokenFeedbackEnabled: true,
+        autoAdvanceStrings: false,
+      },
+      version: 0,
+    }),
+  );
+  await useSettingsStore.persist.rehydrate();
+  const state = useSettingsStore.getState();
+  assert.equal(state.settingsMode, 'advanced');
+  assert.equal(state.soundsEnabled, false);
+  assert.equal(state.sampleVolume, 25);
+  assert.equal(state.referencePitchHz, 442);
+  assert.equal(state.meterStyle, 'strobe');
+  assert.equal(state.leftHanded, true);
+  state.resetToBeginnerDefaults();
 });
 
 test('sample volume is clamped to 0-100 and rounded', () => {
+  useSettingsStore.getState().resetToBeginnerDefaults();
   const s = useSettingsStore.getState();
   s.setSampleVolume(120);
   assert.equal(useSettingsStore.getState().sampleVolume, 100);
@@ -360,6 +417,7 @@ test('sample volume is clamped to 0-100 and rounded', () => {
 });
 
 test('practice goal is clamped to a sane 5-120 range', () => {
+  useSettingsStore.getState().resetToBeginnerDefaults();
   const s = useSettingsStore.getState();
   s.setPracticeGoalMinutes(3);
   assert.equal(useSettingsStore.getState().practiceGoalMinutes, 5);
@@ -370,6 +428,7 @@ test('practice goal is clamped to a sane 5-120 range', () => {
 });
 
 test('tuner calibration settings are rounded and clamped', () => {
+  useSettingsStore.getState().resetToBeginnerDefaults();
   const s = useSettingsStore.getState();
   s.setReferencePitchHz(429);
   assert.equal(useSettingsStore.getState().referencePitchHz, 430);

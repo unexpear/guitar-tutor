@@ -54,6 +54,16 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
   } = useUserPreferencesStore();
   const setAlternateTuning = useProgressStore((state) => state.setAlternateTuning);
 
+  const handleQuickStart = () => {
+    setGuitarType('acoustic');
+    setExperienceLevel('beginner');
+    setTuningPreference('standard');
+    const preset = findTuningPreset('Standard E', 'acoustic');
+    if (preset) setAlternateTuning(preset.id);
+    completeQuestionnaire();
+    onComplete();
+  };
+
   const handleComplete = () => {
     const preferredName: Record<TuningPreference, string> = {
       standard: 'Standard E',
@@ -192,8 +202,19 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
         <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
           <Text style={styles.title}>Welcome to StandardTune!</Text>
           <Text style={styles.subtitle}>
-            Let's personalize your experience
+            Start immediately with reliable beginner defaults, or personalize in three quick steps.
           </Text>
+          {step === 0 && (
+            <TouchableOpacity
+              style={styles.quickStartButton}
+              onPress={handleQuickStart}
+              accessibilityRole="button"
+              accessibilityLabel="Quick start with acoustic guitar, beginner lessons, and Standard E tuning"
+            >
+              <Text style={styles.quickStartText}>Quick Start · Beginner</Text>
+              <Text style={styles.quickStartDetail}>Acoustic · Standard E · ready to play</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
         <View style={styles.progressContainer}>
@@ -262,6 +283,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.dark.muted,
     textAlign: 'center',
+  },
+  quickStartButton: {
+    alignSelf: 'stretch',
+    backgroundColor: Colors.success,
+    borderRadius: Colors.radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: Colors.spacing.md,
+    alignItems: 'center',
+    marginTop: Colors.spacing.lg,
+  },
+  quickStartText: {
+    color: '#071408',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  quickStartDetail: {
+    color: '#123714',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 3,
   },
   progressContainer: {
     flexDirection: 'row',

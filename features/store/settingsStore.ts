@@ -2,7 +2,10 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface SettingsState {
+export type SettingsMode = 'beginner' | 'advanced';
+
+interface SettingsValues {
+  settingsMode: SettingsMode;
   /** Master switch for reference-note / metronome sounds. */
   soundsEnabled: boolean;
   /** Playback volume for guitar samples and metronome clicks, 0-100. */
@@ -20,6 +23,11 @@ interface SettingsState {
   hapticsEnabled: boolean;
   spokenFeedbackEnabled: boolean;
   autoAdvanceStrings: boolean;
+}
+
+interface SettingsState extends SettingsValues {
+  setSettingsMode: (mode: SettingsMode) => void;
+  resetToBeginnerDefaults: () => void;
 
   setSoundsEnabled: (enabled: boolean) => void;
   setSampleVolume: (volume: number) => void;
@@ -34,20 +42,31 @@ interface SettingsState {
   setAutoAdvanceStrings: (enabled: boolean) => void;
 }
 
+const BEGINNER_DEFAULTS: SettingsValues = {
+  settingsMode: 'beginner',
+  soundsEnabled: true,
+  sampleVolume: 75,
+  practiceGoalMinutes: 15,
+  referencePitchHz: 440,
+  inTuneToleranceCents: 3,
+  tunerSensitivity: 'normal',
+  meterStyle: 'needle',
+  leftHanded: false,
+  hapticsEnabled: true,
+  spokenFeedbackEnabled: false,
+  autoAdvanceStrings: true,
+};
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      soundsEnabled: true,
-      sampleVolume: 75,
-      practiceGoalMinutes: 15,
-      referencePitchHz: 440,
-      inTuneToleranceCents: 3,
-      tunerSensitivity: 'normal',
-      meterStyle: 'needle',
-      leftHanded: false,
-      hapticsEnabled: false,
-      spokenFeedbackEnabled: false,
-      autoAdvanceStrings: false,
+      ...BEGINNER_DEFAULTS,
+
+      setSettingsMode: (settingsMode) =>
+        settingsMode === 'beginner'
+          ? set({ ...BEGINNER_DEFAULTS })
+          : set({ settingsMode }),
+      resetToBeginnerDefaults: () => set({ ...BEGINNER_DEFAULTS }),
 
       setSoundsEnabled: (enabled: boolean) => set({ soundsEnabled: enabled }),
       setSampleVolume: (volume: number) =>
@@ -70,6 +89,21 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'standardtune-settings',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persistedState, version) => {
+        const state = persistedState as Partial<SettingsState>;
+        // Existing users keep every choice they already made. They start in
+        // Advanced because older versions exposed all controls directly.
+        return {
+          ...state,
+          settingsMode:
+            version < 1
+              ? 'advanced'
+              : state.settingsMode === 'advanced'
+                ? 'advanced'
+                : 'beginner',
+        } as SettingsState;
+      },
     }
   )
 );

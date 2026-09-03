@@ -388,6 +388,7 @@ export default function SettingsScreen() {
   const selectedTunerProfile = instrumentProfile(selectedTunerPreset.instrumentId);
 
   const {
+    settingsMode,
     soundsEnabled,
     sampleVolume,
     practiceGoalMinutes,
@@ -399,6 +400,8 @@ export default function SettingsScreen() {
     hapticsEnabled,
     spokenFeedbackEnabled,
     autoAdvanceStrings,
+    setSettingsMode,
+    resetToBeginnerDefaults,
     setSoundsEnabled,
     setSampleVolume,
     setPracticeGoalMinutes,
@@ -441,7 +444,7 @@ export default function SettingsScreen() {
   const handleResetToStart = () => {
     Alert.alert(
       'Reset to the beginning?',
-      'This permanently clears lesson results, XP, game records, practice history, favourites, guitar choices, and questionnaire answers on this device. Audio and accessibility settings are kept.',
+      'This permanently clears lesson results, XP, game records, practice history, favourites, guitar choices, and questionnaire answers on this device. App controls return to the reliable Beginner defaults; saved custom tunings are kept.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -450,6 +453,7 @@ export default function SettingsScreen() {
           onPress: () => {
             resetProgress();
             resetQuestionnaire();
+            resetToBeginnerDefaults();
             router.replace('/(tabs)/lessons');
           },
         },
@@ -507,6 +511,28 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <SectionCard title="Setup mode">
+          <SettingRow
+            label="Controls"
+            right={
+              <ChoiceButtons
+                value={settingsMode}
+                options={[
+                  { value: 'beginner', label: 'Beginner' },
+                  { value: 'advanced', label: 'Advanced' },
+                ]}
+                onChange={setSettingsMode}
+                label="Settings mode"
+              />
+            }
+          />
+          <Text style={styles.hint}>
+            {settingsMode === 'beginner'
+              ? 'Recommended. Sound, tuner accuracy, haptic confirmation, and guided string advance are ready without setup.'
+              : 'All calibration, audio, tuner display, and testing controls are available below.'}
+          </Text>
+        </SectionCard>
+
         <SectionCard title="Tuning">
           <SettingRow
             label="Current Tuning"
@@ -519,92 +545,116 @@ export default function SettingsScreen() {
               />
             }
           />
-          <SettingRow
-            label="Reference Pitch"
-            accessibilityLabel={`Reference pitch: A4 equals ${referencePitchHz} hertz`}
-            right={
-              <NumericStepper
-                value={referencePitchHz}
-                min={430}
-                max={450}
-                unit="Hz"
-                label="reference pitch"
-                onChange={setReferencePitchHz}
+          {settingsMode === 'advanced' && (
+            <>
+              <SettingRow
+                label="Reference Pitch"
+                accessibilityLabel={`Reference pitch: A4 equals ${referencePitchHz} hertz`}
+                right={
+                  <NumericStepper
+                    value={referencePitchHz}
+                    min={430}
+                    max={450}
+                    unit="Hz"
+                    label="reference pitch"
+                    onChange={setReferencePitchHz}
+                  />
+                }
               />
-            }
-          />
-          <SettingRow
-            label="In-Tune Window"
-            accessibilityLabel={`In-tune window: plus or minus ${inTuneToleranceCents} cents`}
-            right={
-              <NumericStepper
-                value={inTuneToleranceCents}
-                min={1}
-                max={5}
-                unit="¢"
-                label="in-tune window"
-                onChange={setInTuneToleranceCents}
+              <SettingRow
+                label="In-Tune Window"
+                accessibilityLabel={`In-tune window: plus or minus ${inTuneToleranceCents} cents`}
+                right={
+                  <NumericStepper
+                    value={inTuneToleranceCents}
+                    min={1}
+                    max={5}
+                    unit="¢"
+                    label="in-tune window"
+                    onChange={setInTuneToleranceCents}
+                  />
+                }
               />
-            }
-          />
-          <Text style={styles.hint}>
-            A4 defaults to the ISO 440 Hz standard. Use ±1 cent for precise
-            setup or a wider window for easier everyday tuning.
-          </Text>
-          <SettingRow
-            label="Room sensitivity"
-            right={<ChoiceButtons value={tunerSensitivity} options={[{ value: 'quiet', label: 'Quiet' }, { value: 'normal', label: 'Normal' }, { value: 'noisy', label: 'Noisy' }]} onChange={setTunerSensitivity} label="Tuner room sensitivity" />}
-          />
-          <Text style={styles.hint}>Quiet hears softer notes. Noisy rejects more fans, voices and room sound.</Text>
-          <TouchableOpacity style={styles.retakeButton} onPress={() => router.push('/custom-tunings')} accessibilityRole="button" accessibilityLabel="Manage custom tunings">
-            <Text style={styles.retakeButtonText}>Manage Custom Tunings</Text>
-          </TouchableOpacity>
+              <Text style={styles.hint}>
+                A4 defaults to the ISO 440 Hz standard. Use ±1 cent for precise
+                setup or a wider window for easier everyday tuning.
+              </Text>
+              <SettingRow
+                label="Room sensitivity"
+                right={<ChoiceButtons value={tunerSensitivity} options={[{ value: 'quiet', label: 'Quiet' }, { value: 'normal', label: 'Normal' }, { value: 'noisy', label: 'Noisy' }]} onChange={setTunerSensitivity} label="Tuner room sensitivity" />}
+              />
+              <Text style={styles.hint}>Quiet hears softer notes. Noisy rejects more fans, voices and room sound.</Text>
+              <TouchableOpacity style={styles.retakeButton} onPress={() => router.push('/custom-tunings')} accessibilityRole="button" accessibilityLabel="Manage custom tunings">
+                <Text style={styles.retakeButtonText}>Manage Custom Tunings</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          {settingsMode === 'beginner' && (
+            <Text style={styles.hint}>Standard calibration and balanced room filtering are already applied.</Text>
+          )}
         </SectionCard>
 
         <SectionCard title="Appearance">
-          {/* There is only a dark palette, so this reports the theme rather
-              than offering a switch that cannot do anything. */}
-          <SettingRow
-            label="Theme"
-            accessibilityLabel="Theme: dark"
-            right={<Text style={styles.staticValue}>Dark</Text>}
-          />
-          <Text style={styles.hint}>
-            Dark only, so the screen stays readable in a dim room.
-          </Text>
-          <SettingRow label="Tuner meter" right={<ChoiceButtons value={meterStyle} options={[{ value: 'needle', label: 'Needle' }, { value: 'strobe', label: 'Strobe' }]} onChange={setMeterStyle} label="Tuner meter style" />} />
           <SettingRow label="Left-handed diagrams" right={<CustomSwitch value={leftHanded} onValueChange={setLeftHanded} accessibilityLabel="Toggle left-handed chord diagrams" />} />
+          {settingsMode === 'advanced' && (
+            <>
+              {/* There is only a dark palette, so this reports the theme rather
+                  than offering a switch that cannot do anything. */}
+              <SettingRow
+                label="Theme"
+                accessibilityLabel="Theme: dark"
+                right={<Text style={styles.staticValue}>Dark</Text>}
+              />
+              <Text style={styles.hint}>
+                Dark only, so the screen stays readable in a dim room.
+              </Text>
+              <SettingRow label="Tuner meter" right={<ChoiceButtons value={meterStyle} options={[{ value: 'needle', label: 'Needle' }, { value: 'strobe', label: 'Strobe' }]} onChange={setMeterStyle} label="Tuner meter style" />} />
+            </>
+          )}
         </SectionCard>
 
         <SectionCard title="Audio">
-          <SettingRow
-            label="Play Sounds"
-            accessibilityLabel={`Play sounds: ${soundsEnabled ? 'on' : 'off'}`}
-            right={
-              <CustomSwitch
-                value={soundsEnabled}
-                onValueChange={setSoundsEnabled}
-                accessibilityLabel="Toggle play sounds"
+          {settingsMode === 'beginner' ? (
+            <>
+              <SettingRow
+                label="Learning audio"
+                accessibilityLabel="Learning audio is ready"
+                right={<Text style={styles.readyValue}>Ready</Text>}
               />
-            }
-          />
-          <SettingRow
-            label="Sample Volume"
-            accessibilityLabel={`Sample volume: ${sampleVolume}%`}
-            right={
-              <CustomSlider
-                value={sampleVolume}
-                onValueChange={setSampleVolume}
-                min={0}
-                max={100}
-                step={5}
-                accessibilityLabel="Sample volume slider"
+              <Text style={styles.hint}>Reference notes, ear games, haptic in-tune confirmation, and guided string advance are enabled.</Text>
+            </>
+          ) : (
+            <>
+              <SettingRow
+                label="Play Sounds"
+                accessibilityLabel={`Play sounds: ${soundsEnabled ? 'on' : 'off'}`}
+                right={
+                  <CustomSwitch
+                    value={soundsEnabled}
+                    onValueChange={setSoundsEnabled}
+                    accessibilityLabel="Toggle play sounds"
+                  />
+                }
               />
-            }
-          />
-          <SettingRow label="Haptic in-tune cue" right={<CustomSwitch value={hapticsEnabled} onValueChange={setHapticsEnabled} accessibilityLabel="Toggle haptic in-tune cue" />} />
-          <SettingRow label="Spoken tuner cues" right={<CustomSwitch value={spokenFeedbackEnabled} onValueChange={setSpokenFeedbackEnabled} accessibilityLabel="Toggle spoken tuner cues" />} />
-          <SettingRow label="Auto-advance strings" right={<CustomSwitch value={autoAdvanceStrings} onValueChange={setAutoAdvanceStrings} accessibilityLabel="Toggle automatic string advance" />} />
+              <SettingRow
+                label="Sample Volume"
+                accessibilityLabel={`Sample volume: ${sampleVolume}%`}
+                right={
+                  <CustomSlider
+                    value={sampleVolume}
+                    onValueChange={setSampleVolume}
+                    min={0}
+                    max={100}
+                    step={5}
+                    accessibilityLabel="Sample volume slider"
+                  />
+                }
+              />
+              <SettingRow label="Haptic in-tune cue" right={<CustomSwitch value={hapticsEnabled} onValueChange={setHapticsEnabled} accessibilityLabel="Toggle haptic in-tune cue" />} />
+              <SettingRow label="Spoken tuner cues" right={<CustomSwitch value={spokenFeedbackEnabled} onValueChange={setSpokenFeedbackEnabled} accessibilityLabel="Toggle spoken tuner cues" />} />
+              <SettingRow label="Auto-advance strings" right={<CustomSwitch value={autoAdvanceStrings} onValueChange={setAutoAdvanceStrings} accessibilityLabel="Toggle automatic string advance" />} />
+            </>
+          )}
         </SectionCard>
 
         <SectionCard title="Practice">
@@ -685,7 +735,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </SectionCard>
 
-        <SectionCard title="Tester tools">
+        {settingsMode === 'advanced' && <SectionCard title="Tester tools">
           <SettingRow
             label="Review access"
             accessibilityLabel={`Review access: ${totalXp >= TESTER_UNLOCK_XP ? 'all cosmetics unlocked' : `level ${levelFromXp(totalXp)}`}`}
@@ -709,12 +759,12 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.retakeButton, styles.resetButton]}
             onPress={handleResetToStart}
-            accessibilityLabel="Reset all learning progress and questionnaire answers"
+            accessibilityLabel="Reset learning progress, questionnaire answers, and app controls to beginner defaults"
             accessibilityRole="button"
           >
             <Text style={[styles.retakeButtonText, styles.resetButtonText]}>Reset to First Launch</Text>
           </TouchableOpacity>
-        </SectionCard>
+        </SectionCard>}
 
         <SectionCard title="About">
           <SettingRow
@@ -847,6 +897,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: Colors.dark.muted,
+  },
+  readyValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.success,
   },
   hint: {
     fontSize: 12,
