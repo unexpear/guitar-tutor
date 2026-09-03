@@ -79,6 +79,15 @@ test('easy songs stay easy', () => {
 });
 
 test('getSong finds songs by id and misses cleanly', () => {
-  assert.equal(getSong('1')?.title, SONGS[0].title);
+  assert.equal(getSong('1')?.title, "Knockin' on Heaven's Door");
   assert.equal(getSong('nope'), undefined);
+});
+
+test('the complete practice catalogue adds ten original CC0 arrangements without removing references', () => {
+  const complete = SONGS.filter((song) => song.arrangement);
+  const references = SONGS.filter((song) => !song.arrangement);
+  assert.equal(complete.length, 10);
+  assert.equal(references.length, 15);
+  assert.ok(complete.every((song) => song.arrangement?.license === 'CC0-1.0'));
+  assert.ok(complete.some((song) => song.arrangement?.sections.some((section) => section.events.some((event) => event.kind === 'note'))));
 });

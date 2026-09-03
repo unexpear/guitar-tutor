@@ -28,6 +28,19 @@ import {
   type GuitarModelId,
   type GuitarType,
 } from '../progression/guitarModels';
+import type { SongPracticeOptions } from '../songs/songPractice';
+
+export interface SongSetlist {
+  id: string;
+  name: string;
+  songIds: string[];
+}
+
+export interface SongCorrectionDraft {
+  songId: string;
+  message: string;
+  createdAt: string;
+}
 
 export interface LessonProgress {
   lessonId: string;
@@ -58,6 +71,11 @@ interface ProgressData {
   longestStreak: number;
   /** How each chord is going, keyed by chord name. */
   chordStats: ChordStats;
+  favoriteSongs: string[];
+  songSetlists: SongSetlist[];
+  songPracticeOptions: Record<string, SongPracticeOptions>;
+  /** Local drafts can be shared by the player; no account or upload is implied. */
+  songCorrectionDrafts: SongCorrectionDraft[];
 }
 
 interface ProgressState extends ProgressData {
@@ -90,6 +108,10 @@ interface ProgressState extends ProgressData {
   unlockAllForTesting: () => void;
   /** Restores all learning, practice, score, and cosmetic progress defaults. */
   resetProgress: () => void;
+  toggleFavoriteSong: (songId: string) => void;
+  toggleSongInSetlist: (songId: string, setlistId?: string) => void;
+  saveSongPracticeOptions: (songId: string, options: SongPracticeOptions) => void;
+  saveSongCorrectionDraft: (draft: SongCorrectionDraft) => void;
 }
 
 const MAX_GUITAR_DESIGN_LEVEL = Math.max(
@@ -115,6 +137,10 @@ function initialProgressState(): ProgressData {
     lastPracticeDate: null,
     longestStreak: 0,
     chordStats: {},
+    favoriteSongs: [],
+    songSetlists: [{ id: 'my-set', name: 'My set', songIds: [] }],
+    songPracticeOptions: {},
+    songCorrectionDrafts: [],
   };
 }
 
@@ -237,11 +263,42 @@ export const useProgressStore = create<ProgressState>()(
         set((state) => ({ totalXp: Math.max(state.totalXp, TESTER_UNLOCK_XP) })),
 
       resetProgress: () => set(initialProgressState()),
+
+      toggleFavoriteSong: (songId: string) =>
+        set((state) => ({
+          favoriteSongs: state.favoriteSongs.includes(songId)
+            ? state.favoriteSongs.filter((id) => id !== songId)
+            : [...state.favoriteSongs, songId],
+        })),
+
+      toggleSongInSetlist: (songId: string, setlistId = 'my-set') =>
+        set((state) => ({
+          songSetlists: state.songSetlists.map((setlist) =>
+            setlist.id !== setlistId
+              ? setlist
+              : {
+                  ...setlist,
+                  songIds: setlist.songIds.includes(songId)
+                    ? setlist.songIds.filter((id) => id !== songId)
+                    : [...setlist.songIds, songId],
+                },
+          ),
+        })),
+
+      saveSongPracticeOptions: (songId: string, options: SongPracticeOptions) =>
+        set((state) => ({
+          songPracticeOptions: { ...state.songPracticeOptions, [songId]: options },
+        })),
+
+      saveSongCorrectionDraft: (draft: SongCorrectionDraft) =>
+        set((state) => ({
+          songCorrectionDrafts: [draft, ...state.songCorrectionDrafts].slice(0, 50),
+        })),
     }),
     {
       name: 'standardtune-progress',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 4,
+      version: 5,
       migrate: (persistedState) => {
         const state = persistedState as Partial<ProgressState>;
         const lifetimePracticeSeconds =
@@ -267,6 +324,10 @@ export const useProgressStore = create<ProgressState>()(
             acoustic: selectedModelId(state.selectedGuitarModelIds, 'acoustic'),
             electric: selectedModelId(state.selectedGuitarModelIds, 'electric'),
           },
+          favoriteSongs: state.favoriteSongs ?? [],
+          songSetlists: state.songSetlists ?? [{ id: 'my-set', name: 'My set', songIds: [] }],
+          songPracticeOptions: state.songPracticeOptions ?? {},
+          songCorrectionDrafts: state.songCorrectionDrafts ?? [],
         } as ProgressState;
       },
     }

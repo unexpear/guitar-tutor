@@ -25,8 +25,11 @@ import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
 import { useProgressStore } from '../../features/store/progressStore';
 import {
   buildSongPracticeDrill,
+  DEFAULT_SONG_PRACTICE_OPTIONS,
   songPracticeScoreKey,
+  type SongPracticeOptions,
 } from '../../features/songs/songPractice';
+import SongPracticeStudio from '../../features/songs/SongPracticeStudio';
 
 const DIFFICULTY_FILTERS: (Difficulty | 'All')[] = ['All', 'Easy', 'Medium', 'Hard'];
 
@@ -180,7 +183,9 @@ function SongDetail({
           accessibilityLabel={`Practice all chords used by ${song.title}`}
         >
           <Ionicons name="play" size={18} color="#0b2410" />
-          <Text style={styles.practiseBtnText}>Play chord practice</Text>
+          <Text style={styles.practiseBtnText}>
+            {song.arrangement ? 'Open practice studio' : 'Play chord practice'}
+          </Text>
         </PressableScale>
         {bestScore > 0 && (
           <Text style={styles.practiceBest}>Best accuracy: {bestScore}%</Text>
@@ -208,8 +213,9 @@ function SongDetail({
         )}
 
         <Text style={styles.detailFinePrint}>
-          Chord reference only - tap a shape to hear it. Practice is an original
-          two-pass chord-set exercise, not the song arrangement.
+          {song.arrangement
+            ? 'Complete original practice arrangement, released CC0. Includes section loops, speed control, capo planning, a guide track and microphone scoring.'
+            : 'Chord reference only - tap a shape to hear it. Practice is an original two-pass chord-set exercise, not the song arrangement.'}
         </Text>
 
         <PressableScale onPress={onClose} style={styles.detailCloseBtn}>
@@ -225,13 +231,34 @@ export default function SongLibraryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<Difficulty | 'All'>('All');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [studioSong, setStudioSong] = useState<Song | null>(null);
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
+  const [practiceOptions, setPracticeOptions] = useState<SongPracticeOptions>(DEFAULT_SONG_PRACTICE_OPTIONS);
+  const [libraryFilter, setLibraryFilter] = useState<'all' | 'practice' | 'saved' | 'setlist'>('all');
   const highScores = useProgressStore((state) => state.gameHighScores);
   const recordGameScore = useProgressStore((state) => state.recordGameScore);
+  const favoriteSongs = useProgressStore((state) => state.favoriteSongs);
+  const songSetlists = useProgressStore((state) => state.songSetlists);
+  const mySetIds = songSetlists.find((setlist) => setlist.id === 'my-set')?.songIds ?? [];
   const practiceDrill = useMemo(
-    () => (practiceSong ? buildSongPracticeDrill(practiceSong) : null),
-    [practiceSong],
+    () => (practiceSong ? buildSongPracticeDrill(practiceSong, practiceOptions) : null),
+    [practiceSong, practiceOptions],
   );
+
+  if (studioSong) {
+    return (
+      <SongPracticeStudio
+        song={studioSong}
+        bestScore={highScores[songPracticeScoreKey(studioSong.id)] ?? 0}
+        onClose={() => setStudioSong(null)}
+        onStart={(options) => {
+          setPracticeOptions(options);
+          setPracticeSong(studioSong);
+          setStudioSong(null);
+        }}
+      />
+    );
+  }
 
   if (practiceSong && practiceDrill) {
     return (
@@ -254,7 +281,12 @@ export default function SongLibraryScreen() {
       song.genre.toLowerCase().includes(q) ||
       song.chords.some((c) => c.toLowerCase() === q);
     const matchesFilter = activeFilter === 'All' || song.difficulty === activeFilter;
-    return matchesSearch && matchesFilter;
+    const matchesLibrary =
+      libraryFilter === 'all' ||
+      (libraryFilter === 'practice' && !!song.arrangement) ||
+      (libraryFilter === 'saved' && favoriteSongs.includes(song.id)) ||
+      (libraryFilter === 'setlist' && mySetIds.includes(song.id));
+    return matchesSearch && matchesFilter && matchesLibrary;
   });
 
   const renderSongItem = ({ item }: { item: Song }) => {
@@ -283,7 +315,7 @@ export default function SongLibraryScreen() {
             {item.title}
           </Text>
           <Text style={styles.songArtist} numberOfLines={1}>
-            {item.artist}
+            {item.artist}{item.arrangement ? ' · Full practice' : ''}
           </Text>
           <View style={styles.songMeta}>
             <View
@@ -364,6 +396,24 @@ export default function SongLibraryScreen() {
         ))}
       </View>
 
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.libraryFilters}>
+        {([
+          ['all', 'Everything'],
+          ['practice', 'Full practice'],
+          ['saved', `Saved ${favoriteSongs.length}`],
+          ['setlist', `My set ${mySetIds.length}`],
+        ] as const).map(([value, label]) => (
+          <PressableScale
+            key={value}
+            style={[styles.libraryFilter, libraryFilter === value && styles.libraryFilterActive]}
+            onPress={() => setLibraryFilter(value)}
+            accessibilityState={{ selected: libraryFilter === value }}
+          >
+            <Text style={[styles.libraryFilterText, libraryFilter === value && styles.libraryFilterTextActive]}>{label}</Text>
+          </PressableScale>
+        ))}
+      </ScrollView>
+
       <FlatList
         data={filteredSongs}
         renderItem={renderSongItem}
@@ -384,7 +434,12 @@ export default function SongLibraryScreen() {
           bestScore={highScores[songPracticeScoreKey(selectedSong.id)] ?? 0}
           onClose={() => setSelectedSong(null)}
           onPractice={() => {
-            setPracticeSong(selectedSong);
+            if (selectedSong.arrangement) {
+              setStudioSong(selectedSong);
+            } else {
+              setPracticeOptions(DEFAULT_SONG_PRACTICE_OPTIONS);
+              setPracticeSong(selectedSong);
+            }
             setSelectedSong(null);
           }}
         />
@@ -619,6 +674,26 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     gap: 8,
   },
+  libraryFilters: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  libraryFilter: {
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.dark.cardBorder,
+    backgroundColor: Colors.dark.card,
+  },
+  libraryFilterActive: {
+    borderColor: Colors.success,
+    backgroundColor: 'rgba(76,175,80,0.12)',
+  },
+  libraryFilterText: { color: Colors.dark.muted, fontSize: 12, fontWeight: '800' },
+  libraryFilterTextActive: { color: Colors.success },
   songCard: {
     flexDirection: 'row',
     alignItems: 'center',

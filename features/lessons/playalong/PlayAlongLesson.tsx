@@ -38,6 +38,34 @@ const STRUM_COOLDOWN_MS = 350;
 const WRONG_COOLDOWN_MS = 450;
 const PASS_PERCENT = 70;
 
+export function coachingMessage({
+  pitchScore,
+  timingScore,
+  missed,
+  wrong,
+  pace,
+}: {
+  pitchScore: number;
+  timingScore: number;
+  missed: number;
+  wrong: number;
+  pace: Pace;
+}): string {
+  if (pace === 'flow' && missed > 0) {
+    return 'The chart moved past a few changes. Try Wait for me, or lower the song speed and loop one section.';
+  }
+  if (wrong > 2 || pitchScore < 55) {
+    return 'The mic heard extra or incomplete notes. Check muted strings, fret close behind the wire, and strum once cleanly.';
+  }
+  if (timingScore > 0 && timingScore < 70) {
+    return 'Your shapes are landing, but the attacks drift from the click. Mute the strings and rehearse the rhythm alone once.';
+  }
+  if (pitchScore >= 90 && (timingScore === 0 || timingScore >= 85)) {
+    return 'Clean and steady. Raise the speed or practise the next section.';
+  }
+  return 'Good progress. Repeat once at the same speed; consistency matters more than a single high score.';
+}
+
 /** Tab-convention string labels, top row = high e. */
 const TAB_ROWS = ['e', 'B', 'G', 'D', 'A', 'E']; // display order (stringIndex 5 -> 0)
 
@@ -351,6 +379,8 @@ export default function PlayAlongLesson({
   const pitchScore = attempts === 0 ? 0 : (hits / attempts) * 100;
   const timingScore = timingAttempts === 0 ? 0 : (timingPoints / timingAttempts) * 100;
   const scorePercent = Math.round(hasClick ? pitchScore * 0.6 + timingScore * 0.4 : pitchScore);
+  const missedCount = statuses.filter((s) => s === 'miss').length;
+  const coaching = coachingMessage({ pitchScore, timingScore, missed: missedCount, wrong: wrongCount, pace });
   const completedRef = useRef(false);
   useEffect(() => {
     if (finished && !completedRef.current) {
@@ -623,9 +653,12 @@ export default function PlayAlongLesson({
               </View>
             </View>
             <Text style={styles.doneText}>
-              {scorePercent >= PASS_PERCENT
-                ? 'Lesson marked complete.'
-                : `Reach ${PASS_PERCENT}% accuracy to complete the lesson.`}
+              {coaching}
+              {onComplete
+                ? scorePercent >= PASS_PERCENT
+                  ? ' Lesson marked complete.'
+                  : ` Reach ${PASS_PERCENT}% accuracy to complete the lesson.`
+                : ' Your best result was saved.'}
             </Text>
             <PressableScale
               style={styles.startBtn}

@@ -62,6 +62,10 @@ function resetProgress() {
     lastPracticeDate: null,
     longestStreak: 0,
     chordStats: {},
+    favoriteSongs: [],
+    songSetlists: [{ id: 'my-set', name: 'My set', songIds: [] }],
+    songPracticeOptions: {},
+    songCorrectionDrafts: [],
   });
 }
 
@@ -149,6 +153,33 @@ test('progress reset restores the real first-launch learning state', () => {
     acoustic: 'acoustic-grand',
     electric: 'electric-doublecut',
   });
+  assert.deepEqual(reset.favoriteSongs, []);
+  assert.deepEqual(reset.songSetlists, [{ id: 'my-set', name: 'My set', songIds: [] }]);
+  assert.deepEqual(reset.songPracticeOptions, {});
+  assert.deepEqual(reset.songCorrectionDrafts, []);
+});
+
+test('song studio choices, favorites, setlists, and correction drafts remain local state', () => {
+  resetProgress();
+  const state = useProgressStore.getState();
+  state.toggleFavoriteSong('original-first-light');
+  state.toggleSongInSetlist('original-first-light');
+  state.saveSongPracticeOptions('original-first-light', {
+    sectionId: 'verse', tempoPercent: 75, capo: 2, transposeSemitones: 2,
+  });
+  state.saveSongCorrectionDraft({
+    songId: 'original-first-light', message: 'Try Cmaj7 in the last bar.', createdAt: '2026-09-03T12:00:00.000Z',
+  });
+  let saved = useProgressStore.getState();
+  assert.deepEqual(saved.favoriteSongs, ['original-first-light']);
+  assert.deepEqual(saved.songSetlists[0].songIds, ['original-first-light']);
+  assert.equal(saved.songPracticeOptions['original-first-light'].sectionId, 'verse');
+  assert.equal(saved.songCorrectionDrafts[0].message, 'Try Cmaj7 in the last bar.');
+  saved.toggleFavoriteSong('original-first-light');
+  saved.toggleSongInSetlist('original-first-light');
+  saved = useProgressStore.getState();
+  assert.deepEqual(saved.favoriteSongs, []);
+  assert.deepEqual(saved.songSetlists[0].songIds, []);
 });
 
 test('guitar model choices persist independently for acoustic and electric', () => {

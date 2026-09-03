@@ -1,5 +1,38 @@
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
 
+export interface SongChordEvent {
+  kind: 'chord';
+  chordName: string;
+  /** Number of quarter-note beats occupied by this event. */
+  beats: number;
+}
+
+export interface SongNoteEvent {
+  kind: 'note';
+  /** Standard guitar string index, low E = 0 and high e = 5. */
+  stringIndex: number;
+  fret: number;
+  label: string;
+  beats: number;
+}
+
+export type SongEvent = SongChordEvent | SongNoteEvent;
+
+export interface SongSection {
+  id: string;
+  label: string;
+  events: SongEvent[];
+}
+
+export interface SongArrangement {
+  bpm: number;
+  beatsPerBar: number;
+  strumPattern: string;
+  sections: SongSection[];
+  /** Every arrangement shipped here is authored for StandardTune. */
+  license: 'CC0-1.0';
+}
+
 export interface Song {
   id: string;
   title: string;
@@ -23,9 +56,196 @@ export interface Song {
   key: string;
   /** One line on what makes this song worth learning, or what to watch out for. */
   note: string;
+  /** Present only when StandardTune can legally provide the full exercise. */
+  arrangement?: SongArrangement;
 }
 
+const chordEvent = (chordName: string, beats = 4): SongChordEvent => ({
+  kind: 'chord',
+  chordName,
+  beats,
+});
+
+const section = (id: string, label: string, chords: string[]): SongSection => ({
+  id,
+  label,
+  events: chords.map((name) => chordEvent(name)),
+});
+
+const originalArrangement = (
+  bpm: number,
+  sections: SongSection[],
+  strumPattern = '↓ ↓ ↑ ↑ ↓ ↑',
+): SongArrangement => ({ bpm, beatsPerBar: 4, strumPattern, sections, license: 'CC0-1.0' });
+
 export const SONGS: Song[] = [
+  // Complete, original practice arrangements. These are deliberately kept
+  // separate in authorship from the song references below: chord progressions
+  // are reusable musical building blocks, but copyrighted lyrics, melodies,
+  // tabs and recording-specific arrangements are not bundled.
+  {
+    id: 'original-first-light',
+    title: 'First Light',
+    artist: 'StandardTune Studio',
+    difficulty: 'Easy',
+    duration: '1:04',
+    genre: 'Pop Practice',
+    chords: ['G', 'D', 'Em', 'C'],
+    key: 'G',
+    note: 'A forgiving four-chord first song. Keep fingers close to the strings and let the app wait while each shape settles.',
+    arrangement: originalArrangement(72, [
+      section('verse', 'Verse', ['G', 'D', 'Em', 'C', 'G', 'D', 'C', 'C']),
+      section('chorus', 'Chorus', ['G', 'D', 'Em', 'C', 'G', 'D', 'C', 'G']),
+    ]),
+  },
+  {
+    id: 'original-two-chord-train',
+    title: 'Two-Chord Train',
+    artist: 'StandardTune Studio',
+    difficulty: 'Easy',
+    duration: '0:48',
+    genre: 'Groove Practice',
+    chords: ['Em', 'Am'],
+    key: 'Em',
+    note: 'Only two shapes, so all your attention can stay on a steady hand and a clean change.',
+    arrangement: originalArrangement(80, [
+      section('a', 'Round 1', ['Em', 'Em', 'Am', 'Am']),
+      section('b', 'Round 2', ['Em', 'Am', 'Em', 'Am']),
+    ], '↓ · ↓ ·'),
+  },
+  {
+    id: 'original-open-road',
+    title: 'Open Road',
+    artist: 'StandardTune Studio',
+    difficulty: 'Easy',
+    duration: '0:58',
+    genre: 'Rock Practice',
+    chords: ['A', 'D', 'E'],
+    key: 'A',
+    note: 'Three open major chords with long bars. Aim for relaxed, even downstrokes before adding the upstrokes.',
+    arrangement: originalArrangement(88, [
+      section('verse', 'Verse', ['A', 'D', 'A', 'E', 'A', 'D', 'E', 'A']),
+    ], '↓ ↓ ↓ ↓'),
+  },
+  {
+    id: 'original-rainy-window',
+    title: 'Rainy Window',
+    artist: 'StandardTune Studio',
+    difficulty: 'Easy',
+    duration: '1:12',
+    genre: 'Folk Practice',
+    chords: ['Am', 'C', 'G', 'Em'],
+    key: 'Am',
+    note: 'A quiet minor-key loop for smooth changes. Let common fingers stay planted whenever possible.',
+    arrangement: originalArrangement(64, [
+      section('verse', 'Verse', ['Am', 'C', 'G', 'Em', 'Am', 'C', 'Em', 'Em']),
+      section('lift', 'Lift', ['C', 'G', 'Am', 'Em']),
+    ]),
+  },
+  {
+    id: 'original-campfire-circle',
+    title: 'Campfire Circle',
+    artist: 'StandardTune Studio',
+    difficulty: 'Easy',
+    duration: '0:54',
+    genre: 'Folk Practice',
+    chords: ['C', 'G', 'Am', 'Fmaj7'],
+    key: 'C',
+    note: 'Uses beginner-friendly Fmaj7 instead of a full F barre, making the classic four-chord family approachable.',
+    arrangement: originalArrangement(76, [
+      section('verse', 'Verse', ['C', 'G', 'Am', 'Fmaj7', 'C', 'G', 'Fmaj7', 'C']),
+    ]),
+  },
+  {
+    id: 'original-blue-hour',
+    title: 'Blue Hour',
+    artist: 'StandardTune Studio',
+    difficulty: 'Medium',
+    duration: '1:09',
+    genre: 'Blues Practice',
+    chords: ['A7', 'D7', 'E7'],
+    key: 'A',
+    note: 'A compact twelve-bar blues form. Listen for the move to D7 and the E7 turnaround back home.',
+    arrangement: originalArrangement(84, [
+      section('form', '12-bar form', ['A7', 'A7', 'A7', 'A7', 'D7', 'D7', 'A7', 'A7', 'E7', 'D7', 'A7', 'E7']),
+    ], '↓ · ↓↑ · ↑'),
+  },
+  {
+    id: 'original-suspended-sky',
+    title: 'Suspended Sky',
+    artist: 'StandardTune Studio',
+    difficulty: 'Medium',
+    duration: '1:02',
+    genre: 'Ambient Practice',
+    chords: ['Em7', 'Cadd9', 'G (320033)', 'Dsus4'],
+    key: 'G',
+    note: 'Keep ring and little fingers anchored on the top strings while the lower fingers move.',
+    arrangement: originalArrangement(68, [
+      section('a', 'A', ['Em7', 'Cadd9', 'G (320033)', 'Dsus4']),
+      section('b', 'B', ['Em7', 'G (320033)', 'Cadd9', 'Dsus4']),
+    ]),
+  },
+  {
+    id: 'original-midnight-turn',
+    title: 'Midnight Turn',
+    artist: 'StandardTune Studio',
+    difficulty: 'Medium',
+    duration: '1:16',
+    genre: 'Minor Practice',
+    chords: ['Dm', 'Am', 'C', 'G'],
+    key: 'Dm',
+    note: 'A minor progression that makes Dm-to-Am repetition feel musical instead of mechanical.',
+    arrangement: originalArrangement(70, [
+      section('verse', 'Verse', ['Dm', 'Am', 'C', 'G', 'Dm', 'Am', 'G', 'G']),
+      section('return', 'Return', ['Dm', 'C', 'Am', 'G']),
+    ]),
+  },
+  {
+    id: 'original-barre-bridge',
+    title: 'Barre Bridge',
+    artist: 'StandardTune Studio',
+    difficulty: 'Hard',
+    duration: '1:20',
+    genre: 'Rock Practice',
+    chords: ['F', 'Bb', 'Cm', 'Gm'],
+    key: 'F',
+    note: 'A deliberate barre workout. Loop one section and stop before hand fatigue turns into tension.',
+    arrangement: originalArrangement(60, [
+      section('verse', 'Low bridge', ['F', 'Cm', 'Bb', 'F']),
+      section('chorus', 'High bridge', ['Gm', 'Bb', 'F', 'Cm']),
+    ], '↓ · · ↓'),
+  },
+  {
+    id: 'original-string-lanterns',
+    title: 'String Lanterns',
+    artist: 'StandardTune Studio',
+    difficulty: 'Easy',
+    duration: '0:42',
+    genre: 'Tab Practice',
+    chords: ['Em', 'C'],
+    key: 'Em',
+    note: 'A first single-note tab line. Zero means an open string; let each note speak before moving on.',
+    arrangement: {
+      bpm: 60,
+      beatsPerBar: 4,
+      strumPattern: 'Single notes',
+      license: 'CC0-1.0',
+      sections: [{
+        id: 'melody',
+        label: 'Melody',
+        events: [
+          { kind: 'note', stringIndex: 0, fret: 0, label: 'E0', beats: 1 },
+          { kind: 'note', stringIndex: 0, fret: 3, label: 'E3', beats: 1 },
+          { kind: 'note', stringIndex: 1, fret: 2, label: 'A2', beats: 1 },
+          { kind: 'note', stringIndex: 1, fret: 3, label: 'A3', beats: 1 },
+          { kind: 'note', stringIndex: 2, fret: 2, label: 'D2', beats: 1 },
+          { kind: 'note', stringIndex: 1, fret: 3, label: 'A3', beats: 1 },
+          { kind: 'note', stringIndex: 1, fret: 2, label: 'A2', beats: 1 },
+          { kind: 'note', stringIndex: 0, fret: 0, label: 'E0', beats: 1 },
+        ],
+      }],
+    },
+  },
   {
     id: '1',
     title: "Knockin' on Heaven's Door",
