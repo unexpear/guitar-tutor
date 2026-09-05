@@ -64,3 +64,6 @@ dist-play/
 # Local browser-test artifacts
 /.playwright-cli/
 /output/playwright/
+/output/beginner-flow/
+/output/large-font-tuner.png
+/output/large-font-window.xml

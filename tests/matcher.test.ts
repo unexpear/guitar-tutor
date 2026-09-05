@@ -16,6 +16,17 @@ const S = (midi: number, t = 0, conf = 0.9, rmsDb = -20) => ({
 const noteTarget: Target = { kind: 'note', stringIndex: 0, fret: 0, label: 'E' };
 const em = (): Target => ({ kind: 'chord', chordName: 'Em', label: 'Em' });
 
+test('capo scoring accepts the sounding root, not the uncapoed shape root', () => {
+  const target: Target = {kind: 'chord', chordName: 'Bb', label: 'Bb', capo: 2};
+  const correct = new TargetMatcher(target, {mode: 'mono'});
+  assert.equal(correct.feed(S(48, 0)), null);
+  assert.equal(correct.feed(S(48, 40)), 'hit');
+  const incorrect = new TargetMatcher(target, {mode: 'mono'});
+  const outcomes = Array.from({length: 12}, (_, i) => incorrect.feed(S(46, i * 40)));
+  assert.ok(!outcomes.includes('hit'));
+  assert.ok(outcomes.includes('wrong'));
+});
+
 test('a note needs two consistent frames before it counts', () => {
   const m = new TargetMatcher(noteTarget);
   assert.equal(m.feed(S(40.1)), null);

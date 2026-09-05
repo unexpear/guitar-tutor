@@ -16,7 +16,7 @@ export const usePracticeToolsStore = create<PracticeToolsState>()(
         if (chords.length < 2) return state;
         const key = chords.join('|');
         if (state.progressions.some((item) => item.join('|') === key)) return state;
-        return { progressions: [chords.slice(0, 8), ...state.progressions].slice(0, 20) };
+        return { progressions: [[...chords], ...state.progressions] };
       }),
       deleteProgression: (index) => set((state) => ({ progressions: state.progressions.filter((_, itemIndex) => itemIndex !== index) })),
     }),

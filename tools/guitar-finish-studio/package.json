@@ -1,0 +1,35 @@
+{
+  "name": "guitar-finish-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Offline guitar design and static 3D asset studio",
+  "author": "Guitar Finish Studio contributors",
+  "license": "UNLICENSED",
+  "main": "desktop.cjs",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild mesh-studio.js --bundle --format=iife --global-name=Guitar3D --outfile=mesh-studio.bundle.js --minify --legal-comments=eof",
+    "test": "node --test mesh-studio.test.mjs",
+    "validate": "node validate-glb.mjs",
+    "desktop": "electron .",
+    "desktop:build": "npm run build && electron-builder --win portable --x64 --publish never"
+  },
+  "build": {
+    "appId": "studio.guitarfinish.desktop",
+    "productName": "Guitar Finish Studio",
+    "directories": { "output": "../../dist-itch/windows" },
+    "files": ["desktop.cjs", "index.html", "styles.css", "app.js", "review.js", "workspace.js", "mesh-studio.bundle.js", "sources/*.png", "THREE-LICENSE.txt", "README.md", "!node_modules/**/*"],
+    "asar": true,
+    "win": { "target": ["portable"], "signAndEditExecutable": false },
+    "portable": { "useZip": true, "artifactName": "Guitar-Finish-Studio-${version}-Windows-x64.exe" }
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "electron": "44.2.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.25.12",
+    "gltf-validator": "2.0.0-dev.3.10"
+  }
+}

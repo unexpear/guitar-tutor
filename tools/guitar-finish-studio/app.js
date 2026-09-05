@@ -35,9 +35,12 @@
   let lastPoint = null;
   let undoStack = [];
   let sourceKind = 'sample';
+  let sourceRequest = 0;
   let batchResults = [];
   let generatedRules = null;
+  let generatedConstruction = null;
   let review = null;
+  let meshUpdateTimer;
   let meshProfile = 'acoustic';
 
   const controls = {
@@ -71,6 +74,7 @@
   function path(value) { return new Path2D(value); }
 
   function drawSample(kind) {
+    sourceRequest++;
     sourceCtx.clearRect(0, 0, WIDTH, HEIGHT);
     const isAcoustic = kind === 'acoustic';
     const bodyPath = isAcoustic
@@ -143,22 +147,37 @@
     const normalized = filename.toLowerCase();
     const profile = normalized.includes('acoustic-cutaway') ? 'acoustic' : normalized.includes('electric-singlecut') ? 'electric' : null;
     if (!profile) return false;
-    const body = profile === 'acoustic'
-      ? path('M184 379C154 379 148 415 156 458C164 499 123 540 115 610C108 684 161 730 256 739C351 730 402 682 392 610C384 552 346 506 351 468C358 432 343 410 315 410C292 410 284 394 276 379Z')
-      : path('M187 418C156 413 148 451 151 504C154 552 128 600 133 662C138 718 184 739 259 742C338 739 382 713 384 660C387 598 364 548 366 504C369 470 356 444 335 449C307 456 297 485 271 490H253C233 466 215 425 187 418Z');
-    const head = profile === 'acoustic'
-      ? path('M224 18C242 10 273 10 290 20L298 119C297 132 286 139 276 143H238C228 139 217 132 216 119Z')
-      : path('M274 7C282 10 286 18 285 29L283 108L271 136H236L230 119C242 99 254 49 274 7Z');
-    maskCtx.clearRect(0, 0, WIDTH, HEIGHT); maskCtx.fillStyle = '#fff'; maskCtx.fill(body); maskCtx.fill(head);
+    // Follow the photo's actual silhouette, not the illustrated demo outline.
+    // A small inset keeps its edge/binding intact; hardware is protected below.
+    const pixels = sourceCtx.getImageData(0, 0, WIDTH, HEIGHT).data;
+    const fitted = maskCtx.createImageData(WIDTH, HEIGHT);
+    const bodyTop = profile === 'acoustic' ? 374 : 414;
+    for (let y = 2; y < HEIGHT - 2; y++) for (let x = 2; x < WIDTH - 2; x++) {
+      if (y > 136 && y < bodyTop) continue;
+      const i = (y * WIDTH + x) * 4;
+      if ([i, i - 8, i + 8, i - WIDTH * 8, i + WIDTH * 8].some((offset) => pixels[offset + 3] < 200)) continue;
+      fitted.data[i] = fitted.data[i + 1] = fitted.data[i + 2] = fitted.data[i + 3] = 255;
+    }
+    maskCtx.putImageData(fitted, 0, 0); maskCtx.fillStyle = '#fff';
     maskCtx.globalCompositeOperation = 'destination-out';
     if (profile === 'acoustic') {
       maskCtx.fillRect(237, 132, 42, 365); maskCtx.beginPath(); maskCtx.arc(256, 494, 41, 0, Math.PI * 2); maskCtx.fill(); maskCtx.roundRect(207, 585, 100, 27, 7); maskCtx.fill();
       [[239,55],[274,55],[239,88],[274,88],[239,121],[274,121]].forEach(([x,y]) => { maskCtx.beginPath(); maskCtx.arc(x,y,8,0,Math.PI*2); maskCtx.fill(); });
+      [[218,55],[287,55],[218,80],[287,80],[220,104],[287,104]].forEach(([x,y]) => { maskCtx.beginPath(); maskCtx.arc(x,y,10,0,Math.PI*2); maskCtx.fill(); });
     } else {
       maskCtx.fillRect(241, 245, 42, 260); maskCtx.roundRect(227, 496, 61, 36, 5); maskCtx.fill(); maskCtx.roundRect(227, 570, 61, 36, 5); maskCtx.fill(); maskCtx.roundRect(229, 615, 58, 29, 4); maskCtx.fill();
       [[331,599,10],[350,635,7],[332,669,10],[260,35,7],[257,51,7],[254,67,7],[250,83,7],[247,99,7],[243,115,7]].forEach(([x,y,r]) => { maskCtx.beginPath(); maskCtx.arc(x,y,r,0,Math.PI*2); maskCtx.fill(); });
     }
-    maskCtx.globalCompositeOperation = 'source-over'; meshProfile = profile === 'acoustic' ? 'acoustic-dreadnought' : 'electric-singlecut'; applyMeshBlueprint(profile === 'acoustic' ? 'steel-acoustic' : 'shortscale-electric'); undoStack = []; updateUndo(); render(); return true;
+    // Keep the actual strings visible over the finish, not color-tinted.
+    maskCtx.lineWidth = 1.4; maskCtx.strokeStyle = '#fff';
+    for (let i = 0; i < 6; i++) {
+      maskCtx.beginPath(); maskCtx.moveTo(244 + i * 5.6, 137);
+      maskCtx.lineTo(240 + i * 7.2, profile === 'acoustic' ? 603 : 632); maskCtx.stroke();
+    }
+    maskCtx.globalCompositeOperation = 'source-over';
+    applyMeshBlueprint(profile === 'acoustic' ? 'steel-acoustic' : 'shortscale-electric');
+    meshProfile = profile === 'acoustic' ? 'acoustic-cutaway' : 'electric-singlecut'; el('mesh-profile').value = meshProfile;
+    undoStack = []; updateUndo(); render(); return true;
   }
 
   function accentMask(pattern, scale, paintMask = mask) {
@@ -199,11 +218,22 @@
       const pearl = target.createLinearGradient(0, 160, WIDTH, 650); pearl.addColorStop(0, '#ffb5ed99'); pearl.addColorStop(.5, '#ffffff88'); pearl.addColorStop(1, '#7de2d199');
       target.globalAlpha = opacity; target.fillStyle = pearl; target.fillRect(0, 0, WIDTH, HEIGHT);
     } else if (finish === 'Brushed Metal') {
-      target.strokeStyle = '#fff'; target.lineWidth = .65;
-      for (let y = 0; y < HEIGHT; y += 4 + random() * 5) { target.globalAlpha = opacity * (.15 + random() * .35); target.beginPath(); target.moveTo(0, y); target.lineTo(WIDTH, y + random() * 2); target.stroke(); }
+      // Fine machining grain, not widely spaced white stripes.
+      target.lineWidth = .35;
+      for (let y = 0; y < HEIGHT; y += .7) {
+        target.strokeStyle = random() > .5 ? '#fff' : '#000';
+        target.globalAlpha = opacity * (.025 + random() * .10);
+        target.beginPath(); target.moveTo(0, y); target.lineTo(WIDTH, y); target.stroke();
+      }
     } else if (finish === 'Carbon Weave') {
-      target.strokeStyle = '#b9c1d0'; target.lineWidth = 4;
-      for (let offset = -HEIGHT; offset < WIDTH + HEIGHT; offset += 14) { target.globalAlpha = opacity * .25; target.beginPath(); target.moveTo(offset, 0); target.lineTo(offset + HEIGHT, HEIGHT); target.stroke(); target.beginPath(); target.moveTo(offset + HEIGHT, 0); target.lineTo(offset, HEIGHT); target.stroke(); }
+      // Alternating over/under fibre bundles instead of a diagonal wire grid.
+      target.globalAlpha = opacity * .55;
+      for (let y = 0; y < HEIGHT; y += 6) for (let x = 0; x < WIDTH; x += 6) {
+        const horizontal = ((x / 6 + y / 6) % 4) < 2;
+        const shine = horizontal ? target.createLinearGradient(x, y, x, y + 6) : target.createLinearGradient(x, y, x + 6, y);
+        shine.addColorStop(0, '#17191e'); shine.addColorStop(.45, '#88919c'); shine.addColorStop(1, '#23262d');
+        target.fillStyle = shine; target.fillRect(x, y, 6, 6);
+      }
     }
     target.globalAlpha = 1; target.globalCompositeOperation = 'destination-in'; target.drawImage(layerMask, 0, 0); target.restore();
   }
@@ -217,9 +247,12 @@
       const alpha = (base.data[i + 3] * maskData[i + 3]) / 255;
       if (!alpha) continue;
       const light = base.data[i] * .2126 + base.data[i + 1] * .7152 + base.data[i + 2] * .0722;
-      output.data[i] = Math.min(255, light * .58 + red * .42);
-      output.data[i + 1] = Math.min(255, light * .58 + green * .42);
-      output.data[i + 2] = Math.min(255, light * .58 + blue * .42);
+      // Preserve source shading without washing every chosen color into gray.
+      const shade = .3 + light / 255 * .95;
+      const highlight = Math.max(0, light - 195) * .55;
+      output.data[i] = Math.min(255, red * shade + highlight);
+      output.data[i + 1] = Math.min(255, green * shade + highlight);
+      output.data[i + 2] = Math.min(255, blue * shade + highlight);
       output.data[i + 3] = alpha;
     }
     const layer = document.createElement('canvas'); layer.width = WIDTH; layer.height = HEIGHT;
@@ -243,6 +276,7 @@
   }
 
   function render() {
+    clearTimeout(meshUpdateTimer); meshUpdateTimer = setTimeout(updateMeshPreview, 120);
     review?.refresh();
     renderDesign(canvas, recipe(), controls.showMask.checked || brushMode !== 'off');
     el('primary-hex').textContent = controls.primary.value.toUpperCase();
@@ -273,14 +307,31 @@
 
   async function importSource(file) {
     if (!file || !/^image\/(png|webp)$/.test(file.type)) return setStatus('Choose a PNG or WebP image.', true);
+    const request = ++sourceRequest;
     try {
-      await loadBitmap(file, source); sourceKind = 'import';
+      const next = document.createElement('canvas'); next.width = WIDTH; next.height = HEIGHT;
+      await loadBitmap(file, next);
+      if (request !== sourceRequest) return;
+      sourceCtx.clearRect(0, 0, WIDTH, HEIGHT); sourceCtx.drawImage(next, 0, 0); sourceKind = 'import';
       const recognized = applyKnownPhotoMask(file.name);
       if (!recognized) autoMask();
       el('source-name').textContent = file.name;
       el('dimensions').textContent = `${WIDTH} × ${HEIGHT} working canvas`;
       setStatus(recognized ? `Photoreal ${meshProfile.startsWith('acoustic') ? 'acoustic' : 'electric'} profile recognized; its fitted hardware mask is active.` : 'Imported. Use Protect mode to brush over hardware before exporting.');
     } catch { setStatus('That image could not be opened. Try another PNG or WebP.', true); }
+  }
+
+  async function loadSample(kind) {
+    if (!kind.startsWith('photo-')) { drawSample(kind); return; }
+    const request = ++sourceRequest;
+    const filename = kind === 'photo-acoustic' ? 'acoustic-cutaway-wood.png' : 'electric-singlecut-wood.png';
+    try {
+      const response = await fetch(window.GUITAR_STUDIO_SAMPLES?.[filename] || `sources/${filename}`);
+      if (!response.ok) throw new Error('Image unavailable');
+      const blob = await response.blob();
+      if (request !== sourceRequest) return;
+      await importSource(new File([blob], filename, { type: 'image/png' }));
+    } catch { if (request === sourceRequest) setStatus('Could not load the photoreal source. Try again or import a PNG.', true); }
   }
 
   async function importMask(file) {
@@ -320,7 +371,7 @@
   }
 
   function recipe() {
-    return { format: 'guitar-finish-studio', version: 1, primary: controls.primary.value, accent: controls.accent.value, primaryFinish: controls.primaryFinish.value, accentFinish: controls.accentFinish.value, pattern: controls.pattern.value, textureStrength: Number(controls.strength.value), patternScale: Number(controls.scale.value), seed: Number(controls.seed.value) };
+    return { format: 'guitar-finish-studio', version: 1, ...(el('collection-style').value !== '' ? {collectionStyle:Number(el('collection-style').value)} : {}), primary: controls.primary.value, accent: controls.accent.value, primaryFinish: controls.primaryFinish.value, accentFinish: controls.accentFinish.value, pattern: controls.pattern.value, textureStrength: Number(controls.strength.value), patternScale: Number(controls.scale.value), seed: Number(controls.seed.value) };
   }
 
   function rgbToHsl([red, green, blue]) {
@@ -349,6 +400,8 @@
       seed: Math.max(1, Math.min(999999, Number(el('batch-seed').value) || 1)),
       keepDistinct: el('batch-contrast').checked, basePrimary: controls.primary.value, baseAccent: controls.accent.value,
       textureStrength: Number(controls.strength.value), patternScale: Number(controls.scale.value),
+      varyConstruction: el('review-3d').checked && el('vary-construction').checked,
+      collectionStyle: recipe().collectionStyle,
     };
   }
 
@@ -389,6 +442,11 @@
       const finishPair = chosenFinishes[(index + Math.floor(random() * chosenFinishes.length)) % chosenFinishes.length];
       const pattern = chosenPatterns[(index + Math.floor(random() * chosenPatterns.length)) % chosenPatterns.length];
       const result = { format: 'guitar-finish-studio', version: 1, primary, accent, primaryFinish: finishPair[0], accentFinish: finishPair[1], pattern, textureStrength: rules.textureStrength, patternScale: rules.patternScale, seed: Math.floor(1 + random() * 999998) };
+      if(rules.varyConstruction) {
+        result.collectionStyle=index%6;
+        result.textureStrength=Math.round(Math.max(0,Math.min(100,rules.textureStrength+(random()-.5)*40)));
+        result.patternScale=Math.round(50+random()*130);
+      } else if(rules.collectionStyle!==undefined) result.collectionStyle=rules.collectionStyle;
       const key = [primary, accent, ...finishPair, pattern].join('|');
       if (!seen.has(key)) { seen.add(key); results.push(result); }
     }
@@ -397,19 +455,28 @@
 
   async function generateBatch() {
     const button = el('generate-batch'); button.disabled = true; el('export-batch').disabled = true;
-    const rules = batchRules(); el('batch-count').value = String(rules.count); el('batch-seed').value = String(rules.seed);
-    el('batch-status').textContent = 'Building rule-based collection…';
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    batchResults = buildBatch(rules); generatedRules = rules; const gallery = el('batch-gallery'); gallery.replaceChildren();
-    batchResults.forEach((design, index) => {
-      const item = document.createElement('div'); item.className = 'batch-item';
-      const preview = document.createElement('canvas'); preview.width = WIDTH; preview.height = HEIGHT; renderDesign(preview, design);
-      const label = document.createElement('span'); label.textContent = `${String(index + 1).padStart(2, '0')} · ${design.pattern}`; label.title = `${design.primary} + ${design.accent}, ${design.primaryFinish} / ${design.accentFinish}`;
-      item.append(preview, label); gallery.append(item);
-    });
-    el('batch-status').textContent = `${batchResults.length} unique designs ready. Seed ${rules.seed}.`;
-    el('export-batch').disabled = batchResults.length === 0; button.disabled = false;
-    review.add(batchResults);
+    try {
+      const rules = batchRules(); el('batch-count').value = String(rules.count); el('batch-seed').value = String(rules.seed);
+      const construction = el('review-3d').checked ? meshConfiguration() : null;
+      el('batch-status').textContent = 'Building rule-based collection…';
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      batchResults = buildBatch(rules); generatedRules = rules; generatedConstruction = construction;
+      const gallery = el('batch-gallery'); gallery.replaceChildren();
+      for (const [index, design] of batchResults.entries()) {
+        const item = document.createElement('div'); item.className = 'batch-item';
+        const preview = document.createElement('canvas'); preview.width = WIDTH; preview.height = HEIGHT;
+        if (construction) { const root = gameMesh(design, construction); try { Guitar3D.snapshot(preview, root); } finally { Guitar3D.dispose(root); } }
+        else renderDesign(preview, design);
+        const label = document.createElement('span'); label.textContent = `${String(index + 1).padStart(2, '0')} · ${design.pattern}`; label.title = `${design.primary} + ${design.accent}, ${design.primaryFinish} / ${design.accentFinish}`;
+        if(construction && design.collectionStyle!==undefined) label.textContent += ` · ${Guitar3D.collectionStyles[design.collectionStyle]}`;
+        item.append(preview, label); gallery.append(item);
+        if (index % 3 === 2) await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+      el('batch-status').textContent = `${batchResults.length} unique ${construction ? '3D assets' : 'image designs'} ready. Seed ${rules.seed}.`;
+      el('export-batch').disabled = batchResults.length === 0;
+      review.add(batchResults);
+    } catch (error) { el('batch-status').textContent = `Collection failed: ${error.message}`; }
+    finally { button.disabled = false; }
   }
 
   function canvasBlob(target) {
@@ -595,7 +662,44 @@
     const uvLines = textureCoordinates.map((value) => `vt ${value.map((part) => part.toFixed(6)).join(' ')}`);
     const objectName = config.profile.replaceAll('-', '_'); const object = [`# Guitar Finish Studio static mesh`, `# Dimensions are stored in meters`, `mtllib guitar.mtl`, `o ${objectName}`, ...vertexLines, ...uvLines, ...sections, ''].join('\n');
     const material = `newmtl Finish\nKa 0.100 0.100 0.100\nKd 1.000 1.000 1.000\nKs 0.350 0.350 0.350\nNs 220\nillum 2\nmap_Kd guitar-finish.png\n\nnewmtl NeckWood\nKa 0.080 0.050 0.030\nKd 0.260 0.140 0.080\nKs 0.120 0.120 0.120\nNs 40\nillum 2\n\nnewmtl Hardware\nKa 0.120 0.120 0.120\nKd 0.520 0.500 0.450\nKs 0.800 0.800 0.800\nNs 500\nillum 2\n\nnewmtl Strings\nKa 0.200 0.200 0.200\nKd 0.720 0.700 0.640\nKs 0.900 0.900 0.900\nNs 700\nillum 2\n\nnewmtl Frets\nKd 0.720 0.720 0.700\nKs 0.900 0.900 0.900\nNs 600\nillum 2\n\nnewmtl Nut\nKd 0.900 0.870 0.760\nKs 0.200 0.200 0.200\nNs 100\nillum 2\n\nnewmtl Dark\nKd 0.025 0.020 0.018\nKs 0.050 0.050 0.050\nNs 20\nillum 2\n\nnewmtl Pickup\nKd 0.780 0.750 0.680\nKs 0.850 0.850 0.850\nNs 500\nillum 2\n\nnewmtl Control\nKd 0.720 0.570 0.220\nKs 0.900 0.800 0.500\nNs 500\nillum 2\n`;
-    return { object, material, vertexCount: vertices.length, groupCount: sections.length, fretPositions };
+    return { object, material, vertexCount: vertices.length, groupCount: sections.length, fretPositions, bodyOutline };
+  }
+
+  let meshViewer;
+  function gameMesh(design = recipe(), config = meshConfiguration(), lod = 0) {
+    return Guitar3D.build(config, design, buildStaticMesh(config).bodyOutline, lod);
+  }
+  function updateMeshPreview() {
+    try {
+      meshViewer ||= Guitar3D.viewer(el('mesh-preview'));
+      const stats = meshViewer.set(gameMesh());
+      el('mesh-status').textContent = `Actual LOD0: ${stats.triangles.toLocaleString()} triangles · ${stats.meshes} parts · ${stats.sizeMeters[1].toFixed(2)} m tall. No animations.`;
+    } catch (error) { el('mesh-status').textContent = `3D preview unavailable: ${error.message}`; }
+  }
+  async function exportGameAsset() {
+    const button = el('export-game-asset'); button.disabled = true;
+    const entries = [], levels = [];
+    try {
+      const config = meshConfiguration(), design = recipe();
+      for (let lod = 0; lod < 3; lod++) {
+        el('mesh-status').textContent = `Building static LOD${lod}…`;
+        const root = gameMesh(design, config, lod);
+        try {
+          levels.push({ file: `guitar_LOD${lod}.glb`, ...Guitar3D.statistics(root) });
+          entries.push({ name: `guitar_LOD${lod}.glb`, data: new Uint8Array(await (await Guitar3D.glb(root)).arrayBuffer()) });
+          if (lod === 0) {
+            const proxy = Guitar3D.collision(root);
+            try { entries.push({ name: 'collision.glb', data: new Uint8Array(await (await Guitar3D.glb(proxy)).arrayBuffer()) }); }
+            finally { Guitar3D.dispose(proxy); }
+          }
+        } finally { Guitar3D.dispose(root); }
+      }
+      entries.push({ name: 'asset.json', data: new TextEncoder().encode(JSON.stringify({ format: 'guitar-game-asset', version: 1, units: 'meters', upAxis: 'Y', frontAxis: '+Z', animations: false, config, design, levels }, null, 2)) });
+      entries.push({ name: 'IMPORT.txt', data: new TextEncoder().encode('Import guitar_LOD0.glb as the main static mesh. Materials and textures are embedded. LOD1 and LOD2 are separate alternatives: assign them in your engine, not as overlapping visible meshes. collision.glb contains coarse BOX proxies; configure them as collision-only in your engine. glTF does not standardize collision or automatic LOD selection. No rig or animation is included. The procedural mesh does not reconstruct a photograph. Verify your target engine, scale, lighting and performance before shipping.\n') });
+      const url = URL.createObjectURL(storeZip(entries)), link = document.createElement('a'); link.href = url; link.download = `guitar-game-asset-${config.profile}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      el('mesh-status').textContent = `Exported static GLBs: ${levels.map(item => item.triangles + ' tris').join(' / ')}; PBR materials, collision proxies and import notes included.`;
+    } catch (error) { el('mesh-status').textContent = `Game export failed: ${error.message}`; }
+    finally { button.disabled = false; }
   }
 
   async function exportStaticMesh() {
@@ -615,21 +719,30 @@
     button.disabled = false;
   }
 
-  async function exportBatch(designs = batchResults, rules = generatedRules) {
+  async function exportBatch(designs = batchResults, rules = generatedRules, images = [], models = []) {
     if (!designs.length) return;
     const snapshot = designs.map((design) => ({ ...design }));
     const button = el('export-batch'); button.disabled = true; const entries = [];
     try {
+      // Freeze geometry with the batch so later construction edits cannot change its export.
+      const construction = rules ? generatedConstruction : null;
       for (let index = 0; index < snapshot.length; index += 1) {
         el('batch-status').textContent = `Rendering ${index + 1} of ${snapshot.length}…`;
-        const output = document.createElement('canvas'); output.width = WIDTH; output.height = HEIGHT; renderDesign(output, snapshot[index]);
-        entries.push({ name: `designs/guitar-finish-${String(index + 1).padStart(2, '0')}.png`, data: new Uint8Array(await (await canvasBlob(output)).arrayBuffer()) });
+        const output = document.createElement('canvas'); output.width = WIDTH; output.height = HEIGHT;
+        if (construction) {
+          const root = gameMesh(snapshot[index], construction);
+          try { Guitar3D.snapshot(output, root); models[index] = await Guitar3D.glb(root); }
+          finally { Guitar3D.dispose(root); }
+        } else if (!images[index]) renderDesign(output, snapshot[index]);
+        entries.push({ name: `designs/guitar-finish-${String(index + 1).padStart(2, '0')}.png`, data: new Uint8Array(await (images[index] || await canvasBlob(output)).arrayBuffer()) });
+        if (models[index]) entries.push({ name: `models/guitar-${String(index + 1).padStart(2, '0')}.glb`, data: new Uint8Array(await models[index].arrayBuffer()) });
         if (index % 4 === 3) await new Promise((resolve) => requestAnimationFrame(resolve));
       }
-      const manifest = { format: 'guitar-finish-studio-collection', version: 1, createdBy: 'Guitar Finish Studio', rules, designs: snapshot };
+      const manifest = { format: 'guitar-finish-studio-collection', version: 1, createdBy: 'Guitar Finish Studio', rules, construction, designs: snapshot,
+        models: models.map((model, index) => model ? `models/guitar-${String(index + 1).padStart(2, '0')}.glb` : null) };
       entries.push({ name: 'manifest.json', data: new TextEncoder().encode(`${JSON.stringify(manifest, null, 2)}\n`) });
       const blob = storeZip(entries); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = rules ? `guitar-finish-batch-${rules.seed}.zip` : 'guitar-kept-finishes.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-      el('batch-status').textContent = `${snapshot.length} PNGs and manifest downloaded as one ZIP.`;
+      el('batch-status').textContent = `${snapshot.length} thumbnails, ${models.filter(Boolean).length} static GLBs and manifest downloaded as one ZIP.`;
     } catch { el('batch-status').textContent = 'The batch could not be exported. Try a smaller collection.'; }
     button.disabled = false;
   }
@@ -646,6 +759,8 @@
       if (value.format !== 'guitar-finish-studio' || value.version !== 1) throw new Error('format');
       if (!/^#[0-9a-f]{6}$/i.test(value.primary) || !/^#[0-9a-f]{6}$/i.test(value.accent)) throw new Error('color');
       if (!finishes.includes(value.primaryFinish) || !finishes.includes(value.accentFinish) || !patterns.includes(value.pattern)) throw new Error('choice');
+      if(value.collectionStyle!==undefined && (!Number.isInteger(value.collectionStyle)||value.collectionStyle<0||value.collectionStyle>5)) throw new Error('style');
+      el('collection-style').value=value.collectionStyle===undefined?'':String(value.collectionStyle);
       controls.primary.value = value.primary; controls.accent.value = value.accent; controls.primaryFinish.value = value.primaryFinish;
       controls.accentFinish.value = value.accentFinish; controls.pattern.value = value.pattern;
       controls.strength.value = Math.max(0, Math.min(100, Number(value.textureStrength) || 0));
@@ -659,7 +774,7 @@
   Object.values(controls).filter((value) => value instanceof HTMLElement && !['preset', 'show-mask'].includes(value.id)).forEach((control) => control.addEventListener('input', () => { controls.preset.value = 'custom'; render(); }));
   controls.showMask.addEventListener('input', render);
   controls.preset.addEventListener('change', () => { if (controls.preset.value !== 'custom') applyPreset(Number(controls.preset.value)); });
-  el('sample-model').addEventListener('change', (event) => { drawSample(event.target.value); setStatus(`Built-in ${event.target.value} sample loaded.`); });
+  el('sample-model').addEventListener('change', (event) => { void loadSample(event.target.value); });
   el('source-file').addEventListener('change', (event) => importSource(event.target.files[0]));
   el('mask-file').addEventListener('change', (event) => importMask(event.target.files[0]));
   el('recipe-file').addEventListener('change', (event) => loadRecipe(event.target.files[0]));
@@ -684,7 +799,7 @@
   el('export-mask').addEventListener('click', () => downloadCanvas(mask, 'guitar-paint-mask.png'));
   el('export-png').addEventListener('click', () => { const show = controls.showMask.checked; controls.showMask.checked = false; const mode = brushMode; brushMode = 'off'; render(); downloadCanvas(canvas, 'custom-guitar-finish.png'); brushMode = mode; controls.showMask.checked = show; render(); });
   el('save-recipe').addEventListener('click', downloadRecipe);
-  el('reset-all').addEventListener('click', () => { controls.preset.value = '0'; applyPreset(0); drawSample(el('sample-model').value); setStatus('Design reset.'); });
+  el('reset-all').addEventListener('click', () => { el('collection-style').value=''; controls.preset.value = '0'; applyPreset(0); void loadSample(el('sample-model').value); setStatus('Design reset.'); });
   el('brush-size').addEventListener('input', () => { el('brush-value').textContent = `${el('brush-size').value} px`; });
   el('generate-batch').addEventListener('click', generateBatch);
   el('export-batch').addEventListener('click', () => exportBatch());
@@ -694,28 +809,43 @@
   }));
   el('mesh-depth').addEventListener('input', () => { el('mesh-blueprint').value = 'custom'; el('mesh-depth-value').textContent = `${Number(el('mesh-depth').value).toFixed(1)} cm`; el('mesh-spec-note').textContent = 'Custom dimensions · verify against your intended instrument before manufacturing.'; });
   el('export-mesh').addEventListener('click', exportStaticMesh);
+  el('preview-mesh').addEventListener('click', updateMeshPreview);
+  document.querySelector('.mesh-card').addEventListener('input', () => { review?.refresh(); clearTimeout(meshUpdateTimer); meshUpdateTimer = setTimeout(updateMeshPreview, 120); });
+  el('export-game-asset').addEventListener('click', exportGameAsset);
+  el('review-3d').addEventListener('change', () => review?.refresh());
   document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); } });
   ['dragenter','dragover'].forEach((name) => canvas.parentElement.addEventListener(name, (event) => { event.preventDefault(); el('drop-hint').hidden = false; }));
   ['dragleave','drop'].forEach((name) => canvas.parentElement.addEventListener(name, (event) => { event.preventDefault(); el('drop-hint').hidden = true; }));
   canvas.parentElement.addEventListener('drop', (event) => importSource(event.dataTransfer.files[0]));
 
-  applyPreset(0); drawSample('acoustic');
+  applyPreset(0); void loadSample('photo-acoustic');
   review = GuitarReview.mount({
     host: el('batch-gallery').parentElement,
-    render: renderDesign,
-    exportDesigns: (designs) => exportBatch(designs, null),
+    render: (target, design) => {
+      if (!el('review-3d').checked) return renderDesign(target, design);
+      const root = gameMesh(design);
+      try { Guitar3D.snapshot(target, root); } finally { Guitar3D.dispose(root); }
+    },
+    captureModel: async (design) => {
+      if (!el('review-3d').checked) return null;
+      const root = gameMesh(design);
+      try { return await Guitar3D.glb(root); } finally { Guitar3D.dispose(root); }
+    },
+    exportDesigns: (designs, images, models) => exportBatch(designs, null, images, models),
     validate: (design) => design && design.format === 'guitar-finish-studio' && design.version === 1
+      && (design.collectionStyle===undefined || (Number.isInteger(design.collectionStyle) && design.collectionStyle>=0 && design.collectionStyle<=5))
       && /^#[0-9a-f]{6}$/i.test(design.primary) && /^#[0-9a-f]{6}$/i.test(design.accent)
       && finishes.includes(design.primaryFinish) && finishes.includes(design.accentFinish) && patterns.includes(design.pattern)
       && Number.isFinite(design.textureStrength) && design.textureStrength >= 0 && design.textureStrength <= 100
       && Number.isFinite(design.patternScale) && design.patternScale >= 50 && design.patternScale <= 180
       && Number.isInteger(design.seed) && design.seed >= 1 && design.seed <= 999999,
-    generate: (approved) => {
+    generate: (approved, generation = 0) => {
       const rules = batchRules();
-      return approved.slice(-4).flatMap((design, index) => buildBatch({ ...rules,
+      return (approved.length ? approved.slice(-4) : [recipe()]).flatMap((design, index) => buildBatch({ ...rules,
         basePrimary: design.primary, baseAccent: design.accent, count: 12,
-        seed: (rules.seed + design.seed + index * 7919) % 999999 + 1,
+        seed: (rules.seed + design.seed + index * 7919 + generation * 104729) % 999999 + 1,
       }));
     },
   });
+  updateMeshPreview();
 })();

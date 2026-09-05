@@ -1,6 +1,12 @@
 import { Drill } from '../lessons/data/drills';
 import { Song, SongEvent } from './data/songs';
-import { getChord, OPEN_STRING_MIDI, stringFretToMidi } from '../chords/data/chords';
+import { chordMidiNotes, getChord, OPEN_STRING_MIDI, stringFretToMidi } from '../chords/data/chords';
+
+export function guideChordMidiNotes(name: string, transposeSemitones: number, capo: number): number[] {
+  const shape = transposeChordName(name, transposeSemitones - capo);
+  const chord = shape ? getChord(shape) : undefined;
+  return chord ? chordMidiNotes(chord).map(midi => midi + capo) : [];
+}
 import { findBarres } from '../chords/data/barres';
 
 export const SONG_PRACTICE_PREFIX = 'song-practice:';
@@ -147,7 +153,8 @@ export function arrangementEvents(song: Song, sectionId: string | null): SongEve
   const selected = sectionId
     ? arrangement.sections.filter((candidate) => candidate.id === sectionId)
     : arrangement.sections;
-  return selected.flatMap((candidate) => candidate.events);
+  // Saved section IDs can outlive a catalogue update. Recover to the full chart.
+  return (selected.length ? selected : arrangement.sections).flatMap((candidate) => candidate.events);
 }
 
 export function songPracticeFeedback(score: number): string {
@@ -204,6 +211,7 @@ export function buildSongPracticeDrill(
               label: transposeChordName(event.chordName, shapeShift) ?? event.chordName,
               strums: event.beats,
               beats: event.beats,
+              capo: options.capo,
             }
           : transposeNoteEvent(event, options.transposeSemitones ?? 0),
       ),

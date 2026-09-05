@@ -7,6 +7,7 @@ import PressableScale from '../../../components/PressableScale';
 import ChordDiagram from '../../../components/ChordDiagram';
 import { Chord, chordMidiNotes, midiToNoteName } from '../../chords/data/chords';
 import { useGuitarSound } from '../../audio/hooks/useGuitarSound';
+import { isReferenceAudible } from '../../audio/audibility';
 import { useProgressStore } from '../../store/progressStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import {
@@ -36,10 +37,12 @@ export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
   const recordChordAttempt = useProgressStore((s) => s.recordChordAttempt);
   const highScore = useProgressStore((s) => s.gameHighScores[CHORD_QUIZ_ID] ?? 0);
   const soundsEnabled = useSettingsStore((s) => s.soundsEnabled);
+  const sampleVolume = useSettingsStore((s) => s.sampleVolume);
+  const audible = isReferenceAudible({soundsEnabled, sampleVolume});
 
   // "Which chord did you hear?" is unanswerable with sounds switched off, so
   // drop that mode rather than serving a question that plays silence.
-  const modes: QuizMode[] = soundsEnabled
+  const modes: QuizMode[] = audible
     ? QUIZ_MODES
     : QUIZ_MODES.filter((m) => m !== 'name-from-sound');
 
@@ -130,9 +133,9 @@ export default function ChordQuizGame({ onExit }: { onExit: () => void }) {
           {highScore > 0 && (
             <Text style={styles.introBest}>Best so far: {highScore}</Text>
           )}
-          {!soundsEnabled && (
+          {!audible && (
             <Text style={styles.introNote}>
-              Play Sounds is off in Settings, so the listening questions are
+              Reference audio is muted in Settings, so the listening questions are
               skipped this round.
             </Text>
           )}

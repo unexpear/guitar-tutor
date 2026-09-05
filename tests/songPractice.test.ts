@@ -16,6 +16,31 @@ import {
 } from '../features/songs/songPractice';
 import { stringFretToMidi } from '../features/chords/data/chords';
 import { practiceScore, targetDurationMs } from '../features/lessons/playalong/timing';
+import { TargetMatcher } from '../features/lessons/playalong/matcher';
+import { guideChordMidiNotes } from '../features/songs/songPractice';
+
+test('capo chord scoring matches guide audio while retaining finger shapes', () => {
+  for (const song of SONGS.filter((song) => song.arrangement)) {
+    for (const capo of [0, 2, 5]) {
+      const options = {sectionId: null, tempoPercent: 75 as const, transposeSemitones: 0, capo};
+      const drill = buildSongPracticeDrill(song, options);
+      arrangementEvents(song, null).forEach((event, index) => {
+        if (event.kind !== 'chord') return;
+        const expected = guideChordMidiNotes(event.chordName, 0, capo);
+        if (!expected.length) return;
+        assert.deepEqual([...new TargetMatcher(drill.targets[index]).state().targetClasses].sort(),
+          [...new Set(expected.map((midi) => midi % 12))].sort());
+      });
+    }
+  }
+});
+
+test('stale saved section IDs recover to the complete playable chart', () => {
+  for (const song of SONGS.filter((song) => song.arrangement)) {
+    assert.deepEqual(arrangementEvents(song, 'removed-section'), arrangementEvents(song, null));
+    assert.ok(buildSongPracticeDrill(song, {sectionId: 'removed-section', tempoPercent: 75, capo: 0}).targets.length);
+  }
+});
 
 test('Follow Me can earn full credit without timing attempts', () => {
   assert.equal(practiceScore(100, 0, false), 100);

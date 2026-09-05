@@ -175,6 +175,15 @@ function CustomSlider({
   );
 }
 
+function AboutInfo({ title, description }: { title: string; description: string }) {
+  return (
+    <View style={styles.aboutInfo} accessible accessibilityLabel={`${title}. ${description}`}>
+      <Text style={styles.aboutTitle}>{title}</Text>
+      <Text style={styles.aboutDescription}>{description}</Text>
+    </View>
+  );
+}
+
 function ChoiceButtons<T extends string | number>({
   value,
   options,
@@ -794,26 +803,10 @@ export default function SettingsScreen() {
         </SectionCard>}
 
         <SectionCard title="About">
-          <SettingRow
-            label="Access"
-            accessibilityLabel="Free forever, with no ads and no account"
-            right={<Text style={styles.rowValue}>Free · No ads</Text>}
-          />
-          <SettingRow
-            label="Audio Privacy"
-            accessibilityLabel="Microphone audio stays on this device"
-            right={<Text style={styles.rowValue}>On device</Text>}
-          />
-          <SettingRow
-            label="App Name"
-            accessibilityLabel="App name: StandardTune"
-            right={<Text style={styles.rowValue}>StandardTune</Text>}
-          />
-          <SettingRow
-            label="Version"
-            accessibilityLabel={`App version: ${APP_VERSION}`}
-            right={<Text style={styles.rowValue}>{APP_VERSION}</Text>}
-          />
+          <AboutInfo title="StandardTune" description={`Version ${APP_VERSION} · Guitar tuning and practice`} />
+          <AboutInfo title="Free to use" description="No ads, subscription, or account required." />
+          <AboutInfo title="Your microphone stays private" description="Sound is analysed on your device to help you tune and practise. Your microphone audio is not uploaded." />
+          <AboutInfo title="Need help?" description="The links below open your browser. Reporting an issue on GitHub requires a GitHub account; using StandardTune does not." />
           <TouchableOpacity
             onPress={() =>
               Linking.openURL('https://github.com/unexpear/guitar-tutor/blob/main/PRIVACY.md')
@@ -843,6 +836,9 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  aboutInfo: { paddingVertical: 12, gap: 6 },
+  aboutTitle: { color: Colors.dark.text, fontSize: 16, fontWeight: '600' },
+  aboutDescription: { color: Colors.dark.muted, fontSize: 14, lineHeight: 21 },
   container: {
     flex: 1,
     backgroundColor: Colors.dark.background,

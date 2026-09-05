@@ -20,6 +20,24 @@ mock.module('@react-native-async-storage/async-storage', {
   defaultExport: mem,
 });
 
+test('saved progressions retain older entries beyond twenty and round-trip storage', async () => {
+  const { usePracticeToolsStore: store } = await import('../features/store/practiceToolsStore');
+  await store.persist.rehydrate();
+  store.setState({progressions: []});
+  for (let length = 2; length <= 26; length++) {
+    store.getState().saveProgression(Array.from({length}, (_, i) => i % 2 ? 'G' : 'C'));
+  }
+  assert.equal(store.getState().progressions.length, 25);
+  assert.deepEqual(store.getState().progressions.at(-1), ['C', 'G']);
+  assert.equal(store.getState().progressions[0].length, 26);
+  store.getState().saveProgression(['C', 'G']);
+  assert.equal(store.getState().progressions.length, 25);
+  await store.persist.rehydrate();
+  assert.equal(store.getState().progressions.length, 25);
+  store.getState().deleteProgression(0);
+  assert.equal(store.getState().progressions.length, 24);
+});
+
 // Loaded lazily: mock.module must run before the stores are imported, and the
 // stores are singletons that import once. `before` guarantees the imports are
 // finished before any test body runs.

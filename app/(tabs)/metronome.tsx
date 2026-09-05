@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, GestureResponderEvent } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { useFocusEffect } from 'expo-router';
 import PressableScale from '../../components/PressableScale';
 import Animated, {
   useSharedValue,
@@ -110,6 +111,8 @@ export default function MetronomeScreen() {
       clockRef.current?.stop();
       accentPlayerRef.current?.release();
       clickPlayerRef.current?.release();
+      accentPlayerRef.current = null;
+      clickPlayerRef.current = null;
     };
   }, []);
 
@@ -148,7 +151,11 @@ export default function MetronomeScreen() {
     clockRef.current?.stop();
     setIsPlaying(false);
     setActiveBeat(null);
+    accentPlayerRef.current?.pause();
+    clickPlayerRef.current?.pause();
   }, []);
+
+  useFocusEffect(useCallback(() => () => stopMetronome(), [stopMetronome]));
 
   const toggleMetronome = useCallback(() => {
     if (isPlayingRef.current) {

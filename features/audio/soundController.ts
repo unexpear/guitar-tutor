@@ -13,7 +13,7 @@
 
 export interface SoundPlayer {
   volume: number;
-  playbackRate: number;
+  setPlaybackRate(rate: number): void;
   shouldCorrectPitch: boolean;
   play(): void;
   release(): void;
@@ -38,6 +38,8 @@ export interface TimerHandle {
 export interface SoundControllerDeps {
   createPlayer: (asset: number | string) => SoundPlayer;
   resolveSample: (note: string) => number | string | null;
+  resolveReferenceSample?: (note: string) => { asset: number | string; rate: number } | null;
+  resolveChordSample?: (note: string) => { asset: number | string; rate: number } | null;
   getSettings: () => SoundSettings;
   setAudioMode: (
     mode: {
@@ -48,6 +50,7 @@ export interface SoundControllerDeps {
     }
   ) => Promise<void>;
   warn?: (message: string) => void;
+  onIssue?: (issue: 'muted' | 'missing' | 'failed') => void;
   timer?: (fn: () => void, ms: number) => TimerHandle;
   clearTimer?: (handle: TimerHandle) => void;
 }
@@ -66,7 +69,10 @@ export function createSoundController(
   const {
     createPlayer,
     resolveSample,
+    resolveReferenceSample,
+    resolveChordSample,
     getSettings,
+    onIssue,
     setAudioMode,
     warn = (message) => console.warn(message),
     timer = (fn, ms) => {
@@ -80,9 +86,16 @@ export function createSoundController(
   let chordPlayers: SoundPlayer[] = [];
   let chordTimers: TimerHandle[] = [];
 
+  const stopSingle = () => {
+    const player = single;
+    single = null;
+    try { player?.release(); } catch { /* already released */ }
+  };
+
   const configurePlayer = (
     player: SoundPlayer,
     settings: SoundSettings,
+    sampleRate = 1,
   ) => {
     player.volume = settings.sampleVolume / 100;
     const reference =
@@ -92,7 +105,8 @@ export function createSoundController(
     // Samples were generated at A4=440. Disabling time-stretch pitch
     // correction makes this small rate change retune the sample itself.
     player.shouldCorrectPitch = false;
-    player.playbackRate = reference / 440;
+    // Native Expo exposes playbackRate as a getter; use its cross-platform method.
+    player.setPlaybackRate(sampleRate * reference / 440);
   };
 
   const stopChord: SoundController['stopChord'] = () => {
@@ -127,23 +141,28 @@ export function createSoundController(
       try {
         const settings = getSettings();
         const { soundsEnabled } = settings;
-        if (!soundsEnabled) return;
+        if (!soundsEnabled || settings.sampleVolume <= 0) { onIssue?.('muted'); return; }
 
-        single?.release();
-        single = null;
+        stopSingle();
+        stopChord();
 
-        const asset = resolveSample(note);
+        const reference = resolveReferenceSample?.(note);
+        const asset = reference?.asset ?? resolveSample(note);
         if (asset === null) {
           warn(`No audio sample for note: ${note}`);
+          onIssue?.('missing');
           return;
         }
 
         const player = createPlayer(asset);
         single = player;
-        configurePlayer(player, settings);
+        configurePlayer(player, settings, reference?.rate ?? 1);
         player.play();
       } catch (err) {
+        try { single?.release(); } catch { /* already released */ }
+        single = null;
         warn(`Failed to play note: ${note}`);
+        onIssue?.('failed');
       }
     },
 
@@ -151,19 +170,25 @@ export function createSoundController(
       try {
         const settings = getSettings();
         const { soundsEnabled } = settings;
-        if (!soundsEnabled) return;
+        if (!soundsEnabled || settings.sampleVolume <= 0) { onIssue?.('muted'); return; }
 
         stopChord();
 
+        stopSingle();
+
         const players = notes
           .map((note) => {
-            const asset = resolveSample(note);
+            const recording = resolveChordSample?.(note) ?? resolveReferenceSample?.(note);
+            const asset = recording?.asset ?? resolveSample(note);
             if (asset === null) {
               warn(`No audio sample for note: ${note}`);
+              onIssue?.('missing');
               return null;
             }
             const player = createPlayer(asset);
-            configurePlayer(player, settings);
+            // Own each player before configuration so partial failures can release it.
+            chordPlayers.push(player);
+            configurePlayer(player, settings, recording?.rate ?? 1);
             return player;
           })
           .filter((p): p is SoundPlayer => p !== null);
@@ -179,24 +204,22 @@ export function createSoundController(
               player.play();
             } catch {
               // released between scheduling and firing
+              onIssue?.('failed');
             }
           }, i * staggerMs);
           chordTimers.push(handle);
         });
       } catch (err) {
+        stopChord();
         warn(`Failed to play chord: ${notes.join('-')}`);
+        onIssue?.('failed');
       }
     },
 
     stopChord,
 
     releaseAll() {
-      try {
-        single?.release();
-      } catch {
-        // already released
-      }
-      single = null;
+      stopSingle();
       stopChord();
     },
   };

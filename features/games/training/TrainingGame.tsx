@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useIsFocused } from 'expo-router';
 import { Colors, CARD_SHADOW } from '../../../constants/Colors';
 import PressableScale from '../../../components/PressableScale';
 import { useGuitarSound } from '../../audio/hooks/useGuitarSound';
+import { isReferenceAudible, trainingAudioSettings } from '../../audio/audibility';
 import { useProgressStore } from '../../store/progressStore';
 import { usePracticeTimer } from '../../practice/usePracticeTimer';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -21,10 +23,12 @@ const TITLES: Record<TrainingGameId, string> = { 'ear-training': 'Ear Training',
 const STRING_LABELS = ['low E (6)', 'A (5)', 'D (4)', 'G (3)', 'B (2)', 'high E (1)'];
 
 export default function TrainingGame({ gameId, onExit }: { gameId: TrainingGameId; onExit: () => void }) {
-  const { playNote } = useGuitarSound();
+  const { playNote, stopAll } = useGuitarSound();
   const recordGameScore = useProgressStore((state) => state.recordGameScore);
   const best = useProgressStore((state) => state.gameHighScores[gameId] ?? 0);
   const soundsEnabled = useSettingsStore((state) => state.soundsEnabled);
+  const sampleVolume = useSettingsStore((state) => state.sampleVolume);
+  const audible = isReferenceAudible({soundsEnabled, sampleVolume});
   const setSoundsEnabled = useSettingsStore((state) => state.setSoundsEnabled);
   const needsSound = gameId !== 'fretboard-explorer';
   const [phase, setPhase] = useState<'intro' | 'playing' | 'done'>('intro');
@@ -39,9 +43,18 @@ export default function TrainingGame({ gameId, onExit }: { gameId: TrainingGameI
   const [taps, setTaps] = useState<number[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  usePracticeTimer(phase === 'playing');
+  const isFocused = useIsFocused();
+  usePracticeTimer(phase === 'playing' && isFocused);
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); if (clickRef.current) clearInterval(clickRef.current); }, []);
+  const stopAudio = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (clickRef.current) clearInterval(clickRef.current);
+    timerRef.current = null;
+    clickRef.current = null;
+    stopAll();
+  }, [stopAll]);
+  useEffect(() => stopAudio, [stopAudio]);
+  useFocusEffect(useCallback(() => stopAudio, [stopAudio]));
 
   const roundLength = TRAINING_ROUND_LENGTH[difficulty];
   const ear = useMemo(() => earQuestion(seed, round, difficulty), [difficulty, round, seed]);
@@ -67,6 +80,7 @@ export default function TrainingGame({ gameId, onExit }: { gameId: TrainingGameI
   };
 
   const next = () => {
+    stopAudio();
     if (round + 1 >= roundLength) {
       const result = Math.round((score / roundLength) * 100);
       recordGameScore(gameId, result);
@@ -78,7 +92,12 @@ export default function TrainingGame({ gameId, onExit }: { gameId: TrainingGameI
   };
 
   const startRound = (level: TrainingDifficulty) => {
-    if (needsSound && !soundsEnabled) setSoundsEnabled(true);
+    stopAudio();
+    if (needsSound && !audible) {
+      const next = trainingAudioSettings(useSettingsStore.getState());
+      setSoundsEnabled(next.soundsEnabled);
+      useSettingsStore.getState().setSampleVolume(next.sampleVolume);
+    }
     if (clickRef.current) clearInterval(clickRef.current);
     setDifficulty(level); setRound(0); setScore(0); setStreak(0); setBestStreak(0);
     setAnswered(null); setTaps([]); setSeed(Math.random());
@@ -114,7 +133,7 @@ export default function TrainingGame({ gameId, onExit }: { gameId: TrainingGameI
       <View style={styles.header}><PressableScale onPress={onExit} style={styles.close} accessibilityRole="button"><Ionicons name="close" size={23} color={Colors.dark.text} /></PressableScale><Text style={styles.title}>{TITLES[gameId]}</Text></View>
       <ScrollView contentContainerStyle={styles.body}>
         {best > 0 && <Text style={styles.best}>Best: {best}</Text>}
-        {phase === 'intro' && <View style={[styles.introCard, CARD_SHADOW]}><Text style={styles.introTitle}>Pick your pace</Text><Text style={styles.explain}>Guided mode keeps the round short and reduces choices. Challenge mode adds more material without taking away lives.</Text>{needsSound && !soundsEnabled && <Text style={styles.soundNote}>Sound will turn on automatically when you start.</Text>}<PressableScale onPress={() => startRound('guided')} style={styles.nextButton}><Text style={styles.nextText}>Guided · easier start</Text></PressableScale><PressableScale onPress={() => startRound('challenge')} style={styles.challengeButton}><Text style={styles.challengeText}>Challenge · full set</Text></PressableScale></View>}
+        {phase === 'intro' && <View style={[styles.introCard, CARD_SHADOW]}><Text style={styles.introTitle}>Pick your pace</Text><Text style={styles.explain}>Guided mode keeps the round short and reduces choices. Challenge mode adds more material without taking away lives.</Text>{needsSound && !audible && <Text style={styles.soundNote}>Starting enables sound and restores Sample volume to 50% if muted. Check your phone’s media volume too.</Text>}<PressableScale onPress={() => startRound('guided')} style={styles.nextButton}><Text style={styles.nextText}>Guided · easier start</Text></PressableScale><PressableScale onPress={() => startRound('challenge')} style={styles.challengeButton}><Text style={styles.challengeText}>Challenge · full set</Text></PressableScale></View>}
         {phase === 'done' && <View style={[styles.introCard, CARD_SHADOW]}><Text style={styles.resultScore}>{score}%</Text><Text style={styles.introTitle}>{score >= 80 ? 'Great run!' : 'You are building it.'}</Text>{gameId !== 'rhythm-master' && <Text style={styles.explain}>Best streak: {bestStreak}. Mistakes do not cost XP or lives—try the same pace or step down for more clues.</Text>}<PressableScale onPress={() => startRound(difficulty)} style={styles.nextButton}><Text style={styles.nextText}>Play again</Text></PressableScale><PressableScale onPress={() => setPhase('intro')} style={styles.challengeButton}><Text style={styles.challengeText}>Change pace</Text></PressableScale></View>}
         {phase === 'playing' && <>
         {gameId === 'ear-training' && <>
@@ -134,7 +153,7 @@ export default function TrainingGame({ gameId, onExit }: { gameId: TrainingGameI
         {gameId === 'rhythm-master' && <>
           <Text style={styles.prompt}>Tap eight steady beats</Text>
           <Text style={styles.explain}>The first tap starts the clock. Keep each gap near the selected tempo.</Text>
-          <View style={styles.bpmRow}>{[60, 90, 120].map((value) => <PressableScale key={value} onPress={() => { setBpm(value); setTaps([]); setScore(0); }} style={[styles.bpm, bpm === value && styles.bpmActive]}><Text style={styles.bpmText}>{value}</Text></PressableScale>)}</View>
+          <View style={styles.bpmRow}>{[60, 90, 120].map((value) => <PressableScale key={value} onPress={() => { stopAudio(); setBpm(value); setTaps([]); setScore(0); }} style={[styles.bpm, bpm === value && styles.bpmActive]}><Text style={styles.bpmText}>{value}</Text></PressableScale>)}</View>
           <PressableScale onPress={hearTempo} style={styles.listen}><Ionicons name="volume-high" size={22} color={Colors.success} /><Text style={styles.listenText}>Start {bpm} BPM click track</Text></PressableScale>
           <PressableScale onPress={tapBeat} disabled={taps.length >= 8} style={styles.tapPad} accessibilityRole="button"><Text style={styles.tapCount}>{Math.min(taps.length, 8)}/8</Text><Text style={styles.tapLabel}>TAP</Text></PressableScale>
         </>}

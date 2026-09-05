@@ -37,6 +37,7 @@ import {
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
+import FullGuitarSvg from '../../features/games/locker/FullGuitarSvg';
 import { nextTunerHoldString, TuneVerdict } from '../../features/tuner/pitch';
 import { useProgressStore } from '../../features/store/progressStore';
 import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
@@ -62,16 +63,23 @@ const VERDICT_COLORS: Record<TuneVerdict, string> = {
   off: Colors.danger,
 };
 
-function StageMode({ note, cents, label, color, onClose }: { note: string; cents: string; label: string; color: string; onClose: () => void }) {
+function StageMode({ note, cents, label, color, active, starting, error, onToggle, onClose }: { note: string; cents: string; label: string; color: string; active: boolean; starting: boolean; error: string | null; onToggle: () => void; onClose: () => void }) {
   useKeepAwake('standardtune-stage');
   return (
     <Modal visible animationType="fade" onRequestClose={onClose}>
       <View style={styles.stageContainer}>
-        <PressableScale onPress={onClose} style={styles.stageClose} accessibilityRole="button" accessibilityLabel="Exit stage mode"><Text style={styles.stageCloseText}>Exit</Text></PressableScale>
+        <PressableScale onPress={onClose} style={styles.stageClose} accessibilityRole="button" accessibilityLabel="Exit large tuner display"><Text style={styles.stageCloseText}>Exit</Text></PressableScale>
+        <ScrollView style={{ width: '100%', flex: 1 }} contentContainerStyle={styles.stageContent}>
         <Text style={[styles.stageNote, { color }]}>{note}</Text>
         <Text style={[styles.stageCents, { color }]}>{cents}¢</Text>
         <Text style={[styles.stageLabel, { color }]}>{label}</Text>
-        <Text style={styles.stageHelp}>Screen stays awake while stage mode is open.</Text>
+        <PressableScale onPress={onToggle} disabled={starting} style={styles.stageToggle}
+          accessibilityState={{ disabled: starting }} accessibilityLabel={active ? 'Stop tuning' : 'Start tuning'}>
+          <Text style={styles.stageCloseText}>{starting ? 'Starting…' : active ? 'Stop tuning' : 'Start tuning'}</Text>
+        </PressableScale>
+        {error && <Text style={styles.stageHelp}>{error}</Text>}
+        <Text style={styles.stageHelp}>Large display (stage mode) makes the tuner easier to read from a distance and keeps the screen awake. Your tuning settings and accuracy are unchanged.</Text>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -406,7 +414,8 @@ export default function TunerScreen() {
   }));
 
   const compactLayout = height < 700 || fontScale > 1.3;
-  const showStringControls = !(height < 700 && fontScale > 1.5);
+  // Keep guided tuning available at every text size; the page can scroll.
+  const showStringControls = true;
   const circleSize = Math.min(
     width * (tuning.strings.length > 8 ? 0.09 : 0.12),
     tuning.strings.length > 8 ? 40 : compactLayout ? 40 : 48,
@@ -454,8 +463,8 @@ export default function TunerScreen() {
           {profile.experimental ? ' · experimental low range' : ''}
         </Text>
         <View style={styles.modeButtons}>
-          <PressableScale onPress={() => setStageVisible(true)} style={styles.modeButton} accessibilityRole="button">
-            <Text style={styles.modeButtonText}>Stage</Text>
+          <PressableScale onPress={() => setStageVisible(true)} style={styles.modeButton} accessibilityRole="button" accessibilityLabel="Open large tuner display" accessibilityHint="Larger readings and a screen that stays awake. Does not change tuning settings.">
+            <Text style={styles.modeButtonText}>Large display</Text>
           </PressableScale>
           <PressableScale onPress={() => setDiagnosticsVisible(true)} style={styles.modeButton} accessibilityRole="button">
             <Text style={styles.modeButtonText}>Signal help</Text>
@@ -503,14 +512,22 @@ export default function TunerScreen() {
         </View>
 
         <View style={styles.headstockArea}>
+          <FullGuitarSvg
+            design={{ ...selectedGuitarDesign, guitarType: profile.headstock ?? 'acoustic' }}
+            modelId={activeModelId}
+            width={compactLayout ? 110 : 140}
+            height={compactLayout ? 176 : 224}
+          />
+          <Text style={styles.pegGuideLabel}>Tuning pegs</Text>
           <HeadstockSvg
             guitarType={profile.headstock ?? 'acoustic'}
             design={selectedGuitarDesign}
             modelId={activeModelId}
             highlightColor={aimedColor}
             highlightedPeg={aimedString ?? undefined}
-            width={compactLayout ? 100 : 200}
-            height={compactLayout ? 160 : 320}
+            width={compactLayout ? 80 : 100}
+            height={compactLayout ? 128 : 160}
+            animateHighlight={false}
           />
         </View>
 
@@ -800,7 +817,7 @@ export default function TunerScreen() {
           guitarType={profile.headstock}
         />
       )}
-      {stageVisible && <StageMode note={displayNote} cents={centsDisplay} label={centsLabel} color={centsColor} onClose={() => setStageVisible(false)} />}
+      {stageVisible && <StageMode note={displayNote} cents={centsDisplay} label={centsLabel} color={centsColor} active={tuner.isActive} starting={tuner.isStarting} error={tuner.error ? 'Could not start the microphone. Exit this display to check microphone access, then try again.' : null} onToggle={handleToggleTuning} onClose={() => setStageVisible(false)} />}
     </View>
   );
 }
@@ -865,6 +882,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: 8,
   },
+  pegGuideLabel: { color: Colors.dark.muted, fontSize: 12, textAlign: 'center', marginTop: 4 },
   dynamicInstrumentArea: {
     paddingHorizontal: 18,
     marginTop: 8,
@@ -1203,10 +1221,12 @@ const styles = StyleSheet.create({
   diagnosticButton: { minHeight: 48, marginTop: 6, borderRadius: 12, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center' },
   diagnosticButtonText: { color: '#071408', fontWeight: '800' },
   stageContainer: { flex: 1, backgroundColor: '#030307', alignItems: 'center', justifyContent: 'center' },
-  stageClose: { position: 'absolute', top: 42, right: 20, minWidth: 64, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24, borderWidth: 1, borderColor: '#555' },
+  stageClose: { position: 'absolute', zIndex: 2, top: 42, right: 20, minWidth: 64, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24, borderWidth: 1, borderColor: '#555' },
   stageCloseText: { color: '#fff', fontWeight: '700' },
   stageNote: { fontSize: 150, fontWeight: '900' },
   stageCents: { fontSize: 54, fontWeight: '800', fontVariant: ['tabular-nums'] },
   stageLabel: { fontSize: 23, fontWeight: '800', letterSpacing: 3, textTransform: 'uppercase', marginTop: 8 },
-  stageHelp: { position: 'absolute', bottom: 38, color: '#999', fontSize: 12 },
+  stageContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 100, paddingBottom: 38 },
+  stageToggle: { minHeight: 48, paddingHorizontal: 24, paddingVertical: 14, borderWidth: 1, borderColor: '#777', borderRadius: 12, marginTop: 20 },
+  stageHelp: { color: '#bbb', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 16, maxWidth: 460 },
 });

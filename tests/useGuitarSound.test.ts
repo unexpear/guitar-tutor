@@ -16,6 +16,7 @@ type FakePlayer = {
   releasedCount: number;
   play(): void;
   release(): void;
+  setPlaybackRate(rate: number): void;
 };
 
 interface FakeEnv {
@@ -56,10 +57,12 @@ function makeEnv(overrides: Partial<SoundControllerDeps> = {}): FakeEnv {
   const controller = createSoundController({
     createPlayer: (asset) => {
       createdAssets.push(asset);
+      let rate = 1;
       const player: FakePlayer = {
         asset,
         volume: 1,
-        playbackRate: 1,
+        get playbackRate() { return rate; },
+        setPlaybackRate(value: number) { rate = value; },
         shouldCorrectPitch: true,
         played: 0,
         released: false,
@@ -104,6 +107,39 @@ function makeEnv(overrides: Partial<SoundControllerDeps> = {}): FakeEnv {
   };
   return fakeEnv;
 }
+
+test('switching from a chord to a note cancels remaining strum timers', async () => {
+  const env = makeEnv();
+  await env.controller.playChord(['C4', 'E4', 'G4']);
+  const chordPlayers = [...env.players];
+  await env.controller.playNote('C3');
+  env.fireAll();
+  assert.ok(chordPlayers.every((player) => player.releasedCount === 1 && player.played === 0));
+  assert.equal(env.players.at(-1)!.played, 1);
+});
+
+test('switching from a note to a chord releases the old note once', async () => {
+  const env = makeEnv();
+  await env.controller.playNote('C3');
+  const note = env.players[0];
+  await env.controller.playChord(['C4', 'E4']);
+  env.fireAll();
+  assert.equal(note.releasedCount, 1);
+  assert.ok(env.players.slice(1).every((player) => player.played === 1));
+  env.controller.releaseAll();
+  assert.equal(note.releasedCount, 1);
+});
+
+test('slow string preview preserves repeated pitches as separate sounding strings', async () => {
+  const env = makeEnv();
+  await env.controller.playChord(['C4', 'E4', 'G4', 'C4'], 500);
+  assert.deepEqual(env.createdAssets, ['asset:C4', 'asset:E4', 'asset:G4', 'asset:C4']);
+  assert.deepEqual(env.scheduled.map((timer) => timer.at), [0, 500, 1000, 1500]);
+  env.fireAll();
+  assert.ok(env.players.every((player) => player.played === 1));
+  env.controller.releaseAll();
+  assert.ok(env.players.every((player) => player.releasedCount === 1));
+});
 
 test('configureMode requests the correct audio session and swallows rejection', async () => {
   const env = makeEnv();
@@ -151,6 +187,33 @@ test('playNote picks the sample, sets the volume, and plays exactly once', async
   assert.equal(env.players[0].released, false);
 });
 
+test('zero volume reports mute without creating silent players',async()=>{
+  const issues:string[]=[];const env=makeEnv({onIssue:issue=>issues.push(issue)});
+  env.settings.sampleVolume=0;
+  await env.controller.playNote('C4');await env.controller.playChord(['C4']);
+  assert.equal(env.players.length,0);assert.deepEqual(issues,['muted','muted']);
+});
+
+test('reference fallback rate composes with A4 calibration',async()=>{
+  const env=makeEnv({resolveReferenceSample:()=>({asset:'asset:B0',rate:2**(-2/12)})});
+  env.settings.referencePitchHz=442;await env.controller.playNote('A0');
+  assert.equal(env.players[0].playbackRate,2**(-2/12)*442/440);
+});
+
+test('stop all cuts a single guide note and remains reusable',async()=>{
+  const env=makeEnv();await env.controller.playNote('C4');await env.controller.playChord(['E4']);
+  env.controller.releaseAll();env.fireAll();
+  assert.equal(env.players[0].releasedCount,1);assert.equal(env.players[1].played,0);
+  await env.controller.playNote('G4');assert.equal(env.players[2].played,1);
+});
+
+test('missing and failed playback notify the UI',async()=>{
+  const issues:string[]=[];const env=makeEnv({onIssue:issue=>issues.push(issue)});
+  await env.controller.playNote('Z9');assert.deepEqual(issues,['missing']);
+  const broken=makeEnv({onIssue:issue=>issues.push(issue),createPlayer:()=>{throw Error('native failure');}});
+  await broken.controller.playNote('C4');assert.deepEqual(issues,['missing','failed']);
+});
+
 test('reference notes and chords follow the selected A4 calibration', async () => {
   const env = makeEnv();
   env.settings.referencePitchHz = 442;
@@ -173,6 +236,26 @@ test('a second playNote releases the previous player exactly once', async () => 
   assert.equal(env.players[0].released, true);
   assert.equal(env.players[0].releasedCount, 1);
   assert.equal(env.players[1].released, false);
+});
+
+test('recorded chord roots transpose with calibration, without replacing tuner notes', async () => {
+  const env = makeEnv({ resolveChordSample: () => ({ asset: 'recorded:E4', rate: 2 ** (1/12) }) });
+  env.settings.referencePitchHz = 442;
+  await env.controller.playChord(['G4']);
+  assert.equal(env.players[0].asset, 'recorded:E4');
+  assert.equal(env.players[0].playbackRate, 2 ** (1/12) * 442/440);
+  await env.controller.playNote('G4');
+  assert.equal(env.players[1].asset, 'asset:G4');
+  assert.equal(env.players[1].playbackRate,442/440);
+});
+
+test('a partial chord setup failure releases every created player', async () => {
+  let released = 0;
+  const env = makeEnv({createPlayer: () => ({volume:1,shouldCorrectPitch:false,
+    setPlaybackRate() { throw new Error('native failure'); }, play() {}, release() { released++; } })});
+  await env.controller.playChord(['C4','E4']);
+  assert.equal(released,1);
+  assert.equal(env.scheduled.length,0);
 });
 
 test('a missing sample warns and produces no player', async () => {

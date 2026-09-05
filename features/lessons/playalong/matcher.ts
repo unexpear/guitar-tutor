@@ -1,8 +1,6 @@
 import {
   Chord,
   getChord,
-  chordPitchClasses,
-  chordBassMidi,
   chordMidiNotes,
   stringFretToMidi,
 } from '../../chords/data/chords';
@@ -71,7 +69,7 @@ export type DetectionMode = 'mono' | 'poly';
 
 export type Target =
   | { kind: 'note'; stringIndex: number; fret: number; label: string; beats?: number }
-  | { kind: 'chord'; chordName: string; label: string; strums?: number; beats?: number };
+  | { kind: 'chord'; chordName: string; label: string; strums?: number; beats?: number; capo?: number };
 
 export interface PitchSample {
   frequency: number;
@@ -362,9 +360,11 @@ export class TargetMatcher {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.target = target;
     this.chord = targetChord(target);
-    this.chordClasses = this.chord ? chordPitchClasses(this.chord) : new Set();
-    this.chordMidis = this.chord ? chordMidiNotes(this.chord) : [];
-    this.bassMidi = this.chord ? chordBassMidi(this.chord) : null;
+    // The displayed chord is a finger shape; scoring needs its sounding pitches.
+    const capo = target.kind === 'chord' ? target.capo ?? 0 : 0;
+    this.chordMidis = this.chord ? chordMidiNotes(this.chord).map((midi) => midi + capo) : [];
+    this.chordClasses = new Set(this.chordMidis.map(pitchClassOf));
+    this.bassMidi = this.chordMidis.length ? Math.min(...this.chordMidis) : null;
     this.bassClass = this.bassMidi !== null ? pitchClassOf(this.bassMidi) : null;
     this.noteMidi =
       target.kind === 'note' ? stringFretToMidi(target.stringIndex, target.fret) : null;

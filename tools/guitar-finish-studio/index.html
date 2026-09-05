@@ -14,13 +14,24 @@
       <div>
         <p class="eyebrow">FREE BROWSER TOOL</p>
         <h1>Guitar Finish Studio</h1>
-        <p class="subtitle">Import a transparent guitar PNG, protect the hardware, then explore paint and material combinations.</p>
+        <p class="subtitle">Build a static 3D guitar, explore a collection, or recolor a photo. No account needed.</p>
       </div>
       <div class="privacy-pill" title="Images never leave this browser">Local only · no uploads</div>
     </header>
+    <nav class="workspace-nav" aria-label="Studio workspace">
+      <button type="button" data-workspace="build" aria-pressed="true">3D builder</button>
+      <button type="button" data-workspace="collection" aria-pressed="false">Collection &amp; basket</button>
+      <button type="button" data-workspace="photo" aria-pressed="false">Photo editor · 2D</button>
+    </nav>
+    <p id="workspace-help" class="workspace-help" role="status">Choose a shape and finish. The large preview is the actual exported 3D model.</p>
 
     <main class="layout">
-      <section class="preview-panel" aria-label="Guitar preview">
+      <section class="preview-panel model-panel" data-surface="build" aria-label="3D model and export">
+        <div class="canvas-toolbar"><strong>Static 3D model</strong><span>Drag to rotate · scroll to zoom</span></div>
+        <div id="model-stage"></div>
+        <div id="model-export"></div>
+      </section>
+      <section class="preview-panel photo-panel" data-surface="photo" aria-label="Guitar photo preview" hidden>
         <div class="canvas-toolbar">
           <div>
             <strong id="source-name">Built-in acoustic sample</strong>
@@ -41,17 +52,17 @@
       </section>
 
       <aside class="controls" aria-label="Finish controls">
-        <section class="card welcome-card">
+        <section class="card welcome-card" data-surface="photo" hidden>
           <div class="step"><span>1</span><div><strong>Choose a guitar</strong><small>Use a sample or import a transparent render.</small></div></div>
           <div class="step"><span>2</span><div><strong>Protect the hardware</strong><small>Brush over strings, pickups, and anything that should keep its original color.</small></div></div>
           <div class="step"><span>3</span><div><strong>Design and export</strong><small>Everything updates live. PNG export preserves transparency.</small></div></div>
         </section>
 
-        <section class="card">
+        <section class="card" data-surface="photo" hidden>
           <div class="section-heading"><h2>Starting point</h2><button id="randomize" class="text-button" type="button">Surprise me</button></div>
           <div class="field-row">
             <label>Sample
-              <select id="sample-model"><option value="acoustic">Acoustic</option><option value="electric">Electric</option></select>
+              <select id="sample-model"><option value="photo-acoustic">Photoreal acoustic</option><option value="photo-electric">Photoreal electric</option><option value="acoustic">Illustrated acoustic (demo)</option><option value="electric">Illustrated electric (demo)</option></select>
             </label>
             <label>Preset
               <select id="preset"></select>
@@ -59,7 +70,7 @@
           </div>
         </section>
 
-        <section class="card paint-card">
+        <section class="card paint-card" data-surface="build photo">
           <div class="section-heading"><h2>Paint layers</h2><button id="swap-colors" class="text-button" type="button">Swap colors</button></div>
           <div class="paint-grid">
             <fieldset>
@@ -79,7 +90,7 @@
           <label>Texture seed<input id="seed" type="number" min="1" max="999999" value="1847" inputmode="numeric" /></label>
         </section>
 
-        <section class="card">
+        <section class="card" data-surface="photo" hidden>
           <div class="section-heading"><h2>Paint mask</h2><button id="undo-mask" class="text-button" type="button" disabled>Undo</button></div>
           <p class="help">A mask tells the studio what may be recolored. Imported images start with every visible pixel selected.</p>
           <div class="segmented" role="group" aria-label="Mask brush mode">
@@ -96,7 +107,7 @@
           </div>
         </section>
 
-        <section class="card">
+        <section class="card" data-surface="build photo">
           <h2>Recipe</h2>
           <p class="help">Recipes save paint choices, not your source image or mask.</p>
           <div class="small-actions">
@@ -107,7 +118,7 @@
           </div>
         </section>
 
-        <section class="card batch-card">
+        <section class="card batch-card" data-surface="collection" hidden>
           <div class="section-heading"><h2>Rule-based batch lab</h2><span class="new-badge">BATCH</span></div>
           <p class="help">Build a repeatable collection from design rules. The same colors, rules, and seed always produce the same set.</p>
           <div class="field-row">
@@ -150,9 +161,17 @@
           <button id="export-batch" class="button button-secondary wide-button" type="button" disabled>Download batch ZIP</button>
         </section>
 
-        <section class="card mesh-card">
-          <div class="section-heading"><h2>Static 3D mesh</h2><span class="new-badge">BETA</span></div>
-          <p class="help">Start from a researched instrument blueprint, then export separate body, tapered neck, correctly spaced frets, hardware, and strings. Includes UVs, an MTL material, and the current finish texture—no armature or animation.</p>
+        <section class="card mesh-card" data-surface="build">
+          <h2>Actual 3D asset</h2>
+          <label>3D design family<select id="collection-style"><option value="">Classic (existing recipes)</option><option value="0">Flame / traditional</option><option value="1">Quilt / broad body</option><option value="2">Burl / slim waist</option><option value="3">Ribbon / offset</option><option value="4">Ripple / compact</option><option value="5">Spalted / sculpted</option></select></label>
+          <label class="check-card"><input id="vary-construction" type="checkbox" checked /><span>Mix design families in new collections</span></label>
+          <p class="help">Families vary body proportions, figured surface, perimeter binding and fret inlays. Finish still controls reflectivity; gloss or matte shows the wood figure best. These are procedural surfaces, not scanned wood. The photo editor is separate.</p>
+          <p class="help">Drag to rotate; scroll to zoom. This is the geometry exported to GLB, not the photo above. Finish recipes become PBR paint; importing a photograph does not reconstruct its shape.</p>
+          <canvas id="mesh-preview" width="512" height="600" aria-label="Rotatable 3D guitar preview"></canvas>
+          <button id="preview-mesh" class="button button-primary wide-button" type="button">Update 3D preview</button>
+          <label class="check-card"><input id="review-3d" type="checkbox" checked /><span>Review and keep actual 3D assets (GLB + thumbnail)</span></label>
+          <div class="section-heading"><h2>Construction</h2><span class="new-badge">STATIC</span></div>
+          <p class="help">Configure the actual mesh below. GLB exports include geometry, embedded PBR textures and surface normals—no armature or animation. Choose the matching body profile; an imported photo does not determine unseen geometry.</p>
           <label>Instrument blueprint
             <select id="mesh-blueprint">
               <option value="steel-acoustic">Steel-string dreadnought</option>
@@ -193,7 +212,9 @@
             <label class="range-label"><span>Body depth <output id="mesh-depth-value">10.0 cm</output></span><input id="mesh-depth" type="range" min="3.5" max="12" value="10" step="0.5" /></label>
             <p id="mesh-spec-note" class="spec-note">25.4 in scale · 20 frets · neck joins at fret 14</p>
           </details>
-          <button id="export-mesh" class="button button-secondary wide-button" type="button">Download OBJ mesh ZIP</button>
+          <details><summary>Legacy OBJ export</summary><p class="help">Older low-poly exporter with a projected 2D texture. Use the GLB game-asset export below for the actual previewed geometry and PBR materials.</p>
+          <button id="export-mesh" class="button button-secondary wide-button" type="button">Download legacy OBJ mesh ZIP</button></details>
+          <button id="export-game-asset" class="button button-primary wide-button" type="button">Download game asset ZIP (GLB + LODs + collision)</button>
           <p id="mesh-status" class="help batch-status" role="status" aria-live="polite">Best for Blender, game engines, and further hand-detailing.</p>
         </section>
       </aside>
@@ -201,6 +222,8 @@
 
     <footer>Original output depends on the source image you provide. Only use artwork you have permission to modify.</footer>
     <script src="review.js"></script>
+    <script src="mesh-studio.bundle.js"></script>
     <script src="app.js"></script>
+    <script src="workspace.js"></script>
   </body>
 </html>

@@ -1,15 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { Linking, Share, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
-import { chordMidiNotes, getChord, midiToNoteName, stringFretToMidi } from '../chords/data/chords';
+import { midiToNoteName, stringFretToMidi } from '../chords/data/chords';
 import { useGuitarSound } from '../audio/hooks/useGuitarSound';
+import { isReferenceAudible } from '../audio/audibility';
+import { useSettingsStore } from '../store/settingsStore';
 import { useProgressStore } from '../store/progressStore';
 import type { Song, SongEvent } from './data/songs';
 import {
   DEFAULT_SONG_PRACTICE_OPTIONS,
   arrangementEvents,
+  guideChordMidiNotes,
   capoChoicesForSong,
   songPracticeFeedback,
   songCorrectionIssueUrl,
@@ -47,11 +51,13 @@ export default function SongPracticeStudio({
   const [options, setOptions] = useState<SongPracticeOptions>({
     ...DEFAULT_SONG_PRACTICE_OPTIONS,
     ...storedOptions,
+    sectionId: song.arrangement?.sections.some((section) => section.id === storedOptions?.sectionId)
+      ? storedOptions!.sectionId : null,
   });
   const [correction, setCorrection] = useState('');
   const [guideIndex, setGuideIndex] = useState(-1);
   const guideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { playChord, playNote, stopChord } = useGuitarSound();
+  const { playChord, playNote, stopAll } = useGuitarSound();
   const events = useMemo(
     () => arrangementEvents(song, options.sectionId),
     [song, options.sectionId],
@@ -68,19 +74,16 @@ export default function SongPracticeStudio({
   const mySet = songSetlists.find((setlist) => setlist.id === 'my-set');
   const isInSet = mySet?.songIds.includes(song.id) ?? false;
 
-  useEffect(() => () => {
-    if (guideTimer.current) clearTimeout(guideTimer.current);
-    stopChord();
-  }, [stopChord]);
-
-  if (!arrangement) return null;
-
-  const stopGuide = () => {
+  const stopGuide = useCallback(() => {
     if (guideTimer.current) clearTimeout(guideTimer.current);
     guideTimer.current = null;
     setGuideIndex(-1);
-    stopChord();
-  };
+    stopAll();
+  }, [stopAll]);
+  useFocusEffect(useCallback(() => stopGuide, [stopGuide]));
+  useEffect(() => stopGuide, [stopGuide]);
+
+  if (!arrangement) return null;
 
   const updateOptions = (next: SongPracticeOptions) => {
     stopGuide();
@@ -99,11 +102,16 @@ export default function SongPracticeStudio({
       stopGuide();
       return;
     }
+    if (!isReferenceAudible(useSettingsStore.getState())) {
+      // Use the shared mute explanation, then stop instead of advancing silently.
+      void playNote('A4');
+      stopGuide();
+      return;
+    }
     setGuideIndex(index);
     const event = events[index];
     if (event.kind === 'chord') {
-      const chord = getChord(transposeChordName(event.chordName, shapeShift) ?? event.chordName);
-      if (chord) playChord(chordMidiNotes(chord).map(midiToNoteName));
+      void playChord(guideChordMidiNotes(event.chordName, transposeSemitones, options.capo).map(midiToNoteName));
     } else {
       const note = transposeNoteEvent(event, transposeSemitones);
       playNote(midiToNoteName(stringFretToMidi(note.stringIndex, note.fret)));

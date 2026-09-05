@@ -1,0 +1,95 @@
+{
+  "source": "https://raw.githubusercontent.com/sfzinstruments/karoryfer.emilyguitar/b4920dc662fd9cad6dcaccdeecffdd91c8725d8c/",
+  "license": "CC0-1.0",
+  "processing": "24-bit PCM to mono 16-bit PCM; peak normalized to 0.65; 3 seconds maximum, 80 ms fade out; no synthesis or pitch shift",
+  "samples": [
+    {
+      "name": "e2",
+      "midi": 40,
+      "path": "notes/e2_mf_rr1.wav",
+      "sourceSha256": "e1a2c4443e754a40afed733430ef52fa35490e110f2bacee429ccffd61e9d201",
+      "sha256": "14896f70f222ef0419fab2ad0aad8291ae110494399231a37f2295264ba4346b",
+      "bytes": 264644
+    },
+    {
+      "name": "gb2",
+      "midi": 42,
+      "path": "notes/gb2_mf_rr1.wav",
+      "sourceSha256": "aab2c703be7803f4f9f2ca0783700132a7a653aab9ee23b51095423d8a63dfc2",
+      "sha256": "68751c4061413aab25b876a4ff4ee058b242e7ae8a9eb7507e29398c3e32ccc5",
+      "bytes": 264644
+    },
+    {
+      "name": "a2",
+      "midi": 45,
+      "path": "notes/a2_mf_rr1.wav",
+      "sourceSha256": "b0031818b989d576cdc189154c90162e1b545b7ee9c56a6640ce0e7e658079c4",
+      "sha256": "da3d8c73ef6e8f3d9dbb123ffe9a85a028892ddffa52cd4b06fa87b04b56d906",
+      "bytes": 264644
+    },
+    {
+      "name": "c3",
+      "midi": 48,
+      "path": "notes/c3_mf_rr1.wav",
+      "sourceSha256": "255adb40062435e8774a8d02f26b98f7741f3496b362eb265ca3453f5e4ad55d",
+      "sha256": "386db10023641e8c0d2b3788aa53ef5d089b60b92cb1106d669da6ef951f811c",
+      "bytes": 264644
+    },
+    {
+      "name": "eb3",
+      "midi": 51,
+      "path": "notes/eb3_mf_rr1.wav",
+      "sourceSha256": "12978712adecefb7643c2f0e2632e87f684c26654073ce425e708c70e642c5b5",
+      "sha256": "3f4a7f41d767df0eee43426e4f07cc5230ca841ce70fff2720b33c8ab8c485dd",
+      "bytes": 264644
+    },
+    {
+      "name": "gb3",
+      "midi": 54,
+      "path": "notes/gb3_mf_rr1.wav",
+      "sourceSha256": "0cd292ead34dc8ff7c4e4daf4638d73f3a81b95a50f531c626cf0e737babe785",
+      "sha256": "33ace59e4b37876287215ad46ad280a1c36e66ec74709fddd0bed8679b0a3650",
+      "bytes": 264644
+    },
+    {
+      "name": "a3",
+      "midi": 57,
+      "path": "notes/a3_mf_rr1.wav",
+      "sourceSha256": "97da917363eef473435df5e215cedf18579fdef7d7cb0f677f9a50f085930c13",
+      "sha256": "1f034094944bb7e3cb7f3c826a08f82c5bc36211107f8e39fcd24e2cb539da7e",
+      "bytes": 264644
+    },
+    {
+      "name": "c4",
+      "midi": 60,
+      "path": "notes/c4_mf_rr1.wav",
+      "sourceSha256": "67643ecb0b523745ff80127396a5c8c6e871115102020c34ab84cce3140aab70",
+      "sha256": "6e97e12808963a9f77ee506d6c945e9d19e6943681d53df32e908b4b4a9f7b3e",
+      "bytes": 264644
+    },
+    {
+      "name": "eb4",
+      "midi": 63,
+      "path": "notes/eb4_mf_rr1.wav",
+      "sourceSha256": "bffb64bc23b38596507e0b62abe5d7df7e70364a0564ca71bdbed27b9b91b8d2",
+      "sha256": "3158a97cca5b22ab334757a9189bfa889843fb5a9bc302c5da96862c55ead147",
+      "bytes": 264644
+    },
+    {
+      "name": "gb4",
+      "midi": 66,
+      "path": "notes/gb4_mf_rr1.wav",
+      "sourceSha256": "cfcffc387151aaec0e29f23d28004404ab964d0fd1cd819303a5f7e4711d1e87",
+      "sha256": "262a05da57d755429589e1ff3664ba03c939294c97970af9c44cc66bb517cb14",
+      "bytes": 264644
+    },
+    {
+      "name": "a4",
+      "midi": 69,
+      "path": "notes/a4_mf_rr1.wav",
+      "sourceSha256": "4df039e1d517e727149ba4ef8e1616ead6761ab485fa541f522611a9388471b8",
+      "sha256": "e3cba60db2bea13105285710662ccc9509e93c77b1e69ced567efc8f026173d6",
+      "bytes": 264644
+    }
+  ]
+}

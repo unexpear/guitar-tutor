@@ -14,6 +14,7 @@ interface HeadstockProps {
   highlightedPeg?: number;
   width?: number;
   height?: number;
+  animateHighlight?: boolean;
 }
 
 const ACOUSTIC_FACE =
@@ -38,6 +39,7 @@ export default function HeadstockSvg({
   highlightedPeg,
   width = 200,
   height = 320,
+  animateHighlight = true,
 }: HeadstockProps) {
   const family = finishFamily(design);
   const compatibleModelId = modelId?.startsWith(guitarType)
@@ -74,7 +76,7 @@ export default function HeadstockSvg({
 
   useEffect(() => {
     pulseOpacity.stopAnimation();
-    if (!guidance || reduceMotion) {
+    if (!guidance || reduceMotion || !animateHighlight) {
       pulseOpacity.setValue(guidance ? 0.78 : 0);
       return;
     }
@@ -101,7 +103,7 @@ export default function HeadstockSvg({
     pulse.start();
 
     return () => pulse.stop();
-  }, [guidance, pulseOpacity, reduceMotion]);
+  }, [guidance, pulseOpacity, reduceMotion, animateHighlight]);
 
   return (
     <View style={{ alignItems: 'center', height, width }}>

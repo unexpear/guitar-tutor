@@ -1,7 +1,8 @@
-# Planned 1.3.0 / Android code 10 — publication on hold
+# Planned 1.3.0 / Android code 10 — device gate pending
 
-The user explicitly requested no release until they say to proceed. Do not tag,
-push a release, or upload this candidate. Current app/package versions remain
+The user resumed commit, push and release on 2026-09-05. Source commits may be
+pushed, but the required device gate below has not passed. Do not create a
+publishing tag or upload this candidate until it does. Current app/package versions remain
 1.2.0 and Android code 9; the eventual release must synchronize app.json,
 package.json and the root versions in package-lock.json.
 
@@ -20,12 +21,28 @@ package.json and the root versions in package-lock.json.
   image editing was used. This is an earlier capture of the unchanged Songs page,
   not proof that the latest candidate passed device testing.
 - Guitar Finish Studio adds local swipe review, recipe persistence, kept exports,
-  backup/restore, and preference-ranked suggestions. It does not assess image
-  quality or guitar anatomy, and exports use the current source image and mask.
+  backup/restore, preference-ranked suggestions, static 3D mesh/PBR exports and
+  standalone Windows packaging. Suggestions do not assess image quality or
+  guitar anatomy. Photo exports and procedural 3D exports are distinct workflows.
+- Audio playback uses Expo's supported playback-rate method, includes 11 CC0
+  recorded guitar samples, and handles mute/missing/playback exceptions visibly.
+  Reference lookup supports accidentals and edge-range pitch shifting; capo guide
+  audio, playback cleanup, saved-section fallback and progression storage are fixed.
+- Chord details offer per-string playback and an arpeggio. About now explains its
+  values. Stage is labeled Large display. The six-string acoustic/electric tuner
+  shows the selected full guitar and a static highlighted tuning-peg close-up.
 
 ## Verification and remaining device gate
 
-On 2026-09-05, 300 tests and TypeScript passed. Android debug compilation passed.
+On 2026-09-05, the current candidate passed 319 app tests, TypeScript, five studio
+mesh tests, Android export (1,982 modules / 189 assets), and source whitespace
+checks. The generated Three.js bundle contains upstream shader-string whitespace
+and is excluded from the whitespace check; it rebuilt successfully. The audio
+audit found all 79 bundled WAVs present and non-silent. These
+checks do not establish physical playback or microphone accuracy. ADB currently
+lists no connected devices.
+
+Earlier Android debug compilation passed.
 The standalone studio was checked in Edge at a 393px viewport: keep/pass, mouse
 swipe, keyboard decisions, undo, suggestions, reload persistence, imported
 photoreal artwork and kept-only ZIP export. The ZIP manifest matched its PNG count.
@@ -42,5 +59,7 @@ Compilation is not device verification. Before release:
    separated from mic scoring, green feedback and timing/score completion.
 4. Check low bass E1/B0 on real hardware before claiming those ranges validated.
 5. Refresh remaining store captures as needed and confirm the intended Play track.
-6. Only after the user resumes release, synchronize version 1.3.0 / code 10 and
-   use the release workflow. The current helper increments the code automatically.
+6. After the device gate passes, synchronize version 1.3.0 / code 10 and use the
+   release workflow. The current helper increments the code automatically but
+   does not synchronize package.json or package-lock.json. A version tag also
+   publishes the GitHub release and submits to the configured Play alpha track.

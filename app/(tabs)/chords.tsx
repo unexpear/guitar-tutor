@@ -8,6 +8,7 @@ import {
   ScrollView,
   Pressable,
   useWindowDimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,8 +22,10 @@ import {
   ChordType,
   chordMidiNotes,
   midiToNoteName,
+  stringFretToMidi,
 } from '../../features/chords/data/chords';
 import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
+import { useSettingsStore } from '../../features/store/settingsStore';
 import { useProgressStore } from '../../features/store/progressStore';
 import {
   accuracy,
@@ -134,8 +137,14 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
   const acc = accuracy(stat);
 
   // Low string to high, so the strum runs in the direction of a downstroke.
-  const handlePlay = () =>
-    playChord(chordMidiNotes(chord).map(midiToNoteName));
+  const handlePlay = (staggerMs = 55) => {
+    const { soundsEnabled, sampleVolume } = useSettingsStore.getState();
+    if (!soundsEnabled || sampleVolume === 0) {
+      Alert.alert('Reference audio is muted', 'Enable sounds and raise the sample volume in Settings, then check your phone’s media volume.');
+      return;
+    }
+    void playChord(chordMidiNotes(chord).map(midiToNoteName), staggerMs);
+  };
 
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.detailOverlay}>
@@ -149,6 +158,7 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
         entering={FadeInDown.springify()}
         style={[styles.detailSheet, { backgroundColor: color.surfaceElevated }]}
       >
+        <ScrollView contentContainerStyle={styles.detailContent}>
         <View style={styles.detailHandle} />
         <Text style={[styles.detailName, { color: color.text }]}>{chord.name}</Text>
         <Text style={[styles.detailType, { color: color.muted }]}>
@@ -170,8 +180,13 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
           {stringNames.map((s, i) => {
             const fret = chord.strings[i];
             const finger = chord.fingers[i];
+            const note = fret >= 0 ? midiToNoteName(stringFretToMidi(i, fret)) : null;
             return (
-              <View key={s} style={styles.detailStringCol}>
+              <PressableScale key={s} style={styles.detailStringCol}
+                disabled={note === null}
+                accessibilityState={{ disabled: note === null }}
+                accessibilityLabel={note ? `String ${6 - i}, ${fret === 0 ? 'open' : `fret ${fret}`}, hear ${note}` : `String ${6 - i}, do not play`}
+                onPress={() => { if (note) void playChord([note], 0); }}>
                 <Text style={[styles.detailStringLabel, { color: color.muted }]}>{s}</Text>
                 <View
                   style={[
@@ -189,7 +204,8 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
                 <Text style={[styles.detailFingerLabel, { color: color.muted }]}>
                   {finger > 0 ? `F${finger}` : '—'}
                 </Text>
-              </View>
+                <Text style={[styles.detailStringLabel, { color: color.text }]}>{note ?? '—'}</Text>
+              </PressableScale>
             );
           })}
         </View>
@@ -200,10 +216,13 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
         <Text style={styles.detailLegend}>
           ○ play open · ✕ don&apos;t play · numbers down the side are frets
         </Text>
+        <Text style={styles.detailLegend}>
+          Standard tuning · Tap a string to hear its note. Different positions can sound the same pitch.
+        </Text>
 
         <View style={styles.detailActions}>
           <PressableScale
-            onPress={handlePlay}
+            onPress={() => handlePlay()}
             style={[styles.detailPlayBtn, { backgroundColor: color.tint }]}
             accessibilityRole="button"
             accessibilityLabel={`Hear ${chord.name}`}
@@ -230,6 +249,11 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
           </PressableScale>
         </View>
 
+        <PressableScale onPress={() => handlePlay(500)} style={styles.detailCloseBtn}
+          accessibilityLabel={`Hear each sounding string of ${chord.name}, slowly`}>
+          <Text style={[styles.detailCloseText, { color: color.tint }]}>Hear each string</Text>
+        </PressableScale>
+
         <PressableScale
           onPress={onClose}
           style={styles.detailCloseBtn}
@@ -237,6 +261,7 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
         >
           <Text style={[styles.detailCloseText, { color: color.muted }]}>Close</Text>
         </PressableScale>
+        </ScrollView>
       </Animated.View>
     </Animated.View>
   );
@@ -538,6 +563,10 @@ const styles = StyleSheet.create({
   detailSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    maxHeight: '90%',
+    overflow: 'hidden',
+  },
+  detailContent: {
     paddingTop: 12,
     paddingBottom: 36,
     paddingHorizontal: 24,
@@ -571,11 +600,14 @@ const styles = StyleSheet.create({
   detailStrings: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
+    flexWrap: 'wrap',
+    gap: 4,
     marginTop: 24,
     marginBottom: 28,
   },
   detailStringCol: {
+    minWidth: 44,
+    minHeight: 48,
     alignItems: 'center',
     gap: 6,
   },
