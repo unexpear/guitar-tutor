@@ -1,10 +1,11 @@
-# Planned 1.3.0 / Android code 10 — device gate pending
+# 1.3.0 / Android code 10 — owner testing release
 
-The user resumed commit, push and release on 2026-09-05. Source commits may be
-pushed, but the required device gate below has not passed. Do not create a
-publishing tag or upload this candidate until it does. Current app/package versions remain
-1.2.0 and Android code 9; the eventual release must synchronize app.json,
-package.json and the root versions in package-lock.json.
+On 2026-09-05 the owner explicitly authorized publishing before device validation:
+they are the only user and test through releases. The checks below are therefore
+post-release owner acceptance checks, not a publication blocker. They have NOT
+passed yet. Publish through the existing GitHub APK / Play alpha testing workflow;
+this is not evidence of production readiness. The release targets app/package
+version 1.3.0 and Android code 10.
 
 ## Reviewed candidate
 
@@ -49,7 +50,7 @@ photoreal artwork and kept-only ZIP export. The ZIP manifest matched its PNG cou
 
 The new Android debug launch still failed to load its JavaScript from Metro.
 A temporary application debug-flag override did not resolve it and was reverted.
-Compilation is not device verification. Before release:
+Compilation is not device verification. Owner checks after installing this release:
 
 1. Run the exact release candidate on a physical phone, with normal and enlarged
    text, and check tuner, Settings values, game badges and the model picker.
@@ -59,7 +60,7 @@ Compilation is not device verification. Before release:
    separated from mic scoring, green feedback and timing/score completion.
 4. Check low bass E1/B0 on real hardware before claiming those ranges validated.
 5. Refresh remaining store captures as needed and confirm the intended Play track.
-6. After the device gate passes, synchronize version 1.3.0 / code 10 and use the
-   release workflow. The current helper increments the code automatically but
-   does not synchronize package.json or package-lock.json. A version tag also
-   publishes the GitHub release and submits to the configured Play alpha track.
+6. Report device results against version 1.3.0 / code 10. The release helper
+   increments the Android code automatically; package versions are synchronized
+   separately. A version tag publishes the GitHub release and submits to the
+   configured Play alpha track.

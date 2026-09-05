@@ -1,7 +1,7 @@
-- Common chord progressions and generic riff exercises, separate from song references
-- Section loops, four speeds, moving charts and beat guidance
-- Automatic transpose and easier capo-shape suggestions
-- Guide playback, mic scoring and specific practice feedback
-- Saved songs, a local setlist and remembered practice settings
-- Public correction review plus local drafts with no automatic upload
-- Beginner and expert tuner stability improvements
+- Fixed Hear it playback and added real CC0 guitar recordings
+- Hear chords together, string by string, or one string at a time
+- Fixed capo guide pitch, audio cleanup and muted playback feedback
+- Added common progressions and generic riff exercises
+- Improved Follow Me scoring and saved practice settings
+- Visible guitar tuning aid, clearer About text and Large display mode
+- Owner testing build: phone audio, microphone and layout checks are ongoing

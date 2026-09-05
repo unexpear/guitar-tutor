@@ -68,4 +68,5 @@ physical playback checks below or establish low-bass speaker audibility.
 Automated tests verify the controller and calibrated strum behavior, not physical
 speaker output. Check Hear it for C, G, E minor and a sharp/barre chord on the phone;
 repeat rapidly, switch from the tuner, and check muted settings and Bluetooth.
-The release remains on hold until the user's approval and device gate.
+The owner authorized release-based testing on 2026-09-05. These physical checks
+remain unverified and will be performed after installing the testing release.
