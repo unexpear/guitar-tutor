@@ -36,6 +36,8 @@
   let undoStack = [];
   let sourceKind = 'sample';
   let batchResults = [];
+  let generatedRules = null;
+  let review = null;
   let meshProfile = 'acoustic';
 
   const controls = {
@@ -241,6 +243,7 @@
   }
 
   function render() {
+    review?.refresh();
     renderDesign(canvas, recipe(), controls.showMask.checked || brushMode !== 'off');
     el('primary-hex').textContent = controls.primary.value.toUpperCase();
     el('accent-hex').textContent = controls.accent.value.toUpperCase();
@@ -397,7 +400,7 @@
     const rules = batchRules(); el('batch-count').value = String(rules.count); el('batch-seed').value = String(rules.seed);
     el('batch-status').textContent = 'Building rule-based collection…';
     await new Promise((resolve) => requestAnimationFrame(resolve));
-    batchResults = buildBatch(rules); const gallery = el('batch-gallery'); gallery.replaceChildren();
+    batchResults = buildBatch(rules); generatedRules = rules; const gallery = el('batch-gallery'); gallery.replaceChildren();
     batchResults.forEach((design, index) => {
       const item = document.createElement('div'); item.className = 'batch-item';
       const preview = document.createElement('canvas'); preview.width = WIDTH; preview.height = HEIGHT; renderDesign(preview, design);
@@ -406,6 +409,7 @@
     });
     el('batch-status').textContent = `${batchResults.length} unique designs ready. Seed ${rules.seed}.`;
     el('export-batch').disabled = batchResults.length === 0; button.disabled = false;
+    review.add(batchResults);
   }
 
   function canvasBlob(target) {
@@ -611,20 +615,21 @@
     button.disabled = false;
   }
 
-  async function exportBatch() {
-    if (!batchResults.length) return;
+  async function exportBatch(designs = batchResults, rules = generatedRules) {
+    if (!designs.length) return;
+    const snapshot = designs.map((design) => ({ ...design }));
     const button = el('export-batch'); button.disabled = true; const entries = [];
     try {
-      for (let index = 0; index < batchResults.length; index += 1) {
-        el('batch-status').textContent = `Rendering ${index + 1} of ${batchResults.length}…`;
-        const output = document.createElement('canvas'); output.width = WIDTH; output.height = HEIGHT; renderDesign(output, batchResults[index]);
+      for (let index = 0; index < snapshot.length; index += 1) {
+        el('batch-status').textContent = `Rendering ${index + 1} of ${snapshot.length}…`;
+        const output = document.createElement('canvas'); output.width = WIDTH; output.height = HEIGHT; renderDesign(output, snapshot[index]);
         entries.push({ name: `designs/guitar-finish-${String(index + 1).padStart(2, '0')}.png`, data: new Uint8Array(await (await canvasBlob(output)).arrayBuffer()) });
         if (index % 4 === 3) await new Promise((resolve) => requestAnimationFrame(resolve));
       }
-      const manifest = { format: 'guitar-finish-studio-collection', version: 1, createdBy: 'Guitar Finish Studio', rules: batchRules(), designs: batchResults };
+      const manifest = { format: 'guitar-finish-studio-collection', version: 1, createdBy: 'Guitar Finish Studio', rules, designs: snapshot };
       entries.push({ name: 'manifest.json', data: new TextEncoder().encode(`${JSON.stringify(manifest, null, 2)}\n`) });
-      const blob = storeZip(entries); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `guitar-finish-batch-${batchRules().seed}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-      el('batch-status').textContent = `${batchResults.length} PNGs and manifest downloaded as one ZIP.`;
+      const blob = storeZip(entries); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = rules ? `guitar-finish-batch-${rules.seed}.zip` : 'guitar-kept-finishes.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      el('batch-status').textContent = `${snapshot.length} PNGs and manifest downloaded as one ZIP.`;
     } catch { el('batch-status').textContent = 'The batch could not be exported. Try a smaller collection.'; }
     button.disabled = false;
   }
@@ -682,7 +687,7 @@
   el('reset-all').addEventListener('click', () => { controls.preset.value = '0'; applyPreset(0); drawSample(el('sample-model').value); setStatus('Design reset.'); });
   el('brush-size').addEventListener('input', () => { el('brush-value').textContent = `${el('brush-size').value} px`; });
   el('generate-batch').addEventListener('click', generateBatch);
-  el('export-batch').addEventListener('click', exportBatch);
+  el('export-batch').addEventListener('click', () => exportBatch());
   el('mesh-blueprint').addEventListener('change', (event) => { if (event.target.value !== 'custom') applyMeshBlueprint(event.target.value); });
   ['mesh-profile','mesh-strings','mesh-scale','mesh-frets','mesh-nut-width','mesh-bridge-spacing','mesh-pickups'].forEach((id) => el(id).addEventListener('input', () => {
     el('mesh-blueprint').value = 'custom'; meshProfile = el('mesh-profile').value; el('mesh-spec-note').textContent = 'Custom dimensions · verify against your intended instrument before manufacturing.';
@@ -695,4 +700,22 @@
   canvas.parentElement.addEventListener('drop', (event) => importSource(event.dataTransfer.files[0]));
 
   applyPreset(0); drawSample('acoustic');
+  review = GuitarReview.mount({
+    host: el('batch-gallery').parentElement,
+    render: renderDesign,
+    exportDesigns: (designs) => exportBatch(designs, null),
+    validate: (design) => design && design.format === 'guitar-finish-studio' && design.version === 1
+      && /^#[0-9a-f]{6}$/i.test(design.primary) && /^#[0-9a-f]{6}$/i.test(design.accent)
+      && finishes.includes(design.primaryFinish) && finishes.includes(design.accentFinish) && patterns.includes(design.pattern)
+      && Number.isFinite(design.textureStrength) && design.textureStrength >= 0 && design.textureStrength <= 100
+      && Number.isFinite(design.patternScale) && design.patternScale >= 50 && design.patternScale <= 180
+      && Number.isInteger(design.seed) && design.seed >= 1 && design.seed <= 999999,
+    generate: (approved) => {
+      const rules = batchRules();
+      return approved.slice(-4).flatMap((design, index) => buildBatch({ ...rules,
+        basePrimary: design.primary, baseAccent: design.accent, count: 12,
+        seed: (rules.seed + design.seed + index * 7919) % 999999 + 1,
+      }));
+    },
+  });
 })();

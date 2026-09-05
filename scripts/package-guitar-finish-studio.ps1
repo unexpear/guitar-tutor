@@ -18,6 +18,7 @@ New-Item -ItemType Directory -Path $stagingDirectory | Out-Null
 Copy-Item -LiteralPath (Join-Path $sourceDirectory 'index.html') -Destination $stagingDirectory
 Copy-Item -LiteralPath (Join-Path $sourceDirectory 'styles.css') -Destination $stagingDirectory
 Copy-Item -LiteralPath (Join-Path $sourceDirectory 'app.js') -Destination $stagingDirectory
+Copy-Item -LiteralPath (Join-Path $sourceDirectory 'review.js') -Destination $stagingDirectory
 Copy-Item -LiteralPath (Join-Path $sourceDirectory 'README.md') -Destination $stagingDirectory
 
 Compress-Archive -Path (Join-Path $stagingDirectory '*') -DestinationPath $archivePath -CompressionLevel Optimal -Force

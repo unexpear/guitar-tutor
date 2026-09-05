@@ -92,6 +92,16 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .batch-item span { display: block; overflow: hidden; margin-top: 5px; color: var(--muted); font-size: .62rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 footer { max-width: 1300px; margin: auto; padding: 0 28px 30px; color: #777b86; font-size: .75rem; text-align: center; }
 
+.review-panel { margin-top: 20px; }
+.review-card { position: relative; overflow: hidden; touch-action: pan-y; border: 1px solid #494032; border-radius: 18px; background: radial-gradient(ellipse at center, #363025, #111319); cursor: grab; }
+.review-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.review-card canvas { display: block; width: 100%; height: min(52vh, 420px); object-fit: contain; }
+.review-gesture { position: absolute; top: 20px; left: 20px; color: var(--gold); font-size: 1.4rem; pointer-events: none; }
+.review-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.review-actions button { flex: 1; }
+.review-description { color: var(--text); font-size: .8rem; overflow-wrap: anywhere; }
+.review-explanation { margin-top: 12px; }
+
 @media (max-width: 850px) {
   .topbar { align-items: start; padding: 24px 16px 18px; }
   .privacy-pill { display: none; }

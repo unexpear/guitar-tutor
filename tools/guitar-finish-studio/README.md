@@ -12,6 +12,29 @@ The built-in samples are deliberately simple demonstrations. Users are responsib
 
 The Batch Lab creates 2–36 deterministic variations using color-harmony, finish, pattern, minimum-separation, quantity, and seed rules. Batch export produces a single ZIP containing transparent PNGs and a `manifest.json` with the exact rules and recipes required to reproduce the collection.
 
+### Swipe review and suggestions
+
+Generate a batch, then review the larger card below the gallery. Swipe right to keep
+or left to pass. Buttons and left/right arrow keys on the focused card provide the
+same controls. Undo restores the last decision. Small drags and vertical scrolling
+do not count as decisions; reduced-motion preferences suppress card movement.
+
+Keep/pass recipes persist in this browser (up to 1,000 decisions). Artwork and masks
+are not stored: previews and kept PNG exports use the currently loaded guitar and
+mask, including imported photoreal images. Back up decisions before clearing browser
+data. Restore decisions merges a validated backup into the current history. If
+storage is blocked, review still works for the session and displays a warning.
+
+“Suggest similar finishes” generates candidates around recent approved colors using
+the current batch rules, then ranks them with five distance-weighted nearby keep/pass
+examples. Color, finish, pattern and texture settings influence ranking; a few less
+familiar candidates remain for exploration. This is a lightweight local preference
+recommender, not an image-quality model. It cannot identify malformed guitars or
+judge realism. Changing the batch seed explores new candidates.
+
+“Download kept PNGs + recipes” exports only kept finishes as a ZIP. Each exact recipe
+is in the manifest; it does not require an account, model download or network access.
+
 ### Static 3D mesh export
 
 The beta mesh exporter produces an actual low-poly Wavefront OBJ with UV coordinates and named body, tapered neck, headstock, nut, bridge, fret, hardware, and string objects. Start with one of four construction blueprints: steel-string dreadnought, 25.5-inch double-cut electric, 24.75-inch single-cut electric, or 34-inch bass. Advanced controls expose handedness, string count, pickup layout, scale length, fret count, nut width, bridge spacing, and body depth.
