@@ -23,7 +23,7 @@ A free and open source multi-instrument tuner and guitar learning companion for 
 - **Chord library** — 36 chords with finger positions, diagrams that draw barres and slide up the neck, and tap-to-hear playback
 - **Metronome** — 40–200 BPM, tap tempo, accented downbeats, 2/4 · 3/4 · 4/4 · 6/8, on a drift-corrected clock shared with the play-along drills
 - **Lessons** — 19 structured lessons, including a four-part bass path and an interactive guitar-anatomy diagram and quiz
-- **Song library** — the existing 15 chord references plus 10 complete original CC0 practice arrangements with a moving chord/tab lane, section loops, 50–125% speed, beat guidance, transpose/capo planning, guide playback, favorites, a local setlist and microphone scoring
+- **Songs & exercises** — 15 clearly labeled song chord references plus 26 playable CC0 exercises built from common progressions, scales and mechanical technique patterns; includes a moving chord/tab lane, section loops, 50–125% speed, beat guidance, transpose/capo planning, guide playback, favorites, a local setlist and microphone scoring
 - **Play-along practice** — Guitar Hero-style drills that listen to your real guitar: pluck the directed string/fret or strum the directed chord, with an "any tone" beginner mode and a "full chord" mode that requires evidence of multiple chord tones before scoring a hit
 - **Chord Quiz** — name the shape, pick the shape, or name what you hear, with distractors chosen to be the chords people actually mix up
 - **Chord Changes** — the one-minute-changes exercise, counted off your actual playing

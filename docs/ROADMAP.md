@@ -4,19 +4,19 @@ A survey of the app as it stands, and where the value is. Written from a
 read of the whole source tree, so everything here is grounded in what the
 code actually does rather than what the tabs imply.
 
-The app has one genuinely strong asset: a native pitch-detection pipeline
-wired to a hardened matcher that can tell whether you played the right
-thing. The tuner, lesson drills, song practice and Chord Changes now share
-that foundation. The remaining high-value work is expanding the instrument
-content without weakening the free, private, offline-first product.
+The tuner, lesson drills, song practice and Chord Changes use the native
+pitch engine, with different processing and matching layers. Real microphone
+validation remains necessary; sharing the engine does not establish identical
+accuracy in every mode. See [the 1.3.0 release gate](RELEASE-1.3.0-GATE.md)
+for current blockers and the explicit publication hold.
 
 ## Where the app is thin
 
 | Area | State |
 |---|---|
-| Games tab | **8 playable tools**: Chord Quiz, Chord Changes, microphone-scored Scale Sprint and Speed Challenge, Ear Training, Rhythm Master, Fretboard Explorer and a local Progression Builder. |
+| Games tab | **10 playable tools**: String Scout, Tune Sense, Chord Quiz, Chord Changes, Scale Sprint, Speed Challenge, Ear Training, Rhythm Master, Fretboard Explorer and Progression Builder. Physical microphone validation remains required. |
 | Play-along drills | **11 drills for 11 lessons.** Every lesson that can support a drill has one: the holding, tuning-up and reading-diagrams lessons are at-your-own-pace reading, and Guitar Anatomy has its own interactive diagram instead. |
-| Song practice | 15 original, two-pass chord-change exercises with live scoring and no copyrighted lyrics or transcriptions. |
+| Song practice | Song chord references are separate from playable common progressions and generic riff exercises. Exercises have beat-timed finger guides, section loops, speed controls, transposition and Follow Me / Play in Time modes. No full commercial recordings or AI-composed songs are bundled. |
 | Practice tracking | Done. Time at the instrument is logged per day, shown against the goal, and drives a streak. The lifetime total is retained separately from the bounded daily history. |
 | Lesson scores | Shown on the card when a drill produced them. |
 | Tuner | 36 presets across guitar, bass, ukulele, folk and orchestral strings; custom tunings; chromatic, needle, strobe and stage modes; room profiles; diagnostics; harmonic correction and calibration. |
@@ -78,8 +78,8 @@ For context on what has just landed, so this list is not re-proposing it:
   resyncs rather than firing missed beats in a burst.
 - Chords play when tapped, and can be favourited.
 - The tuning chosen in Settings actually reaches the Tuner.
-- Songs list the chords they need, with diagrams you can hear, and provide
-  original two-pass chord-change practice with live pitch scoring.
+- Songs list chord references with diagrams you can hear. Separate generic
+  exercises provide full practice charts with live pitch scoring.
 - **Chord Quiz**, the Games tab's first real game. Three question types —
   name the shape, pick the shape, name what you hear — over ten questions,
   with a streak bonus and a persisted high score. The work that mattered

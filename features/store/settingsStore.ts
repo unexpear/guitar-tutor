@@ -16,6 +16,8 @@ interface SettingsValues {
   referencePitchHz: number;
   /** How close a displayed reading must be before it is marked in tune. */
   inTuneToleranceCents: number;
+  /** Deviation where the display changes from close/yellow to red. */
+  closeToleranceCents: number;
   /** Input profile: quiet catches soft instruments; noisy rejects more room sound. */
   tunerSensitivity: 'quiet' | 'normal' | 'noisy';
   meterStyle: 'needle' | 'strobe';
@@ -34,6 +36,7 @@ interface SettingsState extends SettingsValues {
   setPracticeGoalMinutes: (minutes: number) => void;
   setReferencePitchHz: (hz: number) => void;
   setInTuneToleranceCents: (cents: number) => void;
+  setCloseToleranceCents: (cents: number) => void;
   setTunerSensitivity: (value: 'quiet' | 'normal' | 'noisy') => void;
   setMeterStyle: (value: 'needle' | 'strobe') => void;
   setLeftHanded: (enabled: boolean) => void;
@@ -49,6 +52,7 @@ const BEGINNER_DEFAULTS: SettingsValues = {
   practiceGoalMinutes: 15,
   referencePitchHz: 440,
   inTuneToleranceCents: 1,
+  closeToleranceCents: 10,
   tunerSensitivity: 'normal',
   meterStyle: 'needle',
   leftHanded: false,
@@ -85,6 +89,13 @@ export const useSettingsStore = create<SettingsState>()(
             Math.min(5, Math.round(cents * 10) / 10),
           ),
         }),
+      setCloseToleranceCents: (cents: number) =>
+        set({
+          closeToleranceCents: Math.max(
+            6,
+            Math.min(50, Math.round(cents * 10) / 10),
+          ),
+        }),
       setTunerSensitivity: (tunerSensitivity) => set({ tunerSensitivity }),
       setMeterStyle: (meterStyle) => set({ meterStyle }),
       setLeftHanded: (leftHanded) => set({ leftHanded }),
@@ -95,7 +106,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'standardtune-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
       migrate: (persistedState, version) => {
         const state = persistedState as Partial<SettingsState>;
         // Existing users keep every choice they already made. They start in
@@ -108,6 +119,10 @@ export const useSettingsStore = create<SettingsState>()(
               : state.settingsMode === 'advanced'
                 ? 'advanced'
                 : 'beginner',
+          closeToleranceCents:
+            version < 2 || !Number.isFinite(state.closeToleranceCents)
+              ? BEGINNER_DEFAULTS.closeToleranceCents
+              : Math.max(6, Math.min(50, state.closeToleranceCents!)),
         } as SettingsState;
       },
     }

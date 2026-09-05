@@ -412,7 +412,7 @@ export default function TunerScreen() {
     tuning.strings.length > 8 ? 40 : compactLayout ? 40 : 48,
   );
   const usesGuitarHeadstock =
-    tuning.strings.length === 6 && profile.headstock !== undefined && !compactLayout && showStringControls;
+    tuning.strings.length === 6 && profile.headstock !== undefined && showStringControls;
 
   // Whichever string the readout currently describes: the chosen one, or
   // the detector's guess when nothing is chosen.
@@ -473,7 +473,7 @@ export default function TunerScreen() {
         </View>
       </View>
 
-      <Text style={styles.aimHint} numberOfLines={1}>
+      <Text style={styles.aimHint}>
         {!showStringControls
           ? 'Large text mode · automatic string detection'
           : selectedString !== null
@@ -509,8 +509,8 @@ export default function TunerScreen() {
             modelId={activeModelId}
             highlightColor={aimedColor}
             highlightedPeg={aimedString ?? undefined}
-            width={compactLayout ? 150 : 200}
-            height={compactLayout ? 240 : 320}
+            width={compactLayout ? 100 : 200}
+            height={compactLayout ? 160 : 320}
           />
         </View>
 
@@ -1089,6 +1089,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.dark.muted,
     marginBottom: 6,
+    marginHorizontal: 20,
+    flexShrink: 1,
   },
   tunerError: {
     marginHorizontal: 24,

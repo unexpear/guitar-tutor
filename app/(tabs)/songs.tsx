@@ -13,7 +13,12 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import ChordDiagram from '../../components/ChordDiagram';
-import { SONGS, Song, Difficulty } from '../../features/songs/data/songs';
+import {
+  SONGS,
+  Song,
+  Difficulty,
+  isPracticeExercise,
+} from '../../features/songs/data/songs';
 import {
   getChord,
   chordMidiNotes,
@@ -81,6 +86,7 @@ function SongDetail({
   const { playChord } = useGuitarSound();
   const router = useRouter();
   const art = artForArtist(song.artist);
+  const isExercise = isPracticeExercise(song);
 
   // The two chords a song opens on are the change you will hit first and
   // most often, so that is the pair worth drilling.
@@ -180,11 +186,11 @@ function SongDetail({
           style={styles.practiseBtn}
           onPress={onPractice}
           accessibilityRole="button"
-          accessibilityLabel={`Practice all chords used by ${song.title}`}
+          accessibilityLabel={isExercise ? `Open ${song.title}` : `Practice the chord set for ${song.title}`}
         >
           <Ionicons name="play" size={18} color="#0b2410" />
           <Text style={styles.practiseBtnText}>
-            {song.arrangement ? 'Open practice studio' : 'Play chord practice'}
+            {isExercise ? 'Open practice exercise' : 'Play chord practice'}
           </Text>
         </PressableScale>
         {bestScore > 0 && (
@@ -213,8 +219,8 @@ function SongDetail({
         )}
 
         <Text style={styles.detailFinePrint}>
-          {song.arrangement
-            ? 'Complete original practice arrangement, released CC0. Includes section loops, speed control, capo planning, a guide track and microphone scoring.'
+          {isExercise
+            ? 'Generic CC0 practice material—not a song or recording. Includes section loops, speed control, capo planning, guide playback and microphone scoring.'
             : 'Chord reference only - tap a shape to hear it. Practice is an original two-pass chord-set exercise, not the song arrangement.'}
         </Text>
 
@@ -234,7 +240,7 @@ export default function SongLibraryScreen() {
   const [studioSong, setStudioSong] = useState<Song | null>(null);
   const [practiceSong, setPracticeSong] = useState<Song | null>(null);
   const [practiceOptions, setPracticeOptions] = useState<SongPracticeOptions>(DEFAULT_SONG_PRACTICE_OPTIONS);
-  const [libraryFilter, setLibraryFilter] = useState<'all' | 'practice' | 'saved' | 'setlist'>('all');
+  const [libraryFilter, setLibraryFilter] = useState<'all' | 'exercises' | 'songs' | 'saved' | 'setlist'>('all');
   const highScores = useProgressStore((state) => state.gameHighScores);
   const recordGameScore = useProgressStore((state) => state.recordGameScore);
   const favoriteSongs = useProgressStore((state) => state.favoriteSongs);
@@ -283,7 +289,8 @@ export default function SongLibraryScreen() {
     const matchesFilter = activeFilter === 'All' || song.difficulty === activeFilter;
     const matchesLibrary =
       libraryFilter === 'all' ||
-      (libraryFilter === 'practice' && !!song.arrangement) ||
+      (libraryFilter === 'exercises' && isPracticeExercise(song)) ||
+      (libraryFilter === 'songs' && !isPracticeExercise(song)) ||
       (libraryFilter === 'saved' && favoriteSongs.includes(song.id)) ||
       (libraryFilter === 'setlist' && mySetIds.includes(song.id));
     return matchesSearch && matchesFilter && matchesLibrary;
@@ -296,8 +303,8 @@ export default function SongLibraryScreen() {
         style={styles.songCard}
         onPress={() => setSelectedSong(item)}
         accessibilityRole="button"
-        accessibilityLabel={`${item.title} by ${item.artist}, difficulty ${item.difficulty}, ${item.chords.length} chords`}
-        accessibilityHint="Shows the chords this song uses"
+        accessibilityLabel={`${item.title}, ${item.artist}, difficulty ${item.difficulty}, ${item.chords.length} chords`}
+        accessibilityHint={isPracticeExercise(item) ? 'Opens the complete practice exercise' : 'Shows the chords this song uses'}
       >
         <View style={[styles.artTile, { backgroundColor: art.bg }]}>
           <Ionicons
@@ -315,7 +322,7 @@ export default function SongLibraryScreen() {
             {item.title}
           </Text>
           <Text style={styles.songArtist} numberOfLines={1}>
-            {item.artist}{item.arrangement ? ' · Full practice' : ''}
+            {item.artist}{isPracticeExercise(item) ? ' · Playable' : ' · Chord reference'}
           </Text>
           <View style={styles.songMeta}>
             <View
@@ -346,19 +353,19 @@ export default function SongLibraryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Song Library</Text>
-        <Text style={styles.headerSubtitle}>{filteredSongs.length} songs</Text>
+        <Text style={styles.headerTitle}>Songs & Exercises</Text>
+        <Text style={styles.headerSubtitle}>{filteredSongs.length} items</Text>
       </View>
 
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={18} color={Colors.dark.muted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search songs, artists, genres, chords..."
+          placeholder="Search exercises, songs, artists, chords..."
           placeholderTextColor={Colors.dark.muted}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          accessibilityLabel="Search songs"
+          accessibilityLabel="Search songs and exercises"
         />
         {searchQuery.length > 0 && (
           <Pressable
@@ -399,7 +406,8 @@ export default function SongLibraryScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.libraryFilters}>
         {([
           ['all', 'Everything'],
-          ['practice', 'Full practice'],
+          ['exercises', 'Exercises'],
+          ['songs', 'Song references'],
           ['saved', `Saved ${favoriteSongs.length}`],
           ['setlist', `My set ${mySetIds.length}`],
         ] as const).map(([value, label]) => (
@@ -423,7 +431,7 @@ export default function SongLibraryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="musical-notes-outline" size={48} color={Colors.dark.muted} />
-            <Text style={styles.emptyText}>No songs found</Text>
+            <Text style={styles.emptyText}>No matching items</Text>
           </View>
         }
       />

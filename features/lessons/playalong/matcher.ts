@@ -70,8 +70,8 @@ import {
 export type DetectionMode = 'mono' | 'poly';
 
 export type Target =
-  | { kind: 'note'; stringIndex: number; fret: number; label: string }
-  | { kind: 'chord'; chordName: string; label: string; strums?: number };
+  | { kind: 'note'; stringIndex: number; fret: number; label: string; beats?: number }
+  | { kind: 'chord'; chordName: string; label: string; strums?: number; beats?: number };
 
 export interface PitchSample {
   frequency: number;
@@ -287,6 +287,8 @@ export interface MatchState {
   targetClasses: number[];
   /** Whether the bass class has been heard (poly). */
   bassHeard: boolean;
+  /** Matching voiced frames gathered toward the current decision. */
+  matchingEvidence: number;
 }
 
 export type MatchEvent = 'hit' | 'wrong' | null;
@@ -398,6 +400,7 @@ export class TargetMatcher {
       heardClasses: [...this.heard],
       targetClasses: [...this.chordClasses].sort((a, b) => a - b),
       bassHeard: this.bassHeard,
+      matchingEvidence: Math.max(this.matchRun, this.inChordFrames),
     };
   }
 

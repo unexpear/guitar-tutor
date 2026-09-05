@@ -8,8 +8,8 @@ Features:
 - Interactive chord library with finger positions, diagrams, and audio playback
 - Play-along practice that listens to your guitar: pluck the shown string or strum the shown chord, with an easy any-tone mode and a strict full-chord mode
 - Structured lessons from beginner to advanced, with an interactive anatomy quiz
-- Song chord references with tap-to-hear shapes and original microphone-scored chord practice
-- Chord Quiz, Chord Changes, Ear Training, Rhythm Master and Fretboard Explorer, plus a local chord progression builder
+- Song chord references plus separate common progression and generic riff exercises with timed finger guides, section loops and adjustable practice speeds
+- Ten practice games and tools, including beginner String Scout and Tune Sense, Chord Quiz, Chord Changes, Ear Training, Rhythm Master, Fretboard Explorer, Progression Builder, Scale Sprint and Speed Challenge
 - Four focused bass lessons, left-handed chord diagrams, haptic cues, spoken cues and string auto-advance
 - Built-in metronome with tap tempo, accented downbeats, and multiple time signatures
 - Dark theme optimized for low-light environments

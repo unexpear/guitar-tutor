@@ -18,6 +18,7 @@ import { getChord, NOTE_NAMES } from '../../chords/data/chords';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Drill } from '../data/drills';
 import { TargetMatcher, Target, DetectionMode } from './matcher';
+import { practiceScore, targetDurationMs } from './timing';
 import { createBeatClock, BeatClock, gradeTiming, TimingVerdict } from '../../timing/beatClock';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { usePracticeTimer } from '../../practice/usePracticeTimer';
@@ -30,6 +31,7 @@ const REGULAR_CLICK = require('../../../assets/audio/click.wav');
 
 type Pace = 'wait' | 'flow';
 type TargetStatus = 'pending' | 'hit' | 'miss';
+type AttemptFeedback = 'idle' | 'close' | 'correct' | 'wrong';
 
 const CHIP_W = 84;
 const CHIP_GAP = 10;
@@ -52,7 +54,7 @@ export function coachingMessage({
   pace: Pace;
 }): string {
   if (pace === 'flow' && missed > 0) {
-    return 'The chart moved past a few changes. Try Wait for me, or lower the song speed and loop one section.';
+    return 'The chart moved past a few changes. Try Follow Me, or lower the song speed and loop one section.';
   }
   if (wrong > 2 || pitchScore < 55) {
     return 'The mic heard extra or incomplete notes. Check muted strings, fret close behind the wire, and strum once cleanly.';
@@ -199,6 +201,9 @@ export default function PlayAlongLesson({
   const [statuses, setStatuses] = useState<TargetStatus[]>(() =>
     drill.targets.map(() => 'pending'),
   );
+  const statusesRef = useRef(statuses);
+  statusesRef.current = statuses;
+  const [attemptFeedback, setAttemptFeedback] = useState<AttemptFeedback>('idle');
   const [strumsLeft, setStrumsLeft] = useState<number>(
     drill.targets[0].kind === 'chord' ? drill.targets[0].strums ?? 1 : 1,
   );
@@ -245,6 +250,7 @@ export default function PlayAlongLesson({
       heard: [],
     });
     setStrumsLeft(target.kind === 'chord' ? target.strums ?? 1 : 1);
+    setAttemptFeedback('idle');
   }, [drill, idx, mode, finished, referencePitchHz]);
 
   // Engine lifecycle.
@@ -269,13 +275,14 @@ export default function PlayAlongLesson({
   }, [hasClick]);
 
   const advance = useCallback(
-    (status: TargetStatus) => {
+    (status?: TargetStatus) => {
       const current = idxRef.current;
-      setStatuses((prev) => {
-        const next = [...prev];
+      if (status) {
+        const next = [...statusesRef.current];
         next[current] = status;
-        return next;
-      });
+        statusesRef.current = next;
+        setStatuses(next);
+      }
       const nextIdx = current + 1;
       setIdx(nextIdx);
       conveyorX.value = withTiming(-nextIdx * (CHIP_W + CHIP_GAP), {
@@ -287,7 +294,8 @@ export default function PlayAlongLesson({
   );
 
   const registerHit = useCallback(() => {
-    if (hasClick && lastBeatAtRef.current) {
+    if (statusesRef.current[idxRef.current] === 'hit') return;
+    if (pace === 'flow' && hasClick && lastBeatAtRef.current) {
       const beatMs = 60_000 / (drill.bpm ?? 70);
       let offsetMs = Date.now() - lastBeatAtRef.current;
       // A strum just before the next click is early for that click, not very
@@ -306,29 +314,38 @@ export default function PlayAlongLesson({
       withTiming(1.15, { duration: 90 }),
       withTiming(1, { duration: 160 }),
     );
+    setAttemptFeedback('correct');
 
-    setStrumsLeft((left) => {
-      if (totalStrums > 1 && left > 1) {
-        // Another strum of the same chord still owed.
-        cooldownUntilRef.current = Date.now() + STRUM_COOLDOWN_MS;
-        matcherRef.current?.reset();
-        return left - 1;
-      }
-      cooldownUntilRef.current = Date.now() + HIT_COOLDOWN_MS;
-      setStreak((s) => {
-        const ns = s + 1;
-        setBestStreak((b) => Math.max(b, ns));
-        return ns;
-      });
+    // Keep scoring and target advancement outside state updater functions:
+    // React may replay those functions while rendering.
+    if (totalStrums > 1 && strumsLeft > 1) {
+      cooldownUntilRef.current = Date.now() + STRUM_COOLDOWN_MS;
+      matcherRef.current?.reset();
+      setAttemptFeedback('close');
+      setStrumsLeft(strumsLeft - 1);
+      return;
+    }
+    cooldownUntilRef.current = Date.now() + HIT_COOLDOWN_MS;
+    const nextStreak = streak + 1;
+    setStreak(nextStreak);
+    setBestStreak((best) => Math.max(best, nextStreak));
+    if (pace === 'flow') {
+      const current = idxRef.current;
+      const next = [...statusesRef.current];
+      next[current] = 'hit';
+      statusesRef.current = next;
+      setStatuses(next);
+    } else {
       advance('hit');
-      return 1;
-    });
-  }, [advance, drill, zonePulse, hasClick, recordChordAttempt]);
+    }
+    setStrumsLeft(1);
+  }, [advance, drill, zonePulse, hasClick, pace, recordChordAttempt, streak, strumsLeft]);
 
   const registerWrong = useCallback(() => {
     const missed = drill.targets[idxRef.current];
     if (missed?.kind === 'chord') recordChordAttempt(missed.chordName, false);
     setWrongCount((w) => w + 1);
+    setAttemptFeedback('wrong');
     setStreak(0);
     cooldownUntilRef.current = Date.now() + WRONG_COOLDOWN_MS;
     shakeX.value = withSequence(
@@ -352,12 +369,13 @@ export default function PlayAlongLesson({
       rmsDb: latest.rmsDb,
       tMs: Date.now(),
     });
+    const s = matcher.state();
     if (mode === 'poly') {
-      const s = matcher.state();
       setHeardState({ target: s.targetClasses, heard: s.heardClasses });
     }
     if (event === 'hit') registerHit();
     else if (event === 'wrong') registerWrong();
+    else if (s.matchingEvidence > 0 || s.heardClasses.length > 0) setAttemptFeedback('close');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latest]);
 
@@ -365,11 +383,11 @@ export default function PlayAlongLesson({
   useEffect(() => {
     if (!started || !inputReady || finished || pace !== 'flow') return;
     const target = drill.targets[idx];
-    const strums = target.kind === 'chord' ? target.strums ?? 1 : 1;
     const timer = setTimeout(() => {
-      setStreak(0);
-      advance('miss');
-    }, drill.secondsPerTarget * 1000 * Math.max(1, strums / 2));
+      const wasHit = statusesRef.current[idx] === 'hit';
+      if (!wasHit) setStreak(0);
+      advance(wasHit ? undefined : 'miss');
+    }, targetDurationMs(drill, target));
     return () => clearTimeout(timer);
   }, [started, inputReady, finished, pace, idx, drill, advance]);
 
@@ -378,7 +396,7 @@ export default function PlayAlongLesson({
   const attempts = hits + statuses.filter((s) => s === 'miss').length + wrongCount;
   const pitchScore = attempts === 0 ? 0 : (hits / attempts) * 100;
   const timingScore = timingAttempts === 0 ? 0 : (timingPoints / timingAttempts) * 100;
-  const scorePercent = Math.round(hasClick ? pitchScore * 0.6 + timingScore * 0.4 : pitchScore);
+  const scorePercent = practiceScore(pitchScore, timingScore, hasClick && pace === 'flow');
   const missedCount = statuses.filter((s) => s === 'miss').length;
   const coaching = coachingMessage({ pitchScore, timingScore, missed: missedCount, wrong: wrongCount, pace });
   const completedRef = useRef(false);
@@ -522,7 +540,7 @@ export default function PlayAlongLesson({
               accessibilityState={{ selected: pace === p }}
             >
               <Text style={[styles.toggleText, pace === p && styles.toggleTextActive]}>
-                {p === 'wait' ? 'Wait for me' : 'Keep moving'}
+                {p === 'wait' ? 'Follow Me' : 'Play in Time'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -671,8 +689,34 @@ export default function PlayAlongLesson({
           </View>
         ) : (
           <>
-            <Animated.View style={[styles.targetBox, styles.targetBoxLive, zoneStyle]}>
-              <Text style={styles.targetEyebrow}>Play this</Text>
+            <Animated.View
+              style={[
+                styles.targetBox,
+                styles.targetBoxLive,
+                attemptFeedback === 'close' && styles.targetBoxClose,
+                attemptFeedback === 'correct' && styles.targetBoxCorrect,
+                attemptFeedback === 'wrong' && styles.targetBoxWrong,
+                zoneStyle,
+              ]}
+            >
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[
+                  styles.targetEyebrow,
+                  attemptFeedback === 'close' && styles.feedbackClose,
+                  attemptFeedback === 'wrong' && styles.feedbackWrong,
+                ]}
+              >
+                {attemptFeedback === 'correct'
+                  ? 'Got it'
+                  : attemptFeedback === 'close'
+                    ? 'Close — keep going'
+                    : attemptFeedback === 'wrong'
+                      ? 'Nope — try this target'
+                      : pace === 'wait'
+                        ? 'Follow me · waiting'
+                        : 'Play this'}
+              </Text>
               <View style={styles.targetBody}>
                 {target?.kind === 'chord' && targetChordData ? (
                   <>
@@ -757,11 +801,6 @@ export default function PlayAlongLesson({
                 />
                 <Text style={styles.statValue}>{streak}</Text>
                 <Text style={styles.statLabel}>Streak</Text>
-              </View>
-              <View style={styles.statTile}>
-                <Ionicons name="trending-up-outline" size={18} color={Colors.success} />
-                <Text style={styles.statValue}>{bestStreak}</Text>
-                <Text style={styles.statLabel}>Best</Text>
               </View>
               <View style={styles.statTile}>
                 <Ionicons name="analytics-outline" size={18} color={Colors.dark.muted} />
@@ -1024,6 +1063,18 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     gap: 10,
   },
+  targetBoxClose: {
+    borderColor: Colors.warning,
+    backgroundColor: 'rgba(255,193,7,0.08)',
+  },
+  targetBoxCorrect: {
+    borderColor: Colors.success,
+    backgroundColor: 'rgba(76,175,80,0.10)',
+  },
+  targetBoxWrong: {
+    borderColor: Colors.danger,
+    backgroundColor: 'rgba(244,67,54,0.08)',
+  },
   targetBody: {
     alignSelf: 'stretch',
     alignItems: 'center',
@@ -1075,6 +1126,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: Colors.success,
   },
+  feedbackClose: { color: Colors.warning },
+  feedbackWrong: { color: Colors.danger },
   countIn: {
     fontSize: 26,
     lineHeight: 30,

@@ -29,8 +29,10 @@ song-practice design; it is not a license inventory for third-party music.
 ## Decisions applied in the app
 
 1. Tuner remains the first tab and is not blocked by song onboarding.
-2. Ten complete StandardTune Studio arrangements are original and released
-   CC0-1.0. Existing well-known song entries remain chord references only.
+2. Playable CC0 exercises are labeled as exercises and kept separate from the
+   song references. They use common progressions, scales, and mechanical
+   technique patterns rather than invented titles that could be mistaken for
+   real songs. Existing well-known song entries remain chord references only.
 3. Wait mode follows the player; Flow mode keeps time. The guide track is a
    separate listen-only mode so phone audio cannot earn microphone hits.
 4. Every full arrangement has section selection, four speed levels, a moving

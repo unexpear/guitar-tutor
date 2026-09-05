@@ -129,7 +129,7 @@ const DIFFICULTY_BADGE_COLORS: Record<Difficulty, string> = {
 };
 
 export default function PracticeGamesScreen() {
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const router = useRouter();
   // Another screen can deep-link straight into a game, e.g. the Songs tab
   // sending you to practise the changes in a song.
@@ -172,9 +172,10 @@ export default function PracticeGamesScreen() {
   );
   const cardGap = 14;
   const sidePadding = 20;
-  const columns = width >= 1000 ? 4 : width >= 700 ? 3 : 2;
+  const effectiveWidth = width / Math.max(1, fontScale);
+  const columns = effectiveWidth >= 1000 ? 4 : effectiveWidth >= 700 ? 3 : effectiveWidth >= 360 ? 2 : 1;
   const cardWidth = Math.min(
-    280,
+    columns === 1 ? width : 280,
     (width - sidePadding * 2 - cardGap * (columns - 1)) / columns,
   );
 
@@ -193,10 +194,10 @@ export default function PracticeGamesScreen() {
       <View style={[styles.iconContainer, { backgroundColor: game.color + '20' }]}>
         <Text style={styles.gameIcon}>{game.icon}</Text>
       </View>
-      <Text style={styles.gameTitle} numberOfLines={1}>
+      <Text style={styles.gameTitle}>
         {game.title}
       </Text>
-      <Text style={styles.gameDescription} numberOfLines={2}>
+      <Text style={styles.gameDescription}>
         {game.description}
       </Text>
       <View style={styles.cardFooter}>
@@ -345,6 +346,7 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 6,

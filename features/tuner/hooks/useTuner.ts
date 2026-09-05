@@ -32,6 +32,7 @@ export function useTuner(
   const inTuneCents = useSettingsStore(
     (state) => state.inTuneToleranceCents,
   );
+  const closeCents = useSettingsStore((state) => state.closeToleranceCents);
   const tunerSensitivity = useSettingsStore((state) => state.tunerSensitivity);
   const engineOptions = useMemo(
     () => tunerEngineOptionsFor(tuning, referencePitchHz, tunerSensitivity),
@@ -157,6 +158,7 @@ export function useTuner(
         smoothHz,
         spreadCents,
         inTuneCents,
+        closeCents,
         minimumConfidence: engineOptions.confidenceThreshold,
         targetStringIndex,
         tuning,
@@ -164,6 +166,7 @@ export function useTuner(
       }),
     [
       inTuneCents,
+      closeCents,
       isRunning,
       heldReading,
       latest,

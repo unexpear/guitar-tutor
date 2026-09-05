@@ -375,6 +375,7 @@ test('settings start with sane defaults', () => {
   assert.equal(s.practiceGoalMinutes, 15);
   assert.equal(s.referencePitchHz, 440);
   assert.equal(s.inTuneToleranceCents, 1);
+  assert.equal(s.closeToleranceCents, 10);
   assert.equal(s.tunerSensitivity, 'normal');
   assert.equal(s.meterStyle, 'needle');
   assert.equal(s.leftHanded, false);
@@ -400,6 +401,7 @@ test('advanced mode preserves choices and beginner mode restores reliable defaul
   assert.equal(beginner.soundsEnabled, true);
   assert.equal(beginner.referencePitchHz, 440);
   assert.equal(beginner.inTuneToleranceCents, 1);
+  assert.equal(beginner.closeToleranceCents, 10);
   assert.equal(beginner.tunerSensitivity, 'normal');
   assert.equal(beginner.hapticsEnabled, true);
   assert.equal(beginner.autoAdvanceStrings, true);
@@ -433,6 +435,7 @@ test('legacy settings retain their values and migrate to advanced mode', async (
   assert.equal(state.referencePitchHz, 442);
   assert.equal(state.meterStyle, 'strobe');
   assert.equal(state.leftHanded, true);
+  assert.equal(state.closeToleranceCents, 10);
   state.resetToBeginnerDefaults();
 });
 
@@ -478,6 +481,12 @@ test('tuner calibration settings are rounded and clamped', () => {
   assert.equal(useSettingsStore.getState().inTuneToleranceCents, 3.7);
   s.setInTuneToleranceCents(20);
   assert.equal(useSettingsStore.getState().inTuneToleranceCents, 5);
+  s.setCloseToleranceCents(2);
+  assert.equal(useSettingsStore.getState().closeToleranceCents, 6);
+  s.setCloseToleranceCents(15.26);
+  assert.equal(useSettingsStore.getState().closeToleranceCents, 15.3);
+  s.setCloseToleranceCents(90);
+  assert.equal(useSettingsStore.getState().closeToleranceCents, 50);
 });
 
 // ---------------------------------------------------------------------------

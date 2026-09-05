@@ -121,7 +121,7 @@ export default function SongPracticeStudio({
     saveDraft(draft);
     await Share.share({
       title: `StandardTune chart note: ${song.title}`,
-      message: `StandardTune chart note for “${song.title}”\n\n${message}\n\nArrangement: ${song.arrangement?.license}`,
+      message: `StandardTune chart note for “${song.title}”\n\n${message}\n\nChart license: ${song.arrangement?.license}`,
     });
     setCorrection('');
   };
@@ -137,11 +137,11 @@ export default function SongPracticeStudio({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <PressableScale onPress={onClose} style={styles.iconButton} accessibilityLabel="Back to songs">
+        <PressableScale onPress={onClose} style={styles.iconButton} accessibilityLabel="Back to songs and exercises">
           <Ionicons name="chevron-back" size={24} color={Colors.dark.text} />
         </PressableScale>
         <View style={styles.titleWrap}>
-          <Text style={styles.eyebrow}>PRACTICE STUDIO · ORIGINAL CC0</Text>
+          <Text style={styles.eyebrow}>PRACTICE STUDIO · EXERCISES</Text>
           <Text style={styles.title}>{song.title}</Text>
         </View>
         <PressableScale
@@ -160,13 +160,13 @@ export default function SongPracticeStudio({
             {Math.round(arrangement.bpm * options.tempoPercent / 100)} BPM · {arrangement.beatsPerBar}/4 · {arrangement.strumPattern}
           </Text>
           <Text style={styles.heroHint}>
-            Wait mode follows you. Flow mode holds the beat. Use headphones only for the guide track so the mic grades your guitar, not the phone.
+            Follow Me waits until you get each target. Play in Time holds the beat. Use headphones for the guide track so the mic grades your guitar, not the phone.
           </Text>
         </View>
 
         <Text style={styles.sectionTitle}>1 · Choose a section</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
-          <OptionPill label="Whole song" active={options.sectionId === null} onPress={() => updateOptions({ ...options, sectionId: null })} />
+          <OptionPill label="Whole exercise" active={options.sectionId === null} onPress={() => updateOptions({ ...options, sectionId: null })} />
           {arrangement.sections.map((section) => (
             <OptionPill key={section.id} label={section.label} active={options.sectionId === section.id} onPress={() => updateOptions({ ...options, sectionId: section.id })} />
           ))}
@@ -187,8 +187,8 @@ export default function SongPracticeStudio({
             accessibilityLabel="Transpose down one semitone"
           ><Ionicons name="remove" size={22} color={Colors.dark.text} /></PressableScale>
           <View style={styles.stepValue}>
-            <Text style={styles.stepValueMain}>Song key · {transposeKey(song.key, transposeSemitones)}</Text>
-            <Text style={styles.stepValueSub}>{transposeSemitones === 0 ? 'Original key' : `${transposeSemitones > 0 ? '+' : ''}${transposeSemitones} semitones`}</Text>
+            <Text style={styles.stepValueMain}>Exercise key · {transposeKey(song.key, transposeSemitones)}</Text>
+            <Text style={styles.stepValueSub}>{transposeSemitones === 0 ? 'Base key' : `${transposeSemitones > 0 ? '+' : ''}${transposeSemitones} semitones`}</Text>
           </View>
           <PressableScale
             style={styles.stepButton}

@@ -15,8 +15,15 @@ import {
   transposeNoteEvent,
 } from '../features/songs/songPractice';
 import { stringFretToMidi } from '../features/chords/data/chords';
+import { practiceScore, targetDurationMs } from '../features/lessons/playalong/timing';
 
-test('references build chord exercises and authored songs build their complete arrangements', () => {
+test('Follow Me can earn full credit without timing attempts', () => {
+  assert.equal(practiceScore(100, 0, false), 100);
+  assert.equal(practiceScore(75, 0, false), 75);
+  assert.equal(practiceScore(100, 50, true), 80);
+});
+
+test('references build chord exercises and generic exercises build their complete charts', () => {
   for (const song of SONGS) {
     const drill = buildSongPracticeDrill(song);
     const names = drill.targets.map((target) => {
@@ -26,7 +33,7 @@ test('references build chord exercises and authored songs build their complete a
     if (song.arrangement) {
       assert.deepEqual(names.filter(Boolean), arrangementEvents(song, null).filter((e) => e.kind === 'chord').map((e) => e.kind === 'chord' ? e.chordName : ''));
       assert.equal(drill.bpm, Math.round(song.arrangement.bpm * 0.75));
-      assert.match(drill.intro, /original CC0 arrangement/i);
+      assert.match(drill.intro, /generic CC0 practice exercise/i);
     } else {
       assert.ok(drill.targets.every((target) => target.kind === 'chord'));
       assert.deepEqual(names, [...song.chords, ...song.chords]);
@@ -92,8 +99,28 @@ test('section loops and speed controls change only the requested practice run', 
   const verse = buildSongPracticeDrill(song, { sectionId: 'verse', tempoPercent: 50, capo: 0 });
   assert.equal(verse.targets.length, 8);
   assert.equal(verse.bpm, 36);
-  assert.match(verse.title, /Verse/);
+  assert.match(verse.title, /Loop A/);
   assert.equal(song.arrangement.sections.length, 2, 'source arrangement was not mutated');
+});
+
+test('song finger guides retain exact event beats at the selected tempo', () => {
+  for (const song of SONGS.filter((candidate) => candidate.arrangement)) {
+    const drill = buildSongPracticeDrill(song, {
+      sectionId: null,
+      tempoPercent: 100,
+      capo: 0,
+    });
+    const source = arrangementEvents(song, null);
+    assert.equal(drill.targets.length, source.length, `${song.title}: target count`);
+    drill.targets.forEach((target, index) => {
+      assert.equal(target.beats, source[index].beats, `${song.title}: beat ${index}`);
+      assert.equal(
+        targetDurationMs(drill, target),
+        source[index].beats * 60_000 / song.arrangement!.bpm,
+        `${song.title}: duration ${index}`,
+      );
+    });
+  }
 });
 
 test('capo planner reports the sounding key without changing familiar shapes', () => {
@@ -106,7 +133,7 @@ test('capo planner reports the sounding key without changing familiar shapes', (
 test('practice feedback gives a concrete next action at every level', () => {
   assert.match(songPracticeFeedback(95), /100% speed|harder section/i);
   assert.match(songPracticeFeedback(80), /loop/i);
-  assert.match(songPracticeFeedback(60), /75%|Wait mode/i);
+  assert.match(songPracticeFeedback(60), /75%|Follow Me/i);
   assert.match(songPracticeFeedback(20), /50%|first two/i);
 });
 

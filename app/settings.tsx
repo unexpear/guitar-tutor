@@ -394,6 +394,7 @@ export default function SettingsScreen() {
     practiceGoalMinutes,
     referencePitchHz,
     inTuneToleranceCents,
+    closeToleranceCents,
     tunerSensitivity,
     meterStyle,
     leftHanded,
@@ -407,6 +408,7 @@ export default function SettingsScreen() {
     setPracticeGoalMinutes,
     setReferencePitchHz,
     setInTuneToleranceCents,
+    setCloseToleranceCents,
     setTunerSensitivity,
     setMeterStyle,
     setLeftHanded,
@@ -545,6 +547,45 @@ export default function SettingsScreen() {
               />
             }
           />
+          <SettingRow
+            label="Green · Got it"
+            accessibilityLabel={`Green zone: plus or minus ${inTuneToleranceCents} cents`}
+            right={
+              <ChoiceButtons
+                value={inTuneToleranceCents}
+                options={[
+                  { value: 0.5, label: '0.5¢' },
+                  { value: 1, label: '1¢' },
+                  { value: 3, label: '3¢' },
+                  { value: 5, label: '5¢' },
+                ]}
+                onChange={setInTuneToleranceCents}
+                label="Green in-tune zone"
+              />
+            }
+          />
+          <SettingRow
+            label="Red · Starts at"
+            accessibilityLabel={`Red zone starts at plus or minus ${closeToleranceCents} cents`}
+            right={
+              <ChoiceButtons
+                value={closeToleranceCents}
+                options={[
+                  { value: 6, label: '6¢' },
+                  { value: 10, label: '10¢' },
+                  { value: 15, label: '15¢' },
+                  { value: 25, label: '25¢' },
+                  { value: 50, label: '50¢' },
+                ]}
+                onChange={setCloseToleranceCents}
+                label="Red zone threshold"
+              />
+            }
+          />
+          <Text style={styles.hint}>
+            Green means got it, yellow means close, and red begins at the red value.
+            Beginner defaults are ±1¢ green and ±10¢ red.
+          </Text>
           {settingsMode === 'advanced' && (
             <>
               <SettingRow
@@ -561,26 +602,9 @@ export default function SettingsScreen() {
                   />
                 }
               />
-              <SettingRow
-                label="In-Tune Window"
-                accessibilityLabel={`In-tune window: plus or minus ${inTuneToleranceCents} cents`}
-                right={
-                  <ChoiceButtons
-                    value={inTuneToleranceCents}
-                    options={[
-                      { value: 0.5, label: '0.5¢' },
-                      { value: 1, label: '1¢' },
-                      { value: 3, label: '3¢' },
-                      { value: 5, label: '5¢' },
-                    ]}
-                    onChange={setInTuneToleranceCents}
-                    label="In-tune window"
-                  />
-                }
-              />
               <Text style={styles.hint}>
-                A4 defaults to the ISO 440 Hz standard. Use 0.5¢ for a strict
-                setup target or a wider window for unstable instruments and noisy rooms.
+                A4 defaults to the ISO 440 Hz standard. The 0.5¢ green option is a strict
+                setup target; wider zones are friendlier to unstable instruments and noisy rooms.
               </Text>
               <SettingRow
                 label="Room sensitivity"
@@ -886,15 +910,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.dark.text,
     flex: 1,
+    minWidth: 0,
+    marginRight: 12,
   },
   rowLink: {
     fontSize: 15,
     fontWeight: '600',
     color: Colors.success,
+    flexShrink: 1,
+    maxWidth: '55%',
+    textAlign: 'right',
   },
   rowValue: {
     fontSize: 16,
     color: Colors.dark.muted,
+    flexShrink: 1,
+    maxWidth: '55%',
+    textAlign: 'right',
   },
   staticValue: {
     fontSize: 15,

@@ -91,8 +91,8 @@ export type TuneVerdict = 'in-tune' | 'close' | 'off';
  * exposes. This is a threshold, not a hardware-accuracy claim.
  *
  *   0 - chosen tolerance  in tune
- *   up to 9                close
- *   10+      off, in either direction
+ *   below chosen red edge close
+ *   at/beyond red edge     off, in either direction
  */
 export const OFF_CENTS = 10;
 export const DEFAULT_IN_TUNE_CENTS = 1;
@@ -100,14 +100,17 @@ export const DEFAULT_IN_TUNE_CENTS = 1;
 export function verdictForCents(
   cents: number,
   inTuneCents = DEFAULT_IN_TUNE_CENTS,
+  closeCents = OFF_CENTS,
 ): TuneVerdict {
   const deviation = Number.isFinite(cents) ? Math.abs(cents) : Number.POSITIVE_INFINITY;
   const requestedTolerance = Number.isFinite(inTuneCents)
     ? inTuneCents
     : DEFAULT_IN_TUNE_CENTS;
   const tolerance = Math.max(0.5, Math.min(5, requestedTolerance));
+  const requestedClose = Number.isFinite(closeCents) ? closeCents : OFF_CENTS;
+  const closeTolerance = Math.max(6, Math.min(50, requestedClose));
   if (deviation <= tolerance) return 'in-tune';
-  return deviation >= OFF_CENTS ? 'off' : 'close';
+  return deviation >= closeTolerance ? 'off' : 'close';
 }
 
 /**

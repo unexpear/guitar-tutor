@@ -132,6 +132,15 @@ test('the off boundary sits exactly at ten cents', () => {
   assert.equal(verdictForCents(10), 'off');
 });
 
+test('the yellow-to-red boundary is configurable and safely bounded', () => {
+  assert.equal(verdictForCents(14.99, 1, 15), 'close');
+  assert.equal(verdictForCents(15, 1, 15), 'off');
+  assert.equal(verdictForCents(5.99, 1, 0), 'close');
+  assert.equal(verdictForCents(6, 1, 0), 'off');
+  assert.equal(verdictForCents(49.99, 1, 99), 'close');
+  assert.equal(verdictForCents(50, 1, 99), 'off');
+});
+
 test('tuner hold must enter strictly but tolerates natural movement after acquisition', () => {
   assert.equal(nextTunerHoldString(null, 2, 1.1, 1), null, 'cannot begin outside beginner green');
   assert.equal(nextTunerHoldString(null, 2, 1, 1), 2, 'begins at the strict edge');

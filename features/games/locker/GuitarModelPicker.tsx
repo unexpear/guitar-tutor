@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from '../../../components/PressableScale';
 import { Colors, CARD_SHADOW } from '../../../constants/Colors';
@@ -26,9 +26,11 @@ function previewDesign(model: GuitarModel) {
 }
 
 export default function GuitarModelPicker({ visible, onClose, guitarType }: GuitarModelPickerProps) {
+  const { fontScale } = useWindowDimensions();
   const selected = useProgressStore((state) => state.selectedGuitarModelIds);
   const select = useProgressStore((state) => state.selectGuitarModel);
   const models = guitarType ? guitarModelsForType(guitarType) : GUITAR_MODELS;
+  const singleColumn = fontScale > 1.2;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -57,13 +59,18 @@ export default function GuitarModelPicker({ visible, onClose, guitarType }: Guit
                   <PressableScale
                     key={model.id}
                     onPress={() => select(model.id)}
-                    style={[styles.card, active && styles.cardActive, CARD_SHADOW]}
+                    style={[styles.card, singleColumn && styles.cardSingleColumn, active && styles.cardActive, CARD_SHADOW]}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: active }}
                     accessibilityLabel={`${model.name}, ${model.guitarType}. ${model.description}${active ? ' Selected.' : ''}`}
                   >
-                    <View style={styles.preview}>
-                      <FullGuitarSvg design={previewDesign(model)} modelId={model.id} width={92} height={150} />
+                    <View style={[styles.preview, singleColumn && styles.previewSingleColumn]}>
+                      <FullGuitarSvg
+                        design={previewDesign(model)}
+                        modelId={model.id}
+                        width={singleColumn ? 118 : 92}
+                        height={singleColumn ? 192 : 150}
+                      />
                     </View>
                     <Text style={styles.modelType}>{model.guitarType.toUpperCase()}</Text>
                     <Text style={styles.modelName}>{model.name}</Text>
@@ -96,8 +103,10 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   cards: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: { width: '48%', minHeight: 268, padding: 12, borderRadius: 18, borderWidth: 1, borderColor: Colors.dark.cardBorder, backgroundColor: Colors.dark.card },
+  cardSingleColumn: { width: '100%' },
   cardActive: { borderColor: Colors.success, borderWidth: 2, backgroundColor: 'rgba(76,175,80,0.08)' },
   preview: { height: 152, alignItems: 'center', justifyContent: 'center' },
+  previewSingleColumn: { height: 196 },
   modelType: { color: Colors.success, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
   modelName: { color: Colors.dark.text, fontSize: 14, fontWeight: '900', marginTop: 3 },
   description: { color: Colors.dark.muted, fontSize: 11, lineHeight: 15, marginTop: 3, minHeight: 31 },

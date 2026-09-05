@@ -208,6 +208,33 @@ test('the selected in-tune window controls guided and chromatic verdicts', () =>
   assert.equal(relaxed.verdict, 'in-tune');
 });
 
+test('the selected red boundary controls guided and chromatic verdicts', () => {
+  const e2 = noteToFrequency('E2');
+  const guided = mapTunerReading(
+    reading(),
+    opts({
+      smoothHz: e2 * 2 ** (12 / 1200),
+      targetStringIndex: 0,
+      closeCents: 15,
+    }),
+  );
+  assert.equal(guided.targetCents, 12);
+  assert.equal(guided.verdict, 'close');
+
+  const chromatic = TUNING_PRESETS.find((preset) => preset.id === 'chromatic');
+  assert.ok(chromatic);
+  const state = mapTunerReading(
+    reading({ noteName: 'A', octave: 4, cents: 12 }),
+    opts({
+      tuning: chromatic,
+      stringFrequencies: [],
+      smoothHz: 440 * 2 ** (12 / 1200),
+      closeCents: 10,
+    }),
+  );
+  assert.equal(state.verdict, 'off');
+});
+
 test('expert half-cent window keeps decimal precision through the verdict', () => {
   const e2 = noteToFrequency('E2');
   const exactEdge = mapTunerReading(

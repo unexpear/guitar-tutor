@@ -153,15 +153,15 @@ export function arrangementEvents(song: Song, sectionId: string | null): SongEve
 export function songPracticeFeedback(score: number): string {
   if (score >= 90) return 'Performance ready. Try 100% speed or a harder section next.';
   if (score >= 75) return 'Nearly steady. Loop the weakest section once before another full run.';
-  if (score >= 50) return 'Slow to 75% and use Wait mode so every clean change gets credit.';
+  if (score >= 50) return 'Slow to 75% and use Follow Me so every clean change gets credit.';
   return 'Make it smaller: choose one section, use 50% speed, and practise its first two shapes.';
 }
 
 export function songCorrectionIssueUrl(song: Song, message: string): string {
-  const title = `Song chart: ${song.title}`;
+  const title = `Practice chart: ${song.title}`;
   const body = [
-    `Song: ${song.title}`,
-    `Arrangement license: ${song.arrangement?.license ?? 'reference only'}`,
+    `Chart: ${song.title}`,
+    `Chart license: ${song.arrangement?.license ?? 'reference only'}`,
     '',
     'Suggested correction or playing tip:',
     message.trim(),
@@ -194,8 +194,8 @@ export function buildSongPracticeDrill(
       lessonId: songPracticeScoreKey(song.id),
       title: `${song.title}${section ? ` · ${section.label}` : ''}`,
       intro:
-        `Original CC0 arrangement at ${tempoPercent}% speed. ` +
-        'Wait mode follows your playing; Flow mode keeps musical time. The moving lane is the chart and scrolls as you play.',
+        `Generic CC0 practice exercise at ${tempoPercent}% speed. ` +
+        'Follow Me waits for each target; Play in Time keeps the finger guide locked to the chart. The moving lane scrolls as you play.',
       targets: events.map((event) =>
         event.kind === 'chord'
           ? {
@@ -203,13 +203,13 @@ export function buildSongPracticeDrill(
               chordName: transposeChordName(event.chordName, shapeShift) ?? event.chordName,
               label: transposeChordName(event.chordName, shapeShift) ?? event.chordName,
               strums: event.beats,
+              beats: event.beats,
             }
           : transposeNoteEvent(event, options.transposeSemitones ?? 0),
       ),
       defaultMode: events.some((event) => event.kind === 'chord') ? 'poly' : 'mono',
-      // PlayAlong multiplies this by strums / 2; this yields one beat per
-      // required strum with a small beginner-friendly margin.
-      secondsPerTarget: (120 / Math.max(1, bpm)) * 1.15,
+      // Song targets carry exact beat lengths. This remains a safe fallback.
+      secondsPerTarget: 60 / Math.max(1, bpm),
       bpm,
       beatsPerBar: song.arrangement.beatsPerBar,
     };
@@ -225,7 +225,7 @@ export function buildSongPracticeDrill(
     lessonId: songPracticeScoreKey(song.id),
     title: `${song.title} · Chord Practice`,
     intro:
-      'This is an original chord-set exercise, not the song arrangement. Play every required chord twice through. Wait mode follows your pace; Flow mode keeps the changes moving.',
+      'This is an original chord-set exercise, not the song arrangement. Play every required chord twice through. Follow Me waits for you; Play in Time keeps the changes moving.',
     targets: [...pass, ...pass.map((target) => ({ ...target }))],
     defaultMode: 'poly',
     secondsPerTarget: 6,

@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SONGS, getSong } from '../features/songs/data/songs';
+import {
+  PRACTICE_EXERCISES,
+  SONG_REFERENCES,
+  SONGS,
+  getSong,
+  isPracticeExercise,
+} from '../features/songs/data/songs';
 import { getChord } from '../features/chords/data/chords';
 
 test('every song is well formed', () => {
@@ -83,11 +89,46 @@ test('getSong finds songs by id and misses cleanly', () => {
   assert.equal(getSong('nope'), undefined);
 });
 
-test('the complete practice catalogue adds ten original CC0 arrangements without removing references', () => {
+test('generic exercises and song references stay explicitly separated', () => {
   const complete = SONGS.filter((song) => song.arrangement);
   const references = SONGS.filter((song) => !song.arrangement);
-  assert.equal(complete.length, 10);
+  assert.equal(complete.length, 26);
   assert.equal(references.length, 15);
+  assert.deepEqual(complete, PRACTICE_EXERCISES);
+  assert.deepEqual(references, SONG_REFERENCES);
   assert.ok(complete.every((song) => song.arrangement?.license === 'CC0-1.0'));
+  assert.ok(complete.every((song) => song.artist === 'Practice Exercise'));
+  assert.ok(complete.every(isPracticeExercise));
+  assert.ok(references.every((song) => !isPracticeExercise(song)));
+  assert.ok(!SONGS.some((song) => song.artist === 'StandardTune Studio'));
   assert.ok(complete.some((song) => song.arrangement?.sections.some((section) => section.events.some((event) => event.kind === 'note'))));
+});
+
+test('common progressions and mechanical riffs are present as playable exercises', () => {
+  const titles = new Set(PRACTICE_EXERCISES.map((exercise) => exercise.title));
+  assert.ok(titles.has('I–IV–V–I in C'));
+  assert.ok(titles.has('I–vi–IV–V in C'));
+  assert.ok(titles.has('vi–IV–I–V in C'));
+  assert.ok(titles.has('ii–V–I in C'));
+  assert.ok(titles.has('i–VII–VI–V in A Minor'));
+  assert.ok(titles.has('Chromatic 1–2–3–4'));
+  assert.ok(titles.has('A Minor Pentatonic Box Fragment'));
+  assert.ok(titles.has('Open-String Picking Ladder'));
+});
+
+test('every complete chart has a valid finger guide and positive timing', () => {
+  for (const song of SONGS.filter((candidate) => candidate.arrangement)) {
+    for (const section of song.arrangement!.sections) {
+      assert.ok(section.events.length > 0, `${song.title}: empty ${section.label}`);
+      for (const event of section.events) {
+        assert.ok(Number.isFinite(event.beats) && event.beats > 0, `${song.title}: bad beat length`);
+        if (event.kind === 'chord') {
+          assert.ok(getChord(event.chordName), `${song.title}: missing guide for ${event.chordName}`);
+        } else {
+          assert.ok(event.stringIndex >= 0 && event.stringIndex < 6, `${song.title}: bad string`);
+          assert.ok(event.fret >= 0 && event.fret <= 24, `${song.title}: bad fret`);
+        }
+      }
+    }
+  }
 });

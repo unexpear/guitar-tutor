@@ -122,6 +122,8 @@ export function mapTunerReading(
     spreadCents?: number;
     /** User-selected green/in-tune window, in cents. */
     inTuneCents?: number;
+    /** User-selected outer edge of the yellow/close zone, in cents. */
+    closeCents?: number;
     /** Must match the active native-engine room profile. */
     minimumConfidence?: number;
   }
@@ -134,6 +136,7 @@ export function mapTunerReading(
     stringFrequencies,
     spreadCents = 0,
     inTuneCents = 1,
+    closeCents = 10,
     minimumConfidence = 0.75,
   } = opts;
 
@@ -174,7 +177,7 @@ export function mapTunerReading(
       stringIndex: null,
       nearestTarget: `${reading.noteName}${reading.octave}`,
       targetCents: chromaticCents,
-      verdict: verdictForCents(chromaticCents, inTuneCents),
+      verdict: verdictForCents(chromaticCents, inTuneCents, closeCents),
       signal: 'clear',
       rawFrequency: smoothHz,
       harmonicRatio: 1,
@@ -207,7 +210,7 @@ export function mapTunerReading(
     nearestTarget: idx !== null ? tuning.strings[idx] : null,
     targetCents: signed === null ? null : Math.round(signed * 10) / 10,
     verdict:
-      signed === null ? null : verdictForCents(signed, inTuneCents),
+      signed === null ? null : verdictForCents(signed, inTuneCents, closeCents),
     signal: 'clear',
     rawFrequency: smoothHz,
     harmonicRatio: corrected.ratio,

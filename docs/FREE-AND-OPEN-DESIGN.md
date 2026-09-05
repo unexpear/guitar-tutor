@@ -40,14 +40,21 @@ and should repeat the license audit when dependencies change.
 - [Open Music Academy](https://openmusic.academy/?language=en) shows how music
   learning resources can be published as explicitly licensed open educational
   resources.
+- [U.S. Copyright Office Compendium, Chapter 800](https://www.copyright.gov/comp3/chap800/ch800-performing-arts.pdf)
+  identifies standard chord progressions, scales, arpeggios, and short musical
+  phrases as material that by itself lacks sufficient copyrightable authorship.
 
 These references guide sequencing only. StandardTune's lesson prose, diagrams,
 tests, generated reference tones, and exercises are maintained in this
-repository. Named commercial songs are chord-reference entries with original
+repository. Named commercial songs are chord-reference entries with separate
 two-pass chord-set exercises. They contain no lyrics, tablature, melody,
 recordings, tempo maps, or bar-by-bar transcriptions, and the practice screen
-explicitly says it is not the song arrangement. Any future bundled lesson
-media or arrangements must record its author and license before release.
+explicitly says it is not the song arrangement. Playable catalogue exercises
+are kept in a separate data collection, labeled "Practice Exercise," and use
+only common chord progressions, scales, arpeggios, or mechanical technique
+patterns. They are not presented as authored songs or recordings. Any future
+bundled lesson media or song arrangements must record its author, source, and
+license before release.
 
 ## Product rules
 
