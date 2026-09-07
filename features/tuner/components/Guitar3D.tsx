@@ -1,0 +1,42 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { useIsFocused } from 'expo-router';
+import html from './mobileGuitarHtml.json';
+import type { GuitarDesign } from '../../progression/guitarDesigns';
+import type { GuitarModelId } from '../../progression/guitarModels';
+import {isImportedGuitar} from '../../progression/guitarModels';
+import importedModels from '../../../assets/guitars/imported/models.json';
+import FullGuitarSvg from '../../games/locker/FullGuitarSvg';
+
+const source={html};
+export default function Guitar3D({design,modelId,highlightedString}:{design:GuitarDesign;modelId:GuitarModelId;highlightedString?:number}) {
+  const focused=useIsFocused();
+  const ref=useRef<WebView>(null);
+  const sentModel=useRef<string|null>(null);
+  const [ready,setReady]=useState(false),[failed,setFailed]=useState(false);
+  const [renderedKey,setRenderedKey]=useState<string|null>(null);
+  const sceneKey=JSON.stringify([modelId,isImportedGuitar(modelId)?null:design]);
+  const expectedKey=useRef(sceneKey);expectedKey.current=sceneKey;
+  const payload=JSON.stringify({design,modelId,highlightedString:highlightedString??null,requestKey:sceneKey});
+  useEffect(()=>{if(ready&&focused){
+    let setup='';
+    if(sentModel.current!==modelId){setup=isImportedGuitar(modelId)?`window.setImportedAsset(${JSON.stringify(modelId)},${JSON.stringify(importedModels[modelId])});`:'window.setImportedAsset(null,null);';sentModel.current=modelId;}
+    ref.current?.injectJavaScript(`${setup}window.updateGuitar(${payload});true;`);
+  }},[payload,ready,focused,modelId]);
+  useEffect(()=>{if(!focused){setReady(false);setRenderedKey(null);sentModel.current=null;}},[focused]);
+  useEffect(()=>{if(!focused||ready||failed)return;const timer=setTimeout(()=>setFailed(true),15000);return()=>clearTimeout(timer);},[focused,ready,failed]);
+  // Renderer readiness does not guarantee that decoding the model completed.
+  // Pitch updates must not restart this deadline indefinitely.
+  useEffect(()=>{if(!focused||!ready||failed||renderedKey===sceneKey)return;const timer=setTimeout(()=>setFailed(true),15000);return()=>clearTimeout(timer);},[focused,ready,failed,sceneKey,renderedKey]);
+  return <View pointerEvents="none" style={styles.fill}>
+    {focused&&!failed?<WebView ref={ref} source={source} originWhitelist={['*']} style={styles.web}
+      javaScriptEnabled scrollEnabled={false} bounces={false} domStorageEnabled={false}
+      allowFileAccess={false} allowFileAccessFromFileURLs={false} allowUniversalAccessFromFileURLs={false}
+      setSupportMultipleWindows={false} onShouldStartLoadWithRequest={request=>request.url==='about:blank'}
+      onMessage={event=>{try{const message=JSON.parse(event.nativeEvent.data);if(message.type==='ready')setReady(true);if(message.type==='rendered'&&message.requestKey===expectedKey.current)setRenderedKey(message.requestKey);if(message.type==='error')setFailed(true);}catch{setFailed(true);}}}
+      onError={()=>setFailed(true)} onRenderProcessGone={()=>setFailed(true)} />:null}
+    {failed&&<View style={styles.fallback}><FullGuitarSvg design={design} modelId={modelId} width={112} height={180} highlightedString={highlightedString}/><Text style={styles.label}>3D unavailable · image preview</Text></View>}
+  </View>;
+}
+const styles=StyleSheet.create({fill:{position:'absolute',top:0,bottom:0,left:0,right:0,overflow:'hidden',borderRadius:20},web:{flex:1,backgroundColor:'#141522'},fallback:{alignItems:'center'},label:{color:'#aaa',fontSize:10}});

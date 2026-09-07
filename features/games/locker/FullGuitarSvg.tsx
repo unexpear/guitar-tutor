@@ -1,8 +1,9 @@
 import React from 'react';
-import { View } from 'react-native';
+import { guitarStringPath } from '../../tuner/components/guitarStringGeometry';
+import { View, Image } from 'react-native';
 import Svg, { Defs, Image as SvgImage, LinearGradient, Path, Stop } from 'react-native-svg';
 import type { GuitarDesign } from '../../progression/guitarDesigns';
-import { DEFAULT_GUITAR_MODEL_IDS, type GuitarModelId } from '../../progression/guitarModels';
+import { DEFAULT_GUITAR_MODEL_IDS, isImportedGuitar, type GuitarModelId } from '../../progression/guitarModels';
 import { FULL_GUITAR_MODEL_ASSETS, FULL_GUITAR_PLAYER_SKINS, type GuitarFinishFamily } from '../../progression/guitarModelAssets';
 
 const ACOUSTIC_BODY =
@@ -23,15 +24,19 @@ function finishFamily(design: GuitarDesign): GuitarFinishFamily {
   return design.rarity === 'Starter' ? 'wood' : design.rarity === 'Legendary' ? 'crystal' : 'metallic';
 }
 
-export default function FullGuitarSvg({ design, modelId, width = 92, height = 150 }: { design: GuitarDesign; modelId?: GuitarModelId; width?: number; height?: number }) {
+export default function FullGuitarSvg({ design, modelId, width = 92, height = 150, highlightedString }: { design: GuitarDesign; modelId?: GuitarModelId; width?: number; height?: number; highlightedString?: number }) {
   const gradientId = `guitar-${design.id}`;
   const compatibleModelId = modelId?.startsWith(design.guitarType)
     ? modelId
     : DEFAULT_GUITAR_MODEL_IDS[design.guitarType];
+  if(isImportedGuitar(compatibleModelId))return <Image
+    source={compatibleModelId==='acoustic-classical'?require('../../../assets/guitars/imported/classical.png'):require('../../../assets/guitars/imported/cotton.png')}
+    style={{width,height}} resizeMode="contain" accessibilityLabel={`${compatibleModelId==='acoustic-classical'?'Classical':'Cotton Candy'} guitar, fixed finish preview`} />;
   const body = BODY_PATHS[compatibleModelId]
     ?? (design.guitarType === 'acoustic' ? ACOUSTIC_BODY : ELECTRIC_BODY);
   const bakedSkin = FULL_GUITAR_PLAYER_SKINS[compatibleModelId][design.id];
   const asset = bakedSkin ?? FULL_GUITAR_MODEL_ASSETS[compatibleModelId][finishFamily(design)];
+  const stringPath = highlightedString === undefined ? null : guitarStringPath(compatibleModelId, highlightedString);
   return (
     <View style={{ width, height }}>
       <Svg width={width} height={height} viewBox="0 0 200 320" accessibilityLabel={`${design.name} ${design.guitarType} guitar`}>
@@ -44,6 +49,11 @@ export default function FullGuitarSvg({ design, modelId, width = 92, height = 15
         </Defs>
         <SvgImage href={asset} x={0} y={0} width={200} height={320} preserveAspectRatio="xMidYMid meet" />
         {!bakedSkin && <Path d={body} fill={`url(#${gradientId})`} opacity={design.rarity === 'Legendary' ? 0.18 : 0.3} />}
+        {stringPath && <>
+          <Path d={stringPath} stroke="#FFC857" strokeWidth={6} opacity={0.15} strokeLinecap="round" />
+          <Path d={stringPath} stroke="#FFC857" strokeWidth={3} opacity={0.4} strokeLinecap="round" />
+          <Path d={stringPath} stroke="#FFE6A3" strokeWidth={1} strokeLinecap="round" />
+        </>}
       </Svg>
     </View>
   );

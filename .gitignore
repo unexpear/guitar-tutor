@@ -67,3 +67,8 @@ dist-play/
 /output/beginner-flow/
 /output/large-font-tuner.png
 /output/large-font-window.xml
+
+# Local third-party source downloads and rejected/reference-only assets.
+/output/imported-guitars/
+/output/material-source/
+/output/release-*.log

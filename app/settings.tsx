@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useGuitarRewardStore } from '../features/store/guitarRewardStore';
 import {
   Alert,
   View,
@@ -463,6 +464,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: () => {
             resetProgress();
+            useGuitarRewardStore.getState().reset();
             resetQuestionnaire();
             resetToBeginnerDefaults();
             router.replace('/(tabs)/lessons');

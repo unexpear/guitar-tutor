@@ -3,7 +3,7 @@
 
   const WIDTH = 512;
   const HEIGHT = 768;
-  const finishes = ['Gloss', 'Matte', 'Metallic Flake', 'Pearlescent', 'Brushed Metal', 'Carbon Weave'];
+  const finishes = [...Guitar3D.finishNames];
   const patterns = ['Center Stripe', 'Split', 'Edge Burst', 'Pinstripes', 'Diagonal Band', 'Chevron', 'Quarter Panels', 'No Accent'];
   const presets = [
     { name: 'Cherry Racing', primary: '#A51931', accent: '#FFD166', primaryFinish: 'Gloss', accentFinish: 'Metallic Flake', pattern: 'Center Stripe', seed: 1847 },
@@ -12,6 +12,9 @@
     { name: 'Solar Flake', primary: '#D98516', accent: '#FFF0A1', primaryFinish: 'Metallic Flake', accentFinish: 'Gloss', pattern: 'Pinstripes', seed: 5521 },
     { name: 'Ocean Brushed', primary: '#145DA0', accent: '#7DE2D1', primaryFinish: 'Brushed Metal', accentFinish: 'Pearlescent', pattern: 'Center Stripe', seed: 9320 },
     { name: 'Forest Carbon', primary: '#176B45', accent: '#B8FF55', primaryFinish: 'Carbon Weave', accentFinish: 'Matte', pattern: 'Diagonal Band', seed: 2638 },
+    { name: 'Solid Seafoam', primary: '#70B7A5', accent: '#70B7A5', primaryFinish: 'Solid Gloss', accentFinish: 'Solid Gloss', pattern: 'No Accent', seed: 8124 },
+    { name: 'Workshop Black', primary: '#252830', accent: '#A6ADB5', primaryFinish: 'Rough Paint', accentFinish: 'Satin Metal', pattern: 'No Accent', seed: 4513 },
+    { name: 'Polished Pewter', primary: '#A6ADB5', accent: '#252830', primaryFinish: 'Polished Metal', accentFinish: 'Solid Matte', pattern: 'No Accent', seed: 3187 },
   ];
   const meshBlueprints = {
     'steel-acoustic': { profile: 'acoustic-dreadnought', strings: 6, scale: 645.2, frets: 20, nutWidth: 44.5, bridgeSpacing: 54.8, depth: 10, pickups: 'none', joinFret: 14, note: '25.4 in scale · 20 frets · neck joins at fret 14' },
@@ -206,10 +209,10 @@
     const opacity = strength / 100;
     const random = rng(seed + finishes.indexOf(finish) * 101);
     target.save(); target.globalAlpha = opacity;
-    if (finish === 'Gloss') {
+    if (finish === 'Gloss' || finish === 'Solid Gloss' || finish === 'Polished Metal') {
       const shine = target.createLinearGradient(110, 120, 410, 680); shine.addColorStop(0, '#fff9'); shine.addColorStop(.35, '#fff0'); shine.addColorStop(1, '#0008');
       target.fillStyle = shine; target.fillRect(0, 0, WIDTH, HEIGHT);
-    } else if (finish === 'Matte') {
+    } else if (finish === 'Matte' || finish === 'Solid Matte' || finish === 'Solid Satin' || finish === 'Satin Metal') {
       target.fillStyle = '#7774'; target.fillRect(0, 0, WIDTH, HEIGHT);
     } else if (finish === 'Metallic Flake') {
       target.fillStyle = '#fff';
@@ -224,6 +227,12 @@
         target.strokeStyle = random() > .5 ? '#fff' : '#000';
         target.globalAlpha = opacity * (.025 + random() * .10);
         target.beginPath(); target.moveTo(0, y); target.lineTo(WIDTH, y); target.stroke();
+      }
+    } else if (['Rough Paint','Open Pore Wood','Hammered Metal'].includes(finish)) {
+      for(let i=0;i<6000;i++) {
+        target.fillStyle=random()>.5?'#fff':'#000';target.globalAlpha=opacity*.12;
+        const size=finish==='Hammered Metal'?3:1;
+        target.fillRect(random()*WIDTH,random()*HEIGHT,size,finish==='Open Pore Wood'?5:size);
       }
     } else if (finish === 'Carbon Weave') {
       // Alternating over/under fibre bundles instead of a diagonal wire grid.
@@ -246,7 +255,7 @@
     for (let i = 0; i < base.data.length; i += 4) {
       const alpha = (base.data[i + 3] * maskData[i + 3]) / 255;
       if (!alpha) continue;
-      const light = base.data[i] * .2126 + base.data[i + 1] * .7152 + base.data[i + 2] * .0722;
+      const light = finish.startsWith('Solid ') || finish==='Rough Paint' ? 188 : base.data[i] * .2126 + base.data[i + 1] * .7152 + base.data[i + 2] * .0722;
       // Preserve source shading without washing every chosen color into gray.
       const shade = .3 + light / 255 * .95;
       const highlight = Math.max(0, light - 195) * .55;
@@ -411,8 +420,8 @@
     const curated = ['#A51931','#FFD166','#4568DC','#B06AB3','#145DA0','#7DE2D1','#176B45','#B8FF55','#D98516','#59D9FF'];
     const finishSets = {
       balanced: [['Gloss','Metallic Flake'],['Matte','Gloss'],['Pearlescent','Gloss'],['Brushed Metal','Matte'],['Carbon Weave','Pearlescent']],
-      glossy: [['Gloss','Gloss'],['Pearlescent','Gloss'],['Gloss','Metallic Flake']],
-      textured: [['Brushed Metal','Carbon Weave'],['Carbon Weave','Matte'],['Metallic Flake','Pearlescent']],
+      glossy: [['Gloss','Gloss'],['Solid Gloss','Solid Gloss'],['Polished Metal','Solid Gloss'],['Pearlescent','Gloss'],['Gloss','Metallic Flake']],
+      textured: [['Rough Paint','Solid Matte'],['Open Pore Wood','Matte'],['Hammered Metal','Satin Metal'],['Brushed Metal','Carbon Weave'],['Carbon Weave','Matte'],['Metallic Flake','Pearlescent']],
       mixed: finishes.flatMap((primary) => finishes.map((accent) => [primary, accent])),
     };
     const patternSets = {
@@ -770,6 +779,9 @@
   }
 
   optionList(controls.primaryFinish, finishes); optionList(controls.accentFinish, finishes); optionList(controls.pattern, patterns);
+  const materialHelp=document.createElement('p');materialHelp.className='help';
+  materialHelp.textContent='Solid paints have no wood grain. Rough Paint and Open Pore Wood add surface relief. Polished Metal reflects its surroundings; rotate the 3D model to inspect highlights. The image preview is a flat approximation.';
+  controls.accentFinish.closest('label').after(materialHelp);
   controls.preset.replaceChildren(new Option('Custom', 'custom'), ...presets.map((value, index) => new Option(value.name, String(index))));
   Object.values(controls).filter((value) => value instanceof HTMLElement && !['preset', 'show-mask'].includes(value.id)).forEach((control) => control.addEventListener('input', () => { controls.preset.value = 'custom'; render(); }));
   controls.showMask.addEventListener('input', render);

@@ -36,10 +36,10 @@ import {
 } from '../../features/tuner/data/instrumentProfiles';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
-import HeadstockSvg from '../../features/tuner/components/HeadstockSvg';
-import FullGuitarSvg from '../../features/games/locker/FullGuitarSvg';
+import Guitar3D from '../../features/tuner/components/Guitar3D';
 import { nextTunerHoldString, TuneVerdict } from '../../features/tuner/pitch';
 import { useProgressStore } from '../../features/store/progressStore';
+import { useGuitarRewardStore } from '../../features/store/guitarRewardStore';
 import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
 import { useMicReleaseOnLeave } from '../../features/audio/useMicReleaseOnLeave';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
@@ -171,7 +171,8 @@ export default function TunerScreen() {
   const setAlternateTuning = useProgressStore((s) => s.setAlternateTuning);
   const selectedGuitarDesignId = useProgressStore((s) => s.selectedGuitarDesignId);
   const selectedGuitarModelIds = useProgressStore((s) => s.selectedGuitarModelIds);
-  const selectedGuitarDesign = guitarDesign(selectedGuitarDesignId);
+  const reward = useGuitarRewardStore(s=>s.collection.find(g=>g.id===s.equippedId));
+  const selectedGuitarDesign = reward?.design ?? guitarDesign(selectedGuitarDesignId);
   const guitarType = useUserPreferencesStore((s) => s.guitarType);
   const customTunings = useTuningStore((s) => s.customTunings);
   const meterStyle = useSettingsStore((s) => s.meterStyle);
@@ -205,7 +206,7 @@ export default function TunerScreen() {
   const { playNote } = useGuitarSound();
   const profile = instrumentProfile(tuning.instrumentId);
   const activeModelId = profile.headstock
-    ? selectedModelId(selectedGuitarModelIds, profile.headstock)
+    ? reward?.modelId ?? selectedModelId(selectedGuitarModelIds, profile.headstock)
     : undefined;
   const activeModel = activeModelId ? guitarModel(activeModelId) : undefined;
 
@@ -426,10 +427,6 @@ export default function TunerScreen() {
   // Whichever string the readout currently describes: the chosen one, or
   // the detector's guess when nothing is chosen.
   const aimedString = selectedString ?? tuner.stringIndex;
-  const aimedColor =
-    aimedString !== null && tuner.verdict
-      ? VERDICT_COLORS[tuner.verdict]
-      : Colors.success;
 
   const handleSelectString = useCallback(
     (index: number, note: string) => {
@@ -493,6 +490,11 @@ export default function TunerScreen() {
       </Text>
 
       {usesGuitarHeadstock ? <View style={styles.stringsArea}>
+        <Guitar3D
+          design={{ ...selectedGuitarDesign, guitarType: activeModel?.guitarType ?? profile.headstock ?? 'acoustic' }}
+          modelId={activeModelId!}
+          highlightedString={aimedString ?? undefined}
+        />
         <View style={styles.stringColumn}>
           {[0, 1, 2].map((i) => (
             <StringChip
@@ -511,25 +513,7 @@ export default function TunerScreen() {
           ))}
         </View>
 
-        <View style={styles.headstockArea}>
-          <FullGuitarSvg
-            design={{ ...selectedGuitarDesign, guitarType: profile.headstock ?? 'acoustic' }}
-            modelId={activeModelId}
-            width={compactLayout ? 110 : 140}
-            height={compactLayout ? 176 : 224}
-          />
-          <Text style={styles.pegGuideLabel}>Tuning pegs</Text>
-          <HeadstockSvg
-            guitarType={profile.headstock ?? 'acoustic'}
-            design={selectedGuitarDesign}
-            modelId={activeModelId}
-            highlightColor={aimedColor}
-            highlightedPeg={aimedString ?? undefined}
-            width={compactLayout ? 80 : 100}
-            height={compactLayout ? 128 : 160}
-            animateHighlight={false}
-          />
-        </View>
+        <View style={{ width: 128 }} pointerEvents="none" />
 
         <View style={styles.stringColumn}>
           {[3, 4, 5].map((i) => (
@@ -866,6 +850,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   stringsArea: {
+    minHeight: 200,
+    marginHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

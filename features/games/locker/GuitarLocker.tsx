@@ -1,4 +1,6 @@
 import React from 'react';
+import DailyGuitarGift from './DailyGuitarGift';
+import { useGuitarRewardStore } from '../../store/guitarRewardStore';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, CARD_SHADOW } from '../../../constants/Colors';
@@ -32,6 +34,7 @@ export default function GuitarLocker({ onExit }: { onExit: () => void }) {
         <View><Text style={styles.title}>Guitar Locker</Text><Text style={styles.subtitle}>{unlocked}/40 collected · Level {level}</Text></View>
       </View>
       <ScrollView contentContainerStyle={styles.grid}>
+        <DailyGuitarGift />
         <Text style={styles.help}>Your first 10 finishes are free. Earn XP by finishing games and lessons; every new level unlocks another design. Cosmetics never lock learning.</Text>
         <Text style={styles.sectionTitle}>Guitar models</Text>
         <Text style={styles.sectionHelp}>Pick one acoustic and one electric shape. Every model is free.</Text>
@@ -42,7 +45,7 @@ export default function GuitarLocker({ onExit }: { onExit: () => void }) {
             return (
               <PressableScale
                 key={model.id}
-                onPress={() => selectModel(model.id)}
+                onPress={() => { if(selectModel(model.id))useGuitarRewardStore.getState().equip(null); }}
                 style={[styles.modelCard, active && styles.modelCardActive]}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: active }}
@@ -66,7 +69,7 @@ export default function GuitarLocker({ onExit }: { onExit: () => void }) {
             return (
               <PressableScale
                 key={design.id}
-                onPress={() => open && select(design.id)}
+                onPress={() => { if(open && select(design.id))useGuitarRewardStore.getState().equip(null); }}
                 disabled={!open}
                 style={[styles.card, active && styles.cardActive, CARD_SHADOW]}
                 accessibilityRole="button"

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "id": "acoustic-classical",
+      "name": "Classical",
+      "sourceKind": "classical",
+      "sourceFile": "Classical guitar.blend",
+      "sourceSha256": "BAB35192E2E6D95BB7A73FB25FFC221D91ACF8579695FEA91E7C5130B5C00E5D",
+      "license": "CC0-1.0",
+      "geometryApproved": true,
+      "runtimeReady": false,
+      "remaining": ["Remove source branding and non-guitar props", "Bake source materials", "Validate optimized geometry and six-string selection", "Android performance check"]
+    },
+    {
+      "id": "electric-cotton-candy",
+      "name": "Cotton Candy",
+      "sourceKind": "cotton",
+      "sourceFile": "Cotton Candy 80s Electric Guitar/CottonCandy_V1_EvanG3D.blend",
+      "sourceSha256": "DDA49C6D941F6F43175C4B8FBAB3C55C607C651F2C4A77A61FCBE68D75ED86F3",
+      "license": "CC0-1.0",
+      "geometryApproved": true,
+      "runtimeReady": false,
+      "remaining": ["Repair legacy materials and remove source logos", "Reduce hidden electronics", "Validate optimized geometry and six-string selection", "Android performance check"]
+    }
+  ],
+  "excluded": ["parlor", "explorer"]
+}

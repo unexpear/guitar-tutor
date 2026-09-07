@@ -3,17 +3,19 @@ import { readdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { GUITAR_DESIGNS } from '../features/progression/guitarDesigns';
-import { GUITAR_MODELS } from '../features/progression/guitarModels';
+import { GUITAR_MODELS, isImportedGuitar } from '../features/progression/guitarModels';
 
 const SKIN_DIRECTORY = new URL('../assets/guitars/player-skins/', import.meta.url);
 const ASSET_CATALOG = new URL('../features/progression/guitarModelAssets.ts', import.meta.url);
 
-test('every guitar shape has ten additive bundled player skins', async () => {
+test('every customizable guitar shape retains ten additive bundled player skins', async () => {
   const files = await readdir(SKIN_DIRECTORY);
   const catalog = await readFile(ASSET_CATALOG, 'utf8');
 
-  assert.equal(files.length, GUITAR_MODELS.length * 10);
-  for (const model of GUITAR_MODELS) {
+  const customizable = GUITAR_MODELS.filter(model => !isImportedGuitar(model.id));
+  assert.equal(customizable.length, 4);
+  assert.equal(files.length, customizable.length * 10);
+  for (const model of customizable) {
     const modelFiles = files.filter((file) => file.startsWith(`${model.id}--`));
     assert.equal(modelFiles.length, 10, `${model.id} should have ten skins`);
     for (const file of modelFiles) {

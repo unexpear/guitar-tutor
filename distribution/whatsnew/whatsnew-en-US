@@ -1,7 +1,6 @@
-- Fixed Hear it playback and added real CC0 guitar recordings
-- Hear chords together, string by string, or one string at a time
-- Fixed capo guide pitch, audio cleanup and muted playback feedback
-- Added common progressions and generic riff exercises
-- Improved Follow Me scoring and saved practice settings
-- Visible guitar tuning aid, clearer About text and Large display mode
-- Owner testing build: phone audio, microphone and layout checks are ongoing
+- Full 3D guitar tuning scene with gold string highlights
+- Added Classical and Cotton Candy fixed-finish models
+- Kept existing guitars, starter finishes and level unlocks
+- Free daily guitar gifts with saved collections
+- Improved materials, lighting and model-load fallback
+- Owner testing build: phone performance, audio and microphone checks are pending

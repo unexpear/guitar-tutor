@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from '../../../components/PressableScale';
@@ -6,12 +6,13 @@ import { Colors, CARD_SHADOW } from '../../../constants/Colors';
 import { GUITAR_DESIGNS } from '../../progression/guitarDesigns';
 import {
   GUITAR_MODELS,
-  guitarModelsForType,
   type GuitarModel,
   type GuitarType,
 } from '../../progression/guitarModels';
 import { useProgressStore } from '../../store/progressStore';
 import FullGuitarSvg from './FullGuitarSvg';
+import GuitarLocker from './GuitarLocker';
+import { useGuitarRewardStore } from '../../store/guitarRewardStore';
 
 interface GuitarModelPickerProps {
   visible: boolean;
@@ -26,14 +27,16 @@ function previewDesign(model: GuitarModel) {
 }
 
 export default function GuitarModelPicker({ visible, onClose, guitarType }: GuitarModelPickerProps) {
+  const [showFinishes, setShowFinishes] = useState(false);
   const { fontScale } = useWindowDimensions();
   const selected = useProgressStore((state) => state.selectedGuitarModelIds);
   const select = useProgressStore((state) => state.selectGuitarModel);
-  const models = guitarType ? guitarModelsForType(guitarType) : GUITAR_MODELS;
+  const models = GUITAR_MODELS;
   const singleColumn = fontScale > 1.2;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={showFinishes ? () => setShowFinishes(false) : onClose}>
+      {showFinishes ? <GuitarLocker onExit={() => setShowFinishes(false)} /> :
       <Pressable style={styles.overlay} onPress={onClose} accessibilityLabel="Close guitar model picker">
         <Pressable
           style={styles.sheet}
@@ -44,7 +47,7 @@ export default function GuitarModelPicker({ visible, onClose, guitarType }: Guit
           <View style={styles.header}>
             <View style={styles.headingCopy}>
               <Text style={styles.title}>Choose Guitar Model</Text>
-              <Text style={styles.subtitle}>Models are free. Finishes are collected separately.</Text>
+              <Text style={styles.subtitle}>All models are free. Classical and Cotton Candy currently use fixed finishes. Each instrument remembers its own model{guitarType ? `; your tuner is currently ${guitarType}` : ''}. Selecting a body does not change your tuning.</Text>
             </View>
             <PressableScale onPress={onClose} style={styles.close} accessibilityLabel="Close model picker">
               <Ionicons name="close" size={22} color={Colors.dark.text} />
@@ -52,13 +55,17 @@ export default function GuitarModelPicker({ visible, onClose, guitarType }: Guit
           </View>
 
           <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+            <PressableScale onPress={() => setShowFinishes(true)} style={styles.finishButton} accessibilityRole="button">
+              <Text style={styles.modelName}>Finishes & level rewards ›</Text>
+              <Text style={styles.subtitle}>Browse starter finishes, earned designs and upcoming unlocks in your Guitar Locker.</Text>
+            </PressableScale>
             <View accessibilityRole="radiogroup" style={styles.cards}>
               {models.map((model) => {
                 const active = selected[model.guitarType] === model.id;
                 return (
                   <PressableScale
                     key={model.id}
-                    onPress={() => select(model.id)}
+                    onPress={() => { if(select(model.id))useGuitarRewardStore.getState().equip(null); }}
                     style={[styles.card, singleColumn && styles.cardSingleColumn, active && styles.cardActive, CARD_SHADOW]}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: active }}
@@ -86,12 +93,13 @@ export default function GuitarModelPicker({ visible, onClose, guitarType }: Guit
             </View>
           </ScrollView>
         </Pressable>
-      </Pressable>
+      </Pressable>}
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  finishButton: { padding: 14, marginBottom: 16, borderRadius: 14, backgroundColor: Colors.dark.surfaceElevated },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.68)' },
   sheet: { maxHeight: '82%', borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: Colors.dark.background, paddingBottom: 28 },
   handle: { width: 38, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 11, backgroundColor: Colors.dark.cardBorder },

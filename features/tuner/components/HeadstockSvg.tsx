@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Image as SvgImage, LinearGradient, Path, Stop } from 'react-native-svg';
 import type { GuitarDesign } from '../../progression/guitarDesigns';
-import { DEFAULT_GUITAR_MODEL_IDS, type GuitarModelId } from '../../progression/guitarModels';
+import { DEFAULT_GUITAR_MODEL_IDS, isImportedGuitar, type GuitarModelId } from '../../progression/guitarModels';
 import { HEADSTOCK_MODEL_ASSETS, type GuitarFinishFamily } from '../../progression/guitarModelAssets';
 import { getStringGuidance } from '../headstockGuidance';
 
@@ -42,7 +42,7 @@ export default function HeadstockSvg({
   animateHighlight = true,
 }: HeadstockProps) {
   const family = finishFamily(design);
-  const compatibleModelId = modelId?.startsWith(guitarType)
+  const compatibleModelId = modelId && !isImportedGuitar(modelId) && modelId.startsWith(guitarType)
     ? modelId
     : DEFAULT_GUITAR_MODEL_IDS[guitarType];
   const asset = HEADSTOCK_MODEL_ASSETS[compatibleModelId][family];

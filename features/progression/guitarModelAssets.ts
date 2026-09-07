@@ -1,4 +1,4 @@
-import type { GuitarModelId } from './guitarModels';
+import type { LegacyGuitarModelId as GuitarModelId } from './guitarModels';
 
 export type GuitarFinishFamily = 'wood' | 'metallic' | 'crystal';
 
