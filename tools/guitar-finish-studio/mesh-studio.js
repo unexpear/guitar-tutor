@@ -1,9 +1,10 @@
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { studioEnvironment } from './studio-environment.js';
-import { mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeVertices, mergeGeometries, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { surfaceDetail, finishProperties,coatingDetail,carbonDetail } from './material-detail.js';
 import { anisotropyExporter } from './export-anisotropy.js';
@@ -11,6 +12,7 @@ import { capturedWood,capturedWoodTint } from './captured-wood.js';
 import { componentMaterial,stringMaterial } from './component-materials.js';
 import { guitarShadows } from './guitar-lighting.js';
 import { carveTop,carveHeight } from './carved-top.js';
+import { hammeredRelief } from './tactile-relief.js';
 import { rosewoodSample } from './captured-rosewood.js';
 import { fingerboardGeometry,fretGeometry,fingerboardSag } from './fingerboard-geometry.js';
 export { finishNames } from './material-detail.js';
@@ -40,7 +42,9 @@ function paintMaterial(d,points,bounds) {
   const c=color.getContext('2d'), p=properties.getContext('2d'), rgb=c.createImageData(size,size), orm=p.createImageData(size,size);
   const heights=new Float32Array(size*size);
   const flakeWeights=new Float32Array(size*size);
-  const colors=[d.primary,d.accent].map(hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
+  // Chrome is neutral plating, not arbitrary colored metal. Keep colored
+  // Polished Metal available for tinted finishes and preserve mixed masks.
+  const colors=[d.primary,d.accent].map((hex,i)=>[d.primaryFinish,d.accentFinish][i]==='Chrome'?[196,198,201]:[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)));
   const edges=Array.from({length:size},(_,y)=>{
     if(!points)return [0,1];
     const py=T.MathUtils.lerp(bounds.max.y,bounds.min.y,(y+.5)/size),hits=[];
@@ -65,9 +69,14 @@ function paintMaterial(d,points,bounds) {
     flakeWeights[y*size+x]=T.MathUtils.lerp(Number(d.primaryFinish==='Metallic Flake'),Number(d.accentFinish==='Metallic Flake'),burst)*d.textureStrength/100;
     const woodWeight=T.MathUtils.lerp(Number(['Gloss','Matte','Open Pore Wood'].includes(d.primaryFinish)),Number(['Gloss','Matte','Open Pore Wood'].includes(d.accentFinish)),burst);
     const tint=woodWeight?capturedWoodTint(u,v,d.seed):[1,1,1];
-    colors[0].forEach((value,ch)=>rgb.data[index+ch]=Math.max(0,Math.min(255,(value*(1-burst)+colors[1][ch]*burst)*(1+detail)*T.MathUtils.lerp(1,tint[ch],woodWeight))));
+    // Subtle retained patina follows the SAME body-space depressions as the
+    // mesh. This is material variation, not a painted directional highlight.
+    const hammerWeight=d.primaryFinish==='Hammered Metal'?T.MathUtils.lerp(1,Number(d.accentFinish==='Hammered Metal'),burst):0;
+    const dent=hammerWeight&&points?-hammeredRelief(T.MathUtils.lerp(bounds.min.x,bounds.max.x,u),T.MathUtils.lerp(bounds.max.y,bounds.min.y,v),points,d.seed)/.00045:0;
+    const patina=dent*hammerWeight*Math.sqrt(T.MathUtils.clamp(d.textureStrength/100,0,1));
+    colors[0].forEach((value,ch)=>rgb.data[index+ch]=Math.max(0,Math.min(255,(value*(1-burst)+colors[1][ch]*burst)*(1+detail)*T.MathUtils.lerp(1,tint[ch],woodWeight)*(1-patina*[.22,.26,.30][ch]))));
     rgb.data[index+3]=255;
-    orm.data[index]=255; orm.data[index+1]=Math.max(0,Math.min(255,(rough+roughDetail)*255)); orm.data[index+2]=metal*255; orm.data[index+3]=255;
+    orm.data[index]=255; orm.data[index+1]=Math.max(0,Math.min(255,(rough+roughDetail+patina*.16)*255)); orm.data[index+2]=metal*255; orm.data[index+3]=255;
     // Three uses R for clearcoat / iridescence and B for anisotropy strength.
     coat.data[index]=clear*255;coat.data[index+1]=pearl*255;coat.data[index+2]=brushed*255;coat.data[index+3]=255;
   }
@@ -184,8 +193,11 @@ export function build(config, design, outline, lod=0) {
         geo.attributes.normal.setXYZ(i,0,0,originalNormals.getZ(i));
     }
     if((Array.isArray(mat)?mat:[mat]).some(m=>m.normalMap)) {
-      if(name==='Body'&&config.profile==='electric-singlecut'&&lod<2) {
-        const carved=carveTop(geo,points,thickness,lod);geo.dispose();geo=carved;
+      const carvedBody=name==='Body'&&config.profile==='electric-singlecut';
+      const tactile=['Body','Soundboard'].includes(name)&&design.primaryFinish==='Hammered Metal';
+      if(lod<2&&(carvedBody||tactile)) {
+        const heightAt=(x,y,outline)=>(carvedBody?carveHeight(x,y,outline):0)+(tactile?hammeredRelief(x,y,outline,design.seed):0);
+        const carved=carveTop(geo,points,thickness,lod,heightAt,tactile?(lod===0?.006:.012):undefined);geo.dispose();geo=carved;
       }
       const indexed=mergeVertices(geo);geo.dispose();geo=indexed;geo.computeTangents();
       // Side faces use untextured wood and may have collapsed planar UVs.
@@ -286,14 +298,25 @@ export function build(config, design, outline, lod=0) {
     plate('Bridge',bridgeShape,.007,front+.003,fretwood,.001);
     box('Bridge_center',.069,.021,.004,0,bridge,front+.011,fretwood);
   } else box('Bridge',.09,.025,.01,0,bridge,front+.008,steel);
-  box('Saddle',spacing+.005,.003,.003,0,bridge,front+.015,ivory);
+  if(acoustic) box('Saddle',spacing+.005,.003,.003,0,bridge,front+.015,ivory);
   // Distinct bridge details instead of a featureless rectangular block.
   for(let i=0;i<config.strings;i++) {
     const x=-spacing/2+i*spacing/(config.strings-1);
     if(acoustic) {
       const pin=add(`Bridge_pin_${i+1}`,new T.SphereGeometry(.0028,8,6),ivory,x,bridge-.008,front+.014);
       pin.scale.z=.6;
-    } else box(`Bridge_saddle_${i+1}`,.006,.014,.003,x,bridge,front+.017,steel);
+    } else {
+      box(`Bridge_saddle_${i+1}`,Math.min(.008,spacing/(config.strings-1)*.8),.014,.003,x,bridge,front+.0155,steel);
+      if(lod<2) {
+        const screw=add(`Bridge_adjuster_${i+1}`,new T.CylinderGeometry(.001,.001,.009,6),steel,x,bridge-.010,front+.011);
+        screw.castShadow=false;
+        // Small height screws flank the string rather than blocking its path.
+        for(const side of [-1,1]) {
+          const socket=add(`Bridge_socket_${i+1}_${side}`,new T.CircleGeometry(.00075,6),black,x+side*.0023,bridge+.003,front+.0171);
+          socket.castShadow=false;
+        }
+      }
+    }
   }
   if(quality>=2 && acoustic) {
     add('Premium_rosette',new T.TorusGeometry(.056,.0008,6,48),brass,0,.345,front+.001);
@@ -336,6 +359,11 @@ export function build(config, design, outline, lod=0) {
       stringGeometry.computeTangents();
       const string=add(`String_${i+1}`,stringGeometry,i<(bass?config.strings:acoustic?config.strings-2:config.strings-3)?wound:plain);
       string.position.copy(a).add(b).multiplyScalar(.5); string.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());
+      // Continue over the saddle into the anchor: strings must not end in midair.
+      const anchor=new T.Vector3(bx,bridge-(acoustic?.008:config.pickups==='hh'?.031:.011),front+(acoustic?.013:config.pickups==='hh'?.010:.006));
+      const tailDelta=anchor.clone().sub(b);
+      const tail=add(`String_anchor_${i+1}`,new T.CylinderGeometry(radius,radius,tailDelta.length(),4,1,true),string.material);
+      tail.position.copy(b).add(anchor).multiplyScalar(.5);tail.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),tailDelta.normalize());
     }
   }
   for(let i=0;i<config.strings;i++) {
@@ -362,16 +390,52 @@ export function build(config, design, outline, lod=0) {
   }
   if(!acoustic) {
     // Neck pickup must clear the end of the actual fretboard, including 24 frets.
-    const neckPickup=end-(config.pickups==='hh'?.024:.015);
+    const splitBass=config.pickups==='p'||config.pickups==='pj';
+    const neckPickup=splitBass?Math.min(end-.030,.365):end-(config.pickups==='hh'?.024:.015);
     const locations=config.pickups==='sss'?[.255,(.255+neckPickup)/2,neckPickup]:config.pickups==='hh'?[.26,neckPickup]:config.pickups==='p'||config.pickups==='pj'?[neckPickup,...(config.pickups==='pj'?[.255]:[])]:[];
     locations.forEach((y,i)=>{
-      if(config.pickups==='hh') box(`Pickup_ring_${i+1}`,.077,.043,.003,0,y,front+.006,quality>=1?ivory:black);
-      box(`Pickup_${i+1}`,.068,config.pickups==='hh'?.035:.017,.01,0,y,front+.009,black);
-      if(quality>=2 && config.pickups==='hh') box(`Pickup_cover_${i+1}`,.065,.032,.006,0,y,front+.0115,steel);
-      if(proportions && lod<2) for(let pole=0;pole<config.strings;pole++) {
-        const poleX=-.026+pole*.052/(config.strings-1),poleY=y+(config.pickups==='hh'?.009:0);
+      if(splitBass&&i===0) {
+        // Two offset coils, each covering a subset of strings; not a full-width bar.
+        // Double poles flank each string (Seymour Duncan's split-coil anatomy).
+        const split=Math.ceil(config.strings/2);
+        for(const [half,first,last,offset] of [[0,0,split-1,.011],[1,split,config.strings-1,-.011]]) {
+          const py=y+offset,fraction=(py-bridge)/(nut-bridge);
+          const span=T.MathUtils.lerp(spacing,nutWidth*.84,fraction);
+          const stringX=index=>-span/2+index*span/(config.strings-1);
+          const left=stringX(first),right=stringX(last);
+          box(`Pickup_split_${half+1}`,right-left+.014,.018,.01,(left+right)/2,py,front+.009,black);
+          if(lod<2)for(let s=first;s<=last;s++)for(const side of [-1,1]) {
+            const pole=add(`Pickup_split_${half+1}_pole_${s+1}_${side}`,new T.CylinderGeometry(.0017,.0017,.001,lod===0?10:6),steel,stringX(s)+side*.0026,py,front+.0145);
+            pole.rotation.x=Math.PI/2;pole.castShadow=false;
+          }
+        }
+        return;
+      }
+      const humbucker=config.pickups==='hh',covered=humbucker&&quality>=2;
+      if(humbucker) {
+        box(`Pickup_ring_${i+1}`,.077,.043,.003,0,y,front+.006,quality>=1?ivory:black);
+        box(`Pickup_${i+1}`,.068,.035,.006,0,y,front+.008,black);
+        if(covered) box(`Pickup_cover_${i+1}`,.065,.032,.006,0,y,front+.0115,steel);
+        else for(const side of [-1,1]) {
+          // Seeded cream/black bobbins give an unbranded, reproducible zebra option.
+          const zebra=quality>=1&&Math.abs(Math.trunc(design.seed))%2===1;
+          box(`Pickup_bobbin_${i+1}_${side}`,.065,.015,.004,0,y+side*.0085,front+.012,zebra&&side===1?ivory:black);
+        }
+        if(lod<2) for(const x of [-.035,.035])for(const dy of [-.018,.018]) {
+          add(`Pickup_mount_${i}_${x}_${dy}`,new T.CircleGeometry(.0014,8),steel,x,y+dy,front+.0077);
+        }
+      } else box(`Pickup_${i+1}`,.068,.017,.01,0,y,front+.009,black);
+      if(lod<2) for(let pole=0;pole<config.strings;pole++) {
+        // Follow the actual taper from bridge spacing to nut spacing.
+        const fraction=(y-bridge)/(nut-bridge),poleSpan=T.MathUtils.lerp(spacing,nutWidth*.84,fraction);
+        const poleX=-poleSpan/2+pole*poleSpan/(config.strings-1),poleY=y+(humbucker?.0085:0);
         const cap=add(`Pickup_${i+1}_pole_${pole+1}`,new T.CylinderGeometry(.002,.002,.001,lod===0?10:6),steel,poleX,poleY,front+.0145);cap.rotation.x=Math.PI/2;
-        if(config.pickups==='hh')add(`Screw_slot_${i}_${pole}`,new T.PlaneGeometry(.0028,.00045),black,poleX,poleY,front+.0151);
+        if(humbucker) {
+          add(`Screw_slot_${i}_${pole}`,new T.PlaneGeometry(.0028,.00045),black,poleX,poleY,front+.0151);
+          if(!covered) {
+            const slug=add(`Pickup_${i+1}_slug_${pole+1}`,new T.CylinderGeometry(.002,.002,.001,lod===0?10:6),steel,poleX,y-.0085,front+.0145);slug.rotation.x=Math.PI/2;
+          }
+        }
       }
     });
     if(config.pickups==='hh') box('Stop_tailpiece',.074,.009,.008,0,bridge-.031,front+.010,steel);
@@ -381,7 +445,26 @@ export function build(config, design, outline, lod=0) {
       const controlX=.09+(i%2)*.038,controlY=.14+Math.floor(i/2)*.055;
       const controlZ=front+.005+(config.profile==='electric-singlecut'&&lod<2?carveHeight(controlX,controlY,points):0);
       const knob=add(`Control_${i+1}`,knobGeometry,black,controlX,controlY,controlZ); knob.rotation.x=Math.PI/2;
+      if(lod<2) {
+        add(`Control_cap_${i+1}`,new T.CircleGeometry(.0055,16),quality>=2?steel:black,controlX,controlY,controlZ+.0061);
+        box(`Control_pointer_${i+1}`,.0007,.003,.00025,controlX,controlY+.0025,controlZ+.0063,ivory);
+      }
     }
+  }
+  // Batch subpixel hardware by material to preserve the phone draw-call budget.
+  // Strings stay separate for selection/highlighting.
+  const detailGroups=new Map();
+  for(const mesh of root.children.filter(m=>/^(Bridge_adjuster_|Bridge_socket_|Pickup_mount_|Control_cap_|Control_pointer_)/.test(m.name))) {
+    mesh.updateMatrix();
+    const geo=mesh.geometry.index?mesh.geometry.toNonIndexed():mesh.geometry.clone();
+    geo.applyMatrix4(mesh.matrix);
+    const group=detailGroups.get(mesh.material)??[];group.push(geo);detailGroups.set(mesh.material,group);
+    root.remove(mesh);mesh.geometry.dispose();
+  }
+  for(const [mat,geometries] of detailGroups) {
+    const merged=mergeGeometries(geometries);
+    geometries.forEach(g=>g.dispose());
+    add(`Hardware_details_${mat.name}`,merged,mat).castShadow=false;
   }
   if(config.handedness==='left') root.scale.x=-1;
   steel.dispose();black.dispose();
@@ -404,6 +487,26 @@ export function dispose(root) {
 export async function glb(root) {
   const exporter=new GLTFExporter();exporter.register(anisotropyExporter);
   return new Blob([await exporter.parseAsync(root,{binary:true,animations:[],onlyVisible:true})],{type:'model/gltf-binary'});
+}
+export function obj(root) {
+  root.updateMatrixWorld(true);
+  const exportRoot=new T.Group(),geometries=[];
+  try {
+    root.traverseVisible(source=>{
+      if(!source.isMesh||source.userData.isStringGlow)return;
+      const geometry=source.geometry.clone();geometries.push(geometry);
+      // OBJExporter transforms positions/normals but does not reverse mirrored faces.
+      if(source.matrixWorld.determinant()<0) {
+        if(!geometry.index)geometry.setIndex(Array.from({length:geometry.attributes.position.count},(_,i)=>i));
+        const indices=geometry.index;
+        for(let i=0;i<indices.count;i+=3){const b=indices.getX(i+1);indices.setX(i+1,indices.getX(i+2));indices.setX(i+2,b);}
+      }
+      const mesh=new T.Mesh(geometry,source.material);mesh.name=source.name;
+      mesh.matrixAutoUpdate=false;mesh.matrix.copy(source.matrixWorld);exportRoot.add(mesh);
+    });
+    exportRoot.updateMatrixWorld(true);
+    return '# Guitar Finish Studio — current preview geometry; meters, Y up, +Z front\n# Materials/textures omitted; use GLB for PBR finishes.\n'+new OBJExporter().parse(exportRoot).replace(/^usemtl .*\n/gm,'');
+  } finally {geometries.forEach(g=>g.dispose());}
 }
 export async function inspectGLB(blob) {
   const loaded=await new GLTFLoader().parseAsync(await blob.arrayBuffer(),'');

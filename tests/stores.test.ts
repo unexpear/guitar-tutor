@@ -16,8 +16,70 @@ function memoryStorage() {
 }
 
 const mem = memoryStorage();
+let failRewardRead=false, failRewardWrite=false;
 mock.module('@react-native-async-storage/async-storage', {
-  defaultExport: mem,
+  defaultExport: {...mem,
+    getItem:async(key:string)=>{if(failRewardRead&&key==='standardtune-guitar-rewards')throw Error('read failed');return mem.getItem(key);},
+    setItem:async(key:string,value:string)=>{if(failRewardWrite&&key==='standardtune-guitar-rewards')throw Error('disk full');return mem.setItem(key,value);},
+  },
+});
+
+test('reward save failures are visible and retry preserves the exact gift',async()=>{
+  const {useGuitarRewardStore:store,useRewardStorageStatus:status}=await import('../features/store/guitarRewardStore');
+  await store.persist.rehydrate();store.getState().reset();await new Promise(r=>setTimeout(r,0));
+  failRewardWrite=true;store.getState().claim();await new Promise(r=>setTimeout(r,0));
+  const gift=store.getState().collection[0];assert.ok(gift);assert.equal(status.getState().saveError,true);
+  store.getState().claim();assert.equal(store.getState().collection.length,1);
+  failRewardWrite=false;store.setState({});await new Promise(r=>setTimeout(r,0));
+  assert.equal(status.getState().saveError,false);
+  assert.deepEqual(JSON.parse(mem.entries.get('standardtune-guitar-rewards')!).state.collection,[gift]);
+});
+test('reward load failure exposes retry and blocks mutations until recovery',async()=>{
+  const {useGuitarRewardStore:store,useRewardStorageStatus:status}=await import('../features/store/guitarRewardStore');
+  failRewardRead=true;await store.persist.rehydrate();assert.equal(status.getState().loadError,true);
+  const prior=store.getState();store.getState().claim();store.getState().equip(null);assert.equal(store.getState(),prior);
+  failRewardRead=false;await store.persist.rehydrate();assert.equal(status.getState().loadError,false);assert.equal(store.persist.hasHydrated(),true);
+});
+
+test('gift inventory survives storage reload and supports switching old and new guitars', async () => {
+  const { useGuitarRewardStore: store } = await import('../features/store/guitarRewardStore');
+  const { claimReward, emptyRewards } = await import('../features/progression/guitarRewards');
+  await store.persist.rehydrate();
+  let rewards = emptyRewards();
+  for (let day = 1; day <= 25; day++) rewards = claimReward(rewards, new Date(2026, 7, day), () => day / 30);
+  store.setState(rewards);
+  const first = rewards.collection[0].id;
+  const last = rewards.collection.at(-1)!.id;
+  store.getState().equip(first);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const saved = mem.entries.get('standardtune-guitar-rewards')!;
+  assert.equal(JSON.parse(saved).state.collection.length, 25);
+  // Clear runtime state, then restore the persisted file as at app startup.
+  store.getState().reset();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  mem.entries.set('standardtune-guitar-rewards', saved);
+  await store.persist.rehydrate();
+  assert.deepEqual(store.getState().collection, rewards.collection);
+  assert.equal(store.getState().equippedId, first);
+  store.getState().equip(last);
+  assert.equal(store.getState().equippedId, last);
+  store.getState().equip('not-owned');
+  assert.equal(store.getState().equippedId, last);
+  store.getState().equip(null);
+  assert.equal(store.getState().equippedId, null);
+  assert.equal(store.getState().collection.length, 25);
+});
+
+test('claiming a daily gift immediately adds it to persisted inventory without rerolling', async () => {
+  const { useGuitarRewardStore: store } = await import('../features/store/guitarRewardStore');
+  await store.persist.rehydrate();
+  store.getState().reset();
+  store.getState().claim();
+  assert.equal(store.getState().collection.length, 1);
+  const gift = store.getState().collection[0];
+  store.getState().claim();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(JSON.parse(mem.entries.get('standardtune-guitar-rewards')!).state.collection, [gift]);
 });
 
 test('saved progressions retain older entries beyond twenty and round-trip storage', async () => {
@@ -142,6 +204,17 @@ test('tester unlock reaches every cosmetic level without completing content', ()
   assert.deepEqual(state.completedLessons, {});
   assert.deepEqual(state.gameHighScores, {});
   assert.equal(state.selectGuitarDesign('level-30'), true);
+});
+
+test('selecting a finish replaces a fixed-finish body with a customizable one',async()=>{
+  const {GUITAR_DESIGNS}=await import('../features/progression/guitarDesigns');
+  for(const [type,model,expected] of [['acoustic','acoustic-classical','acoustic-grand'],['electric','electric-cotton-candy','electric-doublecut']] as const){
+    resetProgress();
+    useProgressStore.getState().selectGuitarModel(model);
+    const design=GUITAR_DESIGNS.find(d=>d.guitarType===type&&d.rarity==='Starter')!;
+    assert.equal(useProgressStore.getState().selectGuitarDesign(design.id),true);
+    assert.equal(useProgressStore.getState().selectedGuitarModelIds[type],expected);
+  }
 });
 
 test('progress reset restores the real first-launch learning state', () => {

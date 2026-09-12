@@ -4,13 +4,14 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { createHash } from 'node:crypto';
 import * as T from 'three';
-import { build, dispose, statistics, collision } from './mesh-studio.js';
+import { build, dispose, statistics, collision, obj } from './mesh-studio.js';
 import { mobileRecipe, rarityLimits } from './mobile-recipe.js';
 import { finishNames,finishProperties,surfaceDetail,coatingDetail,carbonDetail } from './material-detail.js';
 import { anisotropyExporter } from './export-anisotropy.js';
 import capture from './captured-wood.json' with {type:'json'};
 import {capturedWood,capturedWoodTint} from './captured-wood.js';
 import {carveHeight,carvedNormal} from './carved-top.js';
+import {hammeredRelief} from './tactile-relief.js';
 import {rosewoodSample} from './captured-rosewood.js';
 import rosewoodCapture from './captured-rosewood.json' with {type:'json'};
 import studioCapture from './captured-studio.json' with {type:'json'};
@@ -108,7 +109,7 @@ test('seeded phone recipes obey rarity complexity and polish limits reproducibly
 });
 
 test('solid paints have no inherited grain; rough materials vary in relief and metals have distinct polish',()=>{
-  assert.equal(finishNames.length,14);
+  assert.equal(finishNames.length,15);
   for(const name of finishNames) {
     assert.ok(finishProperties(name).every(v=>v>=0&&v<=1));
     for(let i=0;i<10;i++)assert.ok(surfaceDetail(name,i/10,.37,42).every(Number.isFinite));
@@ -127,6 +128,22 @@ test('solid paints have no inherited grain; rough materials vary in relief and m
   assert.equal(finishProperties('Solid Gloss')[1],0);
   assert.equal(finishProperties('Polished Metal')[1],1);
   assert.ok(finishProperties('Polished Metal')[0]<finishProperties('Satin Metal')[0]);
+});
+
+test('chrome is smooth neutral plating and rough coatings have coherent detail',()=>{
+  assert.ok(finishNames.includes('Chrome'));
+  assert.deepEqual(finishProperties('Chrome'),[.035,1,0,0,0]);
+  assert.deepEqual(surfaceDetail('Chrome',.2,.8,34),[0,0,0]);
+  for(const finish of ['Rough Paint','Satin Metal','Brushed Metal']) {
+    const a=surfaceDetail(finish,.231,.347,12),b=surfaceDetail(finish,.231001,.347001,12);
+    assert.ok(a.every((v,i)=>Math.abs(v-b[i])<.001),`${finish} should not jump between pixels`);
+  }
+  const root=build(config,{...design,primary:'#ff0000',accent:'#00ff00',primaryFinish:'Chrome',accentFinish:'Chrome'},outlines[config.profile],1);
+  const paint=root.getObjectByName('Soundboard').material[0];
+  assert.deepEqual(Array.from(paint.map.image.pixels.slice(0,4)),[196,198,201,255]);
+  assert.equal(paint.metalnessMap.image.pixels[2],255);
+  assert.ok(paint.roughnessMap.image.pixels[1]<12);
+  dispose(root);
 });
 
 test('pearl is independent of wood figure and open pores are recessed',()=>{
@@ -163,6 +180,136 @@ const literal=source.match(/const outlines = (\{[\s\S]*?\n    \});/)[1];
 const outlines=vm.runInNewContext(`(${literal})`);
 const design={primary:'#a51931',accent:'#ffd166',primaryFinish:'Gloss',accentFinish:'Metallic Flake',textureStrength:55,pattern:'Center Stripe',patternScale:100,seed:1847};
 const config={profile:'acoustic-dreadnought',strings:6,frets:20,scaleLengthMm:645.2,nutWidthMm:44.5,bridgeSpacingMm:54.8,bodyDepthMeters:.1,joinFret:14,pickups:'none',handedness:'right'};
+
+test('hammered patina adds bounded warm variation without changing geometry budgets',()=>{
+  const root=build(config,{...design,primary:'#a0a0a0',accent:'#a0a0a0',pattern:'None',primaryFinish:'Hammered Metal',accentFinish:'Hammered Metal',textureStrength:100},outlines[config.profile],1);
+  const paint=root.getObjectByName('Soundboard').material[0],pixels=paint.map.image.pixels;
+  let warm=0,neutral=0;
+  for(let i=0;i<pixels.length;i+=4) {
+    const delta=pixels[i]-pixels[i+2];
+    assert.ok(delta>=0&&delta<=16,'subtle warm patina, no saturated streaks');
+    if(delta>2)warm++;else if(delta===0)neutral++;
+    assert.equal(pixels[i+3],255);
+  }
+  assert.ok(warm>100);assert.ok(neutral>100);
+  assert.equal(paint.map.colorSpace,T.SRGBColorSpace);
+  assert.equal(paint.roughnessMap.colorSpace,T.NoColorSpace);
+  assert.ok(statistics(root).triangles<25000);
+  dispose(root);
+});
+
+test('hammered relief is seeded real depth with protected mounting zones',()=>{
+  const outline=[new T.Vector2(-.2,0),new T.Vector2(.2,0),new T.Vector2(.2,.5),new T.Vector2(-.2,.5)];
+  let deepest=0,different=false;
+  for(let y=.05;y<.45;y+=.005)for(let x=-.18;x<.18;x+=.005) {
+    const h=hammeredRelief(x,y,outline,123);
+    assert.ok(h>=-.00045&&h<=0);deepest=Math.min(deepest,h);
+    assert.equal(h,hammeredRelief(x,y,outline,123));
+    different ||= h!==hammeredRelief(x,y,outline,456);
+    if(Math.abs(x)<.075||x>0&&y<.22)assert.equal(h,0);
+  }
+  assert.ok(deepest<-.0002);assert.ok(different);
+});
+
+test('hammered finish changes exported mesh vertices, not just normals, within phone budget',()=>{
+  const root=build(config,{...design,primaryFinish:'Hammered Metal',accentFinish:'Hammered Metal'},outlines[config.profile],1);
+  const top=root.getObjectByName('Soundboard'),p=top.geometry.attributes.position;
+  let dents=0;
+  for(let i=0;i<p.count;i++) {
+    if(p.getZ(i)>.002&&p.getZ(i)<.00299)dents++;
+    assert.ok(Number.isFinite(p.getX(i)+p.getY(i)+p.getZ(i)));
+  }
+  assert.ok(dents>50,'actual displaced soundboard vertices');
+  assert.ok(statistics(root).triangles<25000);
+  assert.equal(obj(root).split('\n').filter(l=>l.startsWith('f ')).length,statistics(root).triangles);
+  dispose(root);
+});
+
+test('current OBJ contains every preview triangle without material promises or source mutation',()=>{
+  for(const handedness of ['left','right']) {
+    const root=build({...config,handedness},design,outlines[config.profile],1);
+    const before=statistics(root),output=obj(root);
+    assert.equal(output.split('\n').filter(l=>l.startsWith('f ')).length,before.triangles);
+    assert.ok(output.includes('o Soundboard\n'));assert.ok(output.includes('o String_6\n'));
+    assert.ok(output.includes('\nvt '));assert.ok(output.includes('\nvn '));
+    assert.ok(!/^usemtl |^mtllib /m.test(output));
+    assert.deepEqual(statistics(root),before);assert.equal(obj(root),output);
+    dispose(root);
+  }
+});
+
+test('OBJ mirrored winding agrees with transformed normals and retains the original indices',()=>{
+  const root=new T.Group(),mesh=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshStandardMaterial());
+  root.add(mesh);root.scale.x=-1;root.position.set(2,3,4);
+  const original=Array.from(mesh.geometry.index.array),output=obj(root),positions=[],normals=[];
+  for(const line of output.split('\n')) {
+    const [kind,...parts]=line.split(' ');
+    if(kind==='v')positions.push(new T.Vector3(...parts.map(Number)));
+    if(kind==='vn')normals.push(new T.Vector3(...parts.map(Number)));
+    if(kind==='f') {
+      const vertices=parts.map(p=>p.split('/').map(Number));
+      const [a,b,c]=vertices.map(v=>positions[v[0]-1]);
+      assert.ok(b.clone().sub(a).cross(c.clone().sub(a)).dot(normals[vertices[0][2]-1])>0);
+    }
+  }
+  assert.deepEqual(Array.from(mesh.geometry.index.array),original);
+  assert.equal(Math.min(...positions.map(p=>p.x)),1.5);
+  mesh.geometry.dispose();mesh.material.dispose();
+});
+
+test('singlecut body supports the neck and has a waist and one cutaway',()=>{
+  const root=build({...config,profile:'electric-singlecut',pickups:'hh',joinFret:17,bodyDepthMeters:.045},design,outlines['electric-singlecut'],1);
+  const body=root.getObjectByName('Body');
+  const hit=(x,y)=>new T.Raycaster(new T.Vector3(x,y,1),new T.Vector3(0,0,-1)).intersectObject(body).length>0;
+  assert.ok(hit(0,.41),'neck joint is supported, not suspended in an upper notch');
+  assert.ok(hit(-.065,.41),'continuous bass-side shoulder');
+  assert.ok(!hit(.065,.41),'treble-side cutaway');
+  assert.ok(!hit(-.13,.275),'inset waist');
+  assert.ok(hit(-.13,.14),'fuller lower bout');
+  dispose(root);
+});
+
+test('P and P/J bass layouts have offset split coils with paired poles and neck clearance',()=>{
+  for(const pickups of ['p','pj'])for(const handedness of ['left','right'])for(const lod of [0,1,2]) {
+    const root=build({...config,profile:'bass-doublecut',strings:4,scaleLengthMm:864,nutWidthMm:41.3,bridgeSpacingMm:57,bodyDepthMeters:.045,joinFret:16,pickups,handedness},design,outlines['bass-doublecut'],lod);
+    const a=root.getObjectByName('Pickup_split_1'),b=root.getObjectByName('Pickup_split_2');
+    assert.ok(a&&b);assert.ok(a.position.x<0&&b.position.x>0);assert.ok(a.position.y>b.position.y);
+    assert.equal(!!root.getObjectByName('Pickup_2'),pickups==='pj');
+    assert.equal(root.getObjectByName('Pickup_1'),undefined);
+    const poles=root.children.filter(m=>m.name.startsWith('Pickup_split_')&&m.name.includes('_pole_'));
+    assert.equal(poles.length,lod<2?8:0);
+    const board=new T.Box3().setFromObject(root.getObjectByName('Fretboard'));
+    assert.ok(new T.Box3().setFromObject(a).max.y<board.min.y);
+    const body=root.getObjectByName('Body');
+    for(const part of [a,b,root.getObjectByName('Neck')]) {
+      const bounds=new T.Box3().setFromObject(part),center=bounds.getCenter(new T.Vector3());
+      const y=part.name==='Neck'?bounds.min.y+.002:center.y;
+      assert.ok(new T.Raycaster(new T.Vector3(center.x,y,1),new T.Vector3(0,0,-1)).intersectObject(body).length,`${part.name} must have body support`);
+    }
+    assert.ok(statistics(root).meshes<180);
+    dispose(root);
+  }
+});
+
+test('electric hardware has twin coils, aligned poles and outward-facing controls',()=>{
+  for(const qualityTier of [0,1,2,3]) {
+    const root=build({...config,profile:'electric-singlecut',pickups:'hh',bodyDepthMeters:.045}, {...design,qualityTier},outlines['electric-singlecut'],1);
+    assert.equal(root.getObjectByName('Saddle'),undefined,'bone saddle is acoustic only');
+    for(let p=1;p<=2;p++) {
+      assert.equal(!!root.getObjectByName(`Pickup_bobbin_${p}_1`),qualityTier<2);
+      assert.equal(!!root.getObjectByName(`Pickup_${p}_slug_6`),qualityTier<2);
+      assert.equal(!!root.getObjectByName(`Pickup_cover_${p}`),qualityTier>=2);
+    }
+    for(let i=1;i<=6;i++) {
+      assert.ok(root.getObjectByName(`String_anchor_${i}`));
+      const top=new T.Box3().setFromObject(root.getObjectByName(`Bridge_saddle_${i}`)).max.z;
+      assert.ok(Math.abs(top-(.045/2+.017))<1e-6);
+    }
+    const knob=root.getObjectByName('Control_1');
+    assert.ok(new T.Vector3(0,1,0).applyQuaternion(knob.quaternion).z>.99);
+    dispose(root);
+  }
+});
 
 test('strings retain their own alloy and winding rather than inheriting hardware plating',()=>{
   for(const profile of ['acoustic-dreadnought','electric-singlecut']) {

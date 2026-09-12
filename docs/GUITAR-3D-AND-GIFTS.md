@@ -29,9 +29,9 @@ Three.js MIT license is retained inline in the bundle and in the studio license.
 ## Free daily gift rules
 
 - One local-calendar-day check-in, initiated with Open free guitar gift.
-- Standard 60%, Rare 25%, Epic 12%, Legendary 3% on ordinary days.
-- Every seventh consecutive check-in promotes Standard to Rare: that day's odds
-  are Rare 85%, Epic 12%, Legendary 3%.
+- Common 50%, Rare 30%, Epic 15%, Legendary 5% on ordinary days.
+- Every seventh consecutive check-in promotes Common to Rare: that day's odds
+  are Rare 80%, Epic 15%, Legendary 5%.
 - No purchases, ads, paid rerolls, cash value, trading or loss of collected items.
 - Saved seed, palette, model and rarity reproduce each awarded guitar.
 - Check-in streak is separate from practice streak/XP. Existing 10 starter and

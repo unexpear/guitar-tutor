@@ -26,10 +26,11 @@ test('only approved imported models are packaged, static, self-contained and hav
   }
 });
 
-test('fixed imported finishes cannot replace existing seeded reward models', () => {
+test('fixed imported finishes stay outside new weighted rewards', () => {
   const originalIds = ['acoustic-grand', 'acoustic-cutaway', 'electric-doublecut', 'electric-singlecut'];
   for (let seed = 0; seed < 100; seed++) {
     const result = claimReward(emptyRewards(), new Date(2026, 8, 7), () => (seed + .1) / 2147483647);
-    assert.equal(result.collection[0].modelId, originalIds[seed % 4]);
+    assert.ok(originalIds.includes(result.collection[0].modelId));
+    assert.equal(isImportedGuitar(result.collection[0].modelId), false);
   }
 });

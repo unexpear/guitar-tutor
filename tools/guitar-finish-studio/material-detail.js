@@ -51,11 +51,12 @@ export function finishProperties(name) {
     case 'Open Pore Wood': return [.88,0,0,0,0];
     case 'Hammered Metal': return [.46,1,0,0,0];
     case 'Polished Metal': return [.12,1,0,0,0];
+    case 'Chrome': return [.035,1,0,0,0];
     case 'Satin Metal': return [.58,1,0,0,0];
     default: return [.32,0,.8,0,0];
   }
 }
-export const finishNames=Object.freeze(['Gloss','Matte','Metallic Flake','Pearlescent','Brushed Metal','Carbon Weave','Solid Gloss','Solid Satin','Solid Matte','Rough Paint','Open Pore Wood','Hammered Metal','Polished Metal','Satin Metal']);
+export const finishNames=Object.freeze(['Gloss','Matte','Metallic Flake','Pearlescent','Brushed Metal','Carbon Weave','Solid Gloss','Solid Satin','Solid Matte','Rough Paint','Open Pore Wood','Hammered Metal','Polished Metal','Satin Metal','Chrome']);
 
 export function coatingDetail(u,v,seed) {
   const x=Math.floor(u*256),y=Math.floor(v*256);
@@ -84,9 +85,16 @@ export function carbonDetail(u,v,seed) {
 // Color, microscopic height and roughness variation are different signals.
 export function surfaceDetail(finish,u,v,seed,style=0,figureStrength=1) {
   const n=hash(Math.floor(u*256),Math.floor(v*256),seed)*2-1;
-  if(finish.startsWith('Solid ')||finish==='Polished Metal')return [0,0,0];
-  if(finish==='Rough Paint')return [n*.015,n*.18,n*.04];
-  if(finish==='Satin Metal')return [0,n*.015,n*.025];
+  if(finish.startsWith('Solid ')||finish==='Polished Metal'||finish==='Chrome')return [0,0,0];
+  if(finish==='Rough Paint') {
+    // Resolved stipple: color and reflection follow the same coating relief.
+    const stipple=noise(u*112,v*112,seed)*.75+noise(u*123,v*123,seed+9)*.25;
+    return [(stipple-.5)*.035,(stipple-.5)*.15,(.5-stipple)*.09];
+  }
+  if(finish==='Satin Metal') {
+    const grain=noise(u*110,v*110,seed)-.5;
+    return [grain*.012,grain*.022,-grain*.04];
+  }
   if(finish==='Hammered Metal') {
     // Rounded, irregular tool impressions instead of high-frequency static.
     const x=u*28,y=v*28,ix=Math.floor(x),iy=Math.floor(y);
@@ -100,8 +108,8 @@ export function surfaceDetail(finish,u,v,seed,style=0,figureStrength=1) {
     return [(dent-.5)*.015,dent*.16,(dent-.5)*.045];
   }
   if(finish==='Brushed Metal') {
-    const brush=hash(Math.floor(v*256),0,seed)*2-1;
-    return [brush*.015,brush*.04,brush*.025];
+    const brush=(noise(u*5,v*120,seed)-.5)*2;
+    return [brush*.006,brush*.012,brush*.012];
   }
   if(finish==='Carbon Weave') {
     const tow=carbonDetail(u,v,seed);
@@ -116,7 +124,8 @@ export function surfaceDetail(finish,u,v,seed,style=0,figureStrength=1) {
   const grain=woodDetail(u,v,seed,style,figureStrength);
   if(finish==='Open Pore Wood') {
     const [,height,roughness]=capturedWood(u,v,seed);
-    return [grain,(height-1)*.045,(roughness-.5)*.08];
+    const pore=1-height;
+    return [grain-pore*.10,(height-1)*.045,(roughness-.5)*.08+pore*.045];
   }
   return [grain,grain*.008,grain*.06];
 }

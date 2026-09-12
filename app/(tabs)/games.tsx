@@ -258,11 +258,11 @@ export default function PracticeGamesScreen() {
           onPress={() => setActiveGame('guitar-locker')}
           style={styles.playerCard}
           accessibilityRole="button"
-          accessibilityLabel={`Level ${playerLevel.level}. Open Guitar Locker.`}
+          accessibilityLabel={`Level ${playerLevel.level}. Open My Guitars, free box and unlocks.`}
         >
           <View style={styles.levelBadge}><Text style={styles.levelNumber}>{playerLevel.level}</Text></View>
           <View style={styles.playerProgress}>
-            <View style={styles.playerLine}><Text style={styles.playerTitle}>LEVEL {playerLevel.level}</Text><Text style={styles.lockerLink}>Guitar Locker ›</Text></View>
+            <View style={styles.playerLine}><Text style={styles.playerTitle}>LEVEL {playerLevel.level}</Text><Text style={styles.lockerLink}>My Guitars · Free box ›</Text></View>
             <View style={styles.xpTrack}><View style={[styles.xpFill, { width: `${playerLevel.percent}%` }]} /></View>
             <Text style={styles.playerMeta}>{playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP · {roundsPlayed} rounds · {recordsSet} records</Text>
           </View>

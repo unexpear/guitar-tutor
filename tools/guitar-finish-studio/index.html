@@ -215,6 +215,9 @@
           <details><summary>Legacy OBJ export</summary><p class="help">Older low-poly exporter with a projected 2D texture. Use the GLB game-asset export below for the actual previewed geometry and PBR materials.</p>
           <button id="export-mesh" class="button button-secondary wide-button" type="button">Download legacy OBJ mesh ZIP</button></details>
           <button id="export-game-asset" class="button button-primary wide-button" type="button">Download game asset ZIP (GLB + LODs + collision)</button>
+          <button id="export-preview-obj" class="button button-secondary wide-button" type="button">Download current geometry ZIP (OBJ)</button>
+          <p class="help">Current OBJ matches the LOD0 preview shape, without materials or textures. Choose GLB to keep PBR finishes.</p>
+          <p class="help">Hammered Metal adds real shallow mesh relief to the body face in LOD0/LOD1. LOD2 simplifies it. Other fine surface textures still use shading maps.</p>
           <p id="mesh-status" class="help batch-status" role="status" aria-live="polite">Best for Blender, game engines, and further hand-detailing.</p>
         </section>
       </aside>

@@ -47,6 +47,7 @@ import { useSettingsStore } from '../../features/store/settingsStore';
 import { useTuningStore } from '../../features/store/tuningStore';
 import { guitarDesign } from '../../features/progression/guitarDesigns';
 import { guitarModel, selectedModelId } from '../../features/progression/guitarModels';
+import { rewardForInstrument } from '../../features/progression/guitarRewards';
 import GuitarModelPicker from '../../features/games/locker/GuitarModelPicker';
 
 const SECTIONS = INSTRUMENT_PROFILES.map((profile) => ({
@@ -171,8 +172,7 @@ export default function TunerScreen() {
   const setAlternateTuning = useProgressStore((s) => s.setAlternateTuning);
   const selectedGuitarDesignId = useProgressStore((s) => s.selectedGuitarDesignId);
   const selectedGuitarModelIds = useProgressStore((s) => s.selectedGuitarModelIds);
-  const reward = useGuitarRewardStore(s=>s.collection.find(g=>g.id===s.equippedId));
-  const selectedGuitarDesign = reward?.design ?? guitarDesign(selectedGuitarDesignId);
+  const equippedReward = useGuitarRewardStore(s=>s.collection.find(g=>g.id===s.equippedId));
   const guitarType = useUserPreferencesStore((s) => s.guitarType);
   const customTunings = useTuningStore((s) => s.customTunings);
   const meterStyle = useSettingsStore((s) => s.meterStyle);
@@ -205,6 +205,8 @@ export default function TunerScreen() {
   useMicReleaseOnLeave(tuner.stopListening, tuner.isActive);
   const { playNote } = useGuitarSound();
   const profile = instrumentProfile(tuning.instrumentId);
+  const reward = rewardForInstrument(equippedReward, profile.headstock);
+  const selectedGuitarDesign = reward?.design ?? guitarDesign(selectedGuitarDesignId);
   const activeModelId = profile.headstock
     ? reward?.modelId ?? selectedModelId(selectedGuitarModelIds, profile.headstock)
     : undefined;
@@ -471,9 +473,9 @@ export default function TunerScreen() {
               onPress={() => setModelPickerVisible(true)}
               style={styles.modeButton}
               accessibilityRole="button"
-              accessibilityLabel={`Current guitar model: ${activeModel?.name ?? 'default'}. Tap to change.`}
+              accessibilityLabel={`My Guitars: inventory, free box and unlocks. Current model: ${activeModel?.name ?? 'default'}.`}
             >
-              <Text style={styles.modeButtonText}>Model · {activeModel?.name ?? 'Default'}</Text>
+              <Text style={styles.modeButtonText}>My Guitars · {activeModel?.name ?? 'Default'} ›</Text>
             </PressableScale>
           )}
         </View>

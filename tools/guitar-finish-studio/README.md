@@ -192,6 +192,76 @@ The studio uses Canvas 2D, `createImageBitmap`, pointer events, and `canvas.toBl
 
 ## Photoreal starting points and finish limits
 
+See the [guitar construction and classification report](../../docs/GUITAR-CONSTRUCTION-RESEARCH.md)
+for the supported-assembly roadmap, source references, and known limits such as
+paired-course twelve-string geometry and parity between export paths.
+
+### Procedural 3D construction
+
+The mesh generator is separate from the 2D image-finishing workflow below. Its
+static geometry now includes two exposed humbucker bobbins (with a seeded
+cream/black option), covered high-tier pickups, tapered pole spacing, individual
+electric saddles, string runs to their anchors, and control caps with pointers.
+Small hardware details are batched by material; selectable strings remain separate.
+P and P/J layouts use two offset split-coil housings with paired poles, positioned
+on the body rather than directly against the longer bass fingerboard. The bass
+outline also supports the neck joint; raycast tests cover these attachments.
+The mobile-preset tests retain their limits of fewer than 25,000 triangles and
+180 meshes. These are incremental construction improvements, not a claim of
+finished photorealism or physical instrument simulation.
+
+The single-cut outline has a continuous bass-side shoulder, an inset waist and
+one treble-side cutaway. Raycast tests verify neck support and body clearances;
+the existing model IDs and collection recipes are unchanged.
+
+### Real tactile relief
+
+Studio lighting augments the captured environment with a neutral 0.18 linear
+fill to keep mirror faces readable. The archived HDR capture is unchanged.
+Rough-paint stipple is finer and lower-contrast; brushed-metal relief is subtle
+so machining detail does not resemble broad grooves.
+
+Chrome is neutral silver plating with low roughness, no painted highlights,
+and no grain. It overrides paint tint; Polished Metal remains tintable. The
+Mirror Chrome preset and finish selectors expose it in the studio. Reflections
+depend on the target engine's environment lighting. Rough paint now uses
+coherent stipple, brushed metal uses interrupted directional detail, and wood
+pore tint follows captured height. These microscopic details are material maps,
+not newly tessellated geometry. Existing carbon/pearl/flake coatings retain
+their specialized shading. This is an artistic PBR approximation, not a scan.
+
+Choosing **Hammered Metal** as the primary finish now adds seeded depressions
+up to 0.45 mm deep to the body face, baked into LOD0 and LOD1 mesh vertices.
+It survives current OBJ and GLB export; no displacement shader is required.
+Bridge/pickup, control, and perimeter regions remain protected. Acoustic relief
+is shallower than the modeled soundboard thickness. LOD2 omits this geometry.
+  Subtle warm patina and roughness variation follow those same depressions;
+  texture strength controls their intensity. GLB includes the material maps;
+  current OBJ remains geometry-only. No directional lighting is painted in.
+  Fine normal maps still supplement the surface; other finishes have not been
+converted to geometric textures. This is an artistic hammered-metal treatment,
+not captured manufacturing data. No rarity is deliberately made defective,
+and existing reward recipes and rarity odds are unchanged.
+
+### Export formats
+
+- **GLB game asset:** current procedural geometry with embedded PBR materials,
+  three LOD alternatives, and separate collision proxies.
+- **Current geometry OBJ:** the same LOD0 mesh as the preview, with normals and
+  UVs. No MTL or texture files; use GLB when finishes matter. Mirrored face winding
+  is corrected for left-handed models. The ZIP includes construction metadata.
+- **Legacy OBJ:** preserved older low-poly builder and projected 2D texture.
+  This deliberately does not match the modern preview.
+
+The modern preview no longer builds the legacy mesh merely to obtain its outline.
+Both paths read the same outline definition, without sharing their construction.
+
+Construction references (no logos or manufacturer artwork copied):
+[Seymour Duncan: humbucker internals](https://www.seymourduncan.com/blog/latest-updates/guitar-wiring-explored-humbucker-internals)
+and [Fender: movable bridge saddles](https://www.fender.com/articles/maintenance/intonation-101).
+
+### 2D image finishes
+
 The packaged `sources/` folder includes the project's existing photoreal acoustic
 and electric guitar artwork. Photoreal acoustic is the default; illustrated demos
 remain available and are explicitly labelled. Serve the tool over localhost or

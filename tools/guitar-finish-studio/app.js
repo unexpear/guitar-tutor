@@ -15,6 +15,7 @@
     { name: 'Solid Seafoam', primary: '#70B7A5', accent: '#70B7A5', primaryFinish: 'Solid Gloss', accentFinish: 'Solid Gloss', pattern: 'No Accent', seed: 8124 },
     { name: 'Workshop Black', primary: '#252830', accent: '#A6ADB5', primaryFinish: 'Rough Paint', accentFinish: 'Satin Metal', pattern: 'No Accent', seed: 4513 },
     { name: 'Polished Pewter', primary: '#A6ADB5', accent: '#252830', primaryFinish: 'Polished Metal', accentFinish: 'Solid Matte', pattern: 'No Accent', seed: 3187 },
+    { name: 'Mirror Chrome', primary: '#C4C6C9', accent: '#C4C6C9', primaryFinish: 'Chrome', accentFinish: 'Chrome', pattern: 'No Accent', seed: 6012 },
   ];
   const meshBlueprints = {
     'steel-acoustic': { profile: 'acoustic-dreadnought', strings: 6, scale: 645.2, frets: 20, nutWidth: 44.5, bridgeSpacing: 54.8, depth: 10, pickups: 'none', joinFret: 14, note: '25.4 in scale · 20 frets · neck joins at fret 14' },
@@ -209,7 +210,7 @@
     const opacity = strength / 100;
     const random = rng(seed + finishes.indexOf(finish) * 101);
     target.save(); target.globalAlpha = opacity;
-    if (finish === 'Gloss' || finish === 'Solid Gloss' || finish === 'Polished Metal') {
+    if (finish === 'Gloss' || finish === 'Solid Gloss' || finish === 'Polished Metal' || finish === 'Chrome') {
       const shine = target.createLinearGradient(110, 120, 410, 680); shine.addColorStop(0, '#fff9'); shine.addColorStop(.35, '#fff0'); shine.addColorStop(1, '#0008');
       target.fillStyle = shine; target.fillRect(0, 0, WIDTH, HEIGHT);
     } else if (finish === 'Matte' || finish === 'Solid Matte' || finish === 'Solid Satin' || finish === 'Satin Metal') {
@@ -251,11 +252,11 @@
     const base = sourceCtx.getImageData(0, 0, WIDTH, HEIGHT);
     const maskData = layerMask.getContext('2d').getImageData(0, 0, WIDTH, HEIGHT).data;
     const output = workCtx.createImageData(WIDTH, HEIGHT);
-    const [red, green, blue] = hexToRgb(color);
+    const [red, green, blue] = hexToRgb(finish==='Chrome'?'#C4C6C9':color);
     for (let i = 0; i < base.data.length; i += 4) {
       const alpha = (base.data[i + 3] * maskData[i + 3]) / 255;
       if (!alpha) continue;
-      const light = finish.startsWith('Solid ') || finish==='Rough Paint' ? 188 : base.data[i] * .2126 + base.data[i + 1] * .7152 + base.data[i + 2] * .0722;
+      const light = finish.startsWith('Solid ') || finish==='Rough Paint' || finish==='Chrome' ? 188 : base.data[i] * .2126 + base.data[i + 1] * .7152 + base.data[i + 2] * .0722;
       // Preserve source shading without washing every chosen color into gray.
       const shade = .3 + light / 255 * .95;
       const highlight = Math.max(0, light - 195) * .55;
@@ -550,19 +551,24 @@
     return config;
   }
 
+  function bodyOutlineFor(profile) {
+    const outlines = {
+      'acoustic-dreadnought': [[184,379],[157,397],[151,441],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[318,730],[369,704],[396,657],[396,605],[370,530],[348,485],[361,441],[355,397],[328,379]],
+      'acoustic-cutaway': [[184,379],[158,394],[153,438],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[319,727],[370,700],[394,654],[390,607],[367,548],[348,498],[354,452],[344,418],[316,408],[290,405],[276,379]],
+      'electric-singlecut': [[234,409],[195,409],[166,424],[150,451],[153,480],[176,518],[179,544],[153,579],[132,635],[140,690],[179,727],[259,742],[337,728],[378,694],[385,642],[376,585],[350,548],[339,523],[350,493],[356,466],[339,452],[319,455],[301,472],[284,487],[276,490],[276,440],[276,409]],
+      'electric-doublecut': [[223,414],[187,398],[158,421],[154,463],[183,488],[151,532],[137,604],[145,682],[187,724],[256,741],[325,724],[367,682],[375,604],[361,532],[329,488],[358,463],[354,421],[325,398],[289,414],[278,470],[234,470]],
+      'bass-doublecut': [[234,380],[234,468],[225,406],[187,388],[154,414],[151,463],[184,492],[151,538],[136,616],[147,690],[193,728],[256,741],[319,728],[365,690],[376,616],[361,538],[328,492],[361,463],[358,414],[325,388],[287,406],[278,468],[278,380]],
+    };
+    if (!outlines[profile]) throw new Error('Unknown guitar body profile.');
+    return outlines[profile];
+  }
+
   function buildStaticMesh(config) {
     const vertices = []; const textureCoordinates = []; const sections = [];
     const isBass = config.profile === 'bass-doublecut'; const isAcoustic = config.profile.startsWith('acoustic'); const mirror = config.handedness === 'left' ? -1 : 1;
     const scale = isBass ? .0015 : isAcoustic ? .00136 : .00132;
     const mapPoint = ([x, y]) => [(x - 256) * scale * mirror, (740 - y) * scale];
-    const outlines = {
-      'acoustic-dreadnought': [[184,379],[157,397],[151,441],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[318,730],[369,704],[396,657],[396,605],[370,530],[348,485],[361,441],[355,397],[328,379]],
-      'acoustic-cutaway': [[184,379],[158,394],[153,438],[164,485],[142,530],[116,605],[116,657],[143,704],[194,730],[256,739],[319,727],[370,700],[394,654],[390,607],[367,548],[348,498],[354,452],[344,418],[316,408],[290,405],[276,379]],
-      'electric-singlecut': [[187,418],[158,425],[150,470],[153,520],[140,570],[132,635],[140,690],[179,727],[259,742],[337,728],[378,694],[385,642],[376,585],[365,536],[367,493],[356,453],[335,449],[310,463],[290,482],[270,490],[253,490],[231,460],[210,428]],
-      'electric-doublecut': [[223,414],[187,398],[158,421],[154,463],[183,488],[151,532],[137,604],[145,682],[187,724],[256,741],[325,724],[367,682],[375,604],[361,532],[329,488],[358,463],[354,421],[325,398],[289,414],[278,470],[234,470]],
-      'bass-doublecut': [[225,406],[187,388],[154,414],[151,463],[184,492],[151,538],[136,616],[147,690],[193,728],[256,741],[319,728],[365,690],[376,616],[361,538],[328,492],[361,463],[358,414],[325,388],[287,406],[277,468],[235,468]],
-    };
-    const bodyOutline = outlines[config.profile] || outlines['electric-doublecut'];
+    const bodyOutline = bodyOutlineFor(config.profile);
 
     function triangulate(points) {
       const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
@@ -676,7 +682,7 @@
 
   let meshViewer;
   function gameMesh(design = recipe(), config = meshConfiguration(), lod = 0) {
-    return Guitar3D.build(config, design, buildStaticMesh(config).bodyOutline, lod);
+    return Guitar3D.build(config, design, bodyOutlineFor(config.profile), lod);
   }
   function updateMeshPreview() {
     try {
@@ -709,6 +715,23 @@
       el('mesh-status').textContent = `Exported static GLBs: ${levels.map(item => item.triangles + ' tris').join(' / ')}; PBR materials, collision proxies and import notes included.`;
     } catch (error) { el('mesh-status').textContent = `Game export failed: ${error.message}`; }
     finally { button.disabled = false; }
+  }
+
+  function exportPreviewOBJ() {
+    const button = el('export-preview-obj'); button.disabled = true;
+    let root;
+    try {
+      const config = meshConfiguration(), design = recipe(); root = gameMesh(design, config, 0);
+      const entries = [
+        { name: 'guitar.obj', data: new TextEncoder().encode(Guitar3D.obj(root)) },
+        { name: 'asset.json', data: new TextEncoder().encode(JSON.stringify({format:'guitar-preview-obj',version:1,units:'meters',upAxis:'Y',frontAxis:'+Z',static:true,materials:false,config,design,...Guitar3D.statistics(root)},null,2)) },
+        { name: 'IMPORT.txt', data: new TextEncoder().encode('This is the actual LOD0 preview geometry, including normals and UV coordinates. OBJ has no embedded PBR materials or textures in this package. Use the GLB game-asset export for materials, textures, LOD alternatives and collision proxies. Units: meters; Y up; front +Z. Static, no rig or animations.\n') },
+      ];
+      const url = URL.createObjectURL(storeZip(entries)), link = document.createElement('a');
+      link.href = url; link.download = `guitar-preview-geometry-${config.profile}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
+      el('mesh-status').textContent = 'Exported current LOD0 geometry as OBJ. For PBR materials and textures, use GLB.';
+    } catch(error) { el('mesh-status').textContent = `OBJ export failed: ${error.message}`; }
+    finally { if(root) Guitar3D.dispose(root); button.disabled = false; }
   }
 
   async function exportStaticMesh() {
@@ -780,7 +803,7 @@
 
   optionList(controls.primaryFinish, finishes); optionList(controls.accentFinish, finishes); optionList(controls.pattern, patterns);
   const materialHelp=document.createElement('p');materialHelp.className='help';
-  materialHelp.textContent='Solid paints have no wood grain. Rough Paint and Open Pore Wood add surface relief. Polished Metal reflects its surroundings; rotate the 3D model to inspect highlights. The image preview is a flat approximation.';
+  materialHelp.textContent='Hammered Metal has real mesh dents in LOD0/1. Other fine textures use material maps. Chrome is neutral silver plating (ignores paint color); use Polished Metal for colored metal. Rotate the 3D model to inspect reflections. The image preview is a flat approximation.';
   controls.accentFinish.closest('label').after(materialHelp);
   controls.preset.replaceChildren(new Option('Custom', 'custom'), ...presets.map((value, index) => new Option(value.name, String(index))));
   Object.values(controls).filter((value) => value instanceof HTMLElement && !['preset', 'show-mask'].includes(value.id)).forEach((control) => control.addEventListener('input', () => { controls.preset.value = 'custom'; render(); }));
@@ -821,6 +844,7 @@
   }));
   el('mesh-depth').addEventListener('input', () => { el('mesh-blueprint').value = 'custom'; el('mesh-depth-value').textContent = `${Number(el('mesh-depth').value).toFixed(1)} cm`; el('mesh-spec-note').textContent = 'Custom dimensions · verify against your intended instrument before manufacturing.'; });
   el('export-mesh').addEventListener('click', exportStaticMesh);
+  el('export-preview-obj').addEventListener('click', exportPreviewOBJ);
   el('preview-mesh').addEventListener('click', updateMeshPreview);
   document.querySelector('.mesh-card').addEventListener('input', () => { review?.refresh(); clearTimeout(meshUpdateTimer); meshUpdateTimer = setTimeout(updateMeshPreview, 120); });
   el('export-game-asset').addEventListener('click', exportGameAsset);

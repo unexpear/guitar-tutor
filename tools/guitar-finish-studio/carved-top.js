@@ -13,11 +13,11 @@ export function carveHeight(x,y,outline) {
   return -.006*(1-T.MathUtils.smootherstep(distance,0,.065))||0;
 }
 
-export function carvedNormal(position,normal,outline,depth) {
-  const offset=carveHeight(position.x,position.y,outline);
+export function carvedNormal(position,normal,outline,depth,heightAt=carveHeight) {
+  const offset=heightAt(position.x,position.y,outline);
   const weight=T.MathUtils.clamp(position.z/depth,0,1),e=.0001;
-  const dx=(carveHeight(position.x+e,position.y,outline)-carveHeight(position.x-e,position.y,outline))/(2*e)*weight;
-  const dy=(carveHeight(position.x,position.y+e,outline)-carveHeight(position.x,position.y-e,outline))/(2*e)*weight;
+  const dx=(heightAt(position.x+e,position.y,outline)-heightAt(position.x-e,position.y,outline))/(2*e)*weight;
+  const dy=(heightAt(position.x,position.y+e,outline)-heightAt(position.x,position.y-e,outline))/(2*e)*weight;
   // The clamped deformation has no z derivative outside the body slab.
   // Applying offset/depth there incorrectly bends the bevel's normals.
   const derivative=position.z>0&&position.z<depth?offset/depth:0;
@@ -25,19 +25,19 @@ export function carvedNormal(position,normal,outline,depth) {
   return new T.Vector3(normal.x-dx*nz,normal.y-dy*nz,nz).normalize();
 }
 
-export function carveTop(source,outline,depth,lod) {
+export function carveTop(source,outline,depth,lod,heightAt=carveHeight,detailLimit) {
   const positions=[],normals=[],uvs=[],groups=[];
   const p=source.attributes.position,n=source.attributes.normal,uv=source.attributes.uv;
   const vertex=i=>({p:new T.Vector3().fromBufferAttribute(p,i),n:new T.Vector3().fromBufferAttribute(n,i),uv:new T.Vector2().fromBufferAttribute(uv,i)});
   const middle=(a,b)=>({p:a.p.clone().add(b.p).multiplyScalar(.5),n:a.n.clone().add(b.n).normalize(),uv:a.uv.clone().add(b.uv).multiplyScalar(.5)});
   const emit=v=>{
-    const offset=carveHeight(v.p.x,v.p.y,outline),weight=T.MathUtils.clamp(v.p.z/depth,0,1);
-    const normal=carvedNormal(v.p,v.n,outline,depth);
+    const offset=heightAt(v.p.x,v.p.y,outline),weight=T.MathUtils.clamp(v.p.z/depth,0,1);
+    const normal=carvedNormal(v.p,v.n,outline,depth,heightAt);
     positions.push(v.p.x,v.p.y,v.p.z+offset*weight);normals.push(...normal.toArray());uvs.push(v.uv.x,v.uv.y);
   };
   const triangle=(a,b,c,level=0)=>{
     const lengths=[a.p.distanceToSquared(b.p),b.p.distanceToSquared(c.p),c.p.distanceToSquared(a.p)];
-    const longest=Math.max(...lengths),limit=lod===0?.012:.018;
+    const longest=Math.max(...lengths),limit=detailLimit??(lod===0?.012:.018);
     if(a.n.z>.999&&b.n.z>.999&&c.n.z>.999&&longest>limit*limit&&level<12) {
       const edge=lengths.indexOf(longest);
       if(edge===0){const m=middle(a,b);triangle(a,m,c,level+1);triangle(m,b,c,level+1);}

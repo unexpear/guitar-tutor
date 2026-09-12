@@ -1,6 +1,6 @@
-- Full 3D guitar tuning scene with gold string highlights
-- Added Classical and Cotton Candy fixed-finish models
-- Kept existing guitars, starter finishes and level unlocks
-- Free daily guitar gifts with saved collections
-- Improved materials, lighting and model-load fallback
-- Owner testing build: phone performance, audio and microphone checks are pending
+- My Guitars now brings owned gifts, free daily boxes and level unlocks together
+- Preview and equip saved gifts, with clearer save errors and retry controls
+- Refined string highlights, guitar framing, materials and lighting
+- Less frequent rounded double-cut gifts; existing guitars and rarity odds preserved
+- Retry 3D loading when a model fails
+- Owner testing build: on-phone performance, audio and microphone checks remain pending

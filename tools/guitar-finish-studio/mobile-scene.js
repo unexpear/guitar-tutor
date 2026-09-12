@@ -38,6 +38,14 @@ try {
   window.setImportedAsset=(id,data)=>{importedAsset={id,data};};
   const release=m=>m.userData.statistics?.imported?disposeImportedModel(m):dispose(m);
   const render=()=>renderer.render(scene,camera);
+  const fitModel=()=>{
+    if(!model)return;
+    const sphere=new T.Box3().setFromObject(model).getBoundingSphere(new T.Sphere());
+    const direction=camera.position.clone().sub(sphere.center).normalize();
+    const halfAngle=Math.atan(Math.tan(T.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect));
+    camera.position.copy(sphere.center).addScaledVector(direction,sphere.radius/Math.sin(halfAngle)*1.08);
+    camera.lookAt(sphere.center);
+  };
   window.updateGuitar = async payload => {try {
     latestPayload=payload;
     const imported=payload.modelId==='acoustic-classical'||payload.modelId==='electric-cotton-candy';
@@ -66,7 +74,8 @@ try {
       if(imported)camera.position.copy(center).addScaledVector(model.userData.cameraDirection,height*2.05);
       else camera.position.set(.18,center.y+.03,height*2.05);
       camera.lookAt(center);
-      gold=new T.MeshStandardMaterial({color:0xffd36a,emissive:0x9b6208,emissiveIntensity:.65,metalness:.7,roughness:.2});
+      fitModel();
+      gold=new T.MeshStandardMaterial({color:0xffd789,emissive:0xffb83d,emissiveIntensity:.35,metalness:.35,roughness:.32});
       recipeKey=nextKey;
       highlight=stringHighlight(model,render);
     }
@@ -83,7 +92,7 @@ try {
     }
     window.guitarDiagnostics={...model.userData.statistics,modelId:payload.modelId,selectedString:payload.highlightedString,drawCalls:renderer.info.render.calls,textures:renderer.info.memory.textures};
   }catch{if(latestPayload?.modelId===payload.modelId)send('error');}};
-  const resize=()=>{const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);highlight?.resize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();render();};
+  const resize=()=>{const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);highlight?.resize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();fitModel();render();};
   addEventListener('resize',resize);resize();
   canvas.addEventListener('webglcontextlost',()=>send('error'));
   addEventListener('error',()=>send('error'));

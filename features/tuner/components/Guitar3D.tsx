@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useIsFocused } from 'expo-router';
 import html from './mobileGuitarHtml.json';
@@ -10,7 +10,12 @@ import importedModels from '../../../assets/guitars/imported/models.json';
 import FullGuitarSvg from '../../games/locker/FullGuitarSvg';
 
 const source={html};
-export default function Guitar3D({design,modelId,highlightedString}:{design:GuitarDesign;modelId:GuitarModelId;highlightedString?:number}) {
+type Props={design:GuitarDesign;modelId:GuitarModelId;highlightedString?:number};
+export default function Guitar3D(props:Props) {
+  const key=JSON.stringify([props.modelId,isImportedGuitar(props.modelId)?null:props.design]);
+  return <GuitarScene key={key} {...props} />;
+}
+function GuitarScene({design,modelId,highlightedString}:Props) {
   const focused=useIsFocused();
   const ref=useRef<WebView>(null);
   const sentModel=useRef<string|null>(null);
@@ -29,14 +34,14 @@ export default function Guitar3D({design,modelId,highlightedString}:{design:Guit
   // Renderer readiness does not guarantee that decoding the model completed.
   // Pitch updates must not restart this deadline indefinitely.
   useEffect(()=>{if(!focused||!ready||failed||renderedKey===sceneKey)return;const timer=setTimeout(()=>setFailed(true),15000);return()=>clearTimeout(timer);},[focused,ready,failed,sceneKey,renderedKey]);
-  return <View pointerEvents="none" style={styles.fill}>
-    {focused&&!failed?<WebView ref={ref} source={source} originWhitelist={['*']} style={styles.web}
+  return <View pointerEvents="box-none" style={styles.fill}>
+    {focused&&!failed?<WebView pointerEvents="none" ref={ref} source={source} originWhitelist={['*']} style={styles.web}
       javaScriptEnabled scrollEnabled={false} bounces={false} domStorageEnabled={false}
       allowFileAccess={false} allowFileAccessFromFileURLs={false} allowUniversalAccessFromFileURLs={false}
       setSupportMultipleWindows={false} onShouldStartLoadWithRequest={request=>request.url==='about:blank'}
       onMessage={event=>{try{const message=JSON.parse(event.nativeEvent.data);if(message.type==='ready')setReady(true);if(message.type==='rendered'&&message.requestKey===expectedKey.current)setRenderedKey(message.requestKey);if(message.type==='error')setFailed(true);}catch{setFailed(true);}}}
       onError={()=>setFailed(true)} onRenderProcessGone={()=>setFailed(true)} />:null}
-    {failed&&<View style={styles.fallback}><FullGuitarSvg design={design} modelId={modelId} width={112} height={180} highlightedString={highlightedString}/><Text style={styles.label}>3D unavailable · image preview</Text></View>}
+    {failed&&<View style={styles.fallback}><FullGuitarSvg design={design} modelId={modelId} width={112} height={150} highlightedString={highlightedString}/><Text style={styles.label}>3D unavailable · image preview</Text><Pressable accessibilityRole="button" onPress={()=>{sentModel.current=null;setReady(false);setRenderedKey(null);setFailed(false);}} style={{padding:12,minHeight:44}}><Text style={{color:'#FFD166'}}>Retry 3D</Text></Pressable></View>}
   </View>;
 }
 const styles=StyleSheet.create({fill:{position:'absolute',top:0,bottom:0,left:0,right:0,overflow:'hidden',borderRadius:20},web:{flex:1,backgroundColor:'#141522'},fallback:{alignItems:'center'},label:{color:'#aaa',fontSize:10}});

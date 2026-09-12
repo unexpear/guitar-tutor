@@ -186,7 +186,10 @@ export const useProgressStore = create<ProgressState>()(
         if (design.id !== designId || !isDesignUnlocked(design, levelFromXp(get().totalXp))) {
           return false;
         }
-        set({ selectedGuitarDesignId: designId });
+        const models = get().selectedGuitarModelIds;
+        const current = models[design.guitarType];
+        const fixed = current === 'acoustic-classical' || current === 'electric-cotton-candy';
+        set({ selectedGuitarDesignId: designId, ...(fixed ? {selectedGuitarModelIds:{...models,[design.guitarType]:DEFAULT_GUITAR_MODEL_IDS[design.guitarType]}} : {}) });
         return true;
       },
 
