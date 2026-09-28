@@ -1,0 +1,112 @@
+{
+  "intents": {
+    "inline:opening-chords-shows-the-chord-library-not-the-t-b6b01d0c": {
+      "binding": {
+        "contains": "/chords",
+        "kind": "route"
+      },
+      "declaredAt": 1790607432819,
+      "id": "inline:opening-chords-shows-the-chord-library-not-the-t-b6b01d0c",
+      "provenBy": {
+        "at": 1790607433472,
+        "grade": "presence",
+        "verdictId": "reticle_act_and_wait:1790607433472"
+      },
+      "state": "proved",
+      "statement": "Opening Chords shows the chord library, not the tuner.",
+      "status": "proved",
+      "subject": "unsorted",
+      "surface": {
+        "route": "/chords"
+      },
+      "updatedAt": 1790607433532
+    },
+    "inline:standardtune-web-shows-labeled-tuner-navigation-e108308f": {
+      "binding": {
+        "kind": "element",
+        "query": {
+          "name": "Tuner",
+          "role": "tab"
+        }
+      },
+      "declaredAt": 1790600062214,
+      "id": "inline:standardtune-web-shows-labeled-tuner-navigation-e108308f",
+      "state": "bound",
+      "statement": "StandardTune web shows labeled Tuner navigation.",
+      "status": "proposed",
+      "subject": "unsorted",
+      "updatedAt": 1790600062224
+    },
+    "inline:standardtune-web-shows-the-tuner-activity-45bb8a16": {
+      "binding": {
+        "contains": "Tap to start tuning",
+        "kind": "text",
+        "visible": true
+      },
+      "declaredAt": 1790600080675,
+      "id": "inline:standardtune-web-shows-the-tuner-activity-45bb8a16",
+      "state": "bound",
+      "statement": "StandardTune web shows the Tuner activity.",
+      "status": "proposed",
+      "subject": "unsorted",
+      "updatedAt": 1790600080684
+    },
+    "inline:standardtune-web-shows-the-tuner-activity-label-32ce8399": {
+      "binding": {
+        "contains": "Tap to start tuning",
+        "kind": "text"
+      },
+      "declaredAt": 1790600074496,
+      "id": "inline:standardtune-web-shows-the-tuner-activity-label-32ce8399",
+      "state": "bound",
+      "statement": "StandardTune web shows the Tuner activity label.",
+      "status": "proposed",
+      "subject": "unsorted",
+      "updatedAt": 1790600074517
+    },
+    "inline:tab-names-are-tuner-chords-learn-songs-games-tem-c5c79c86": {
+      "binding": {
+        "kind": "element",
+        "query": {
+          "name": "Tuner",
+          "role": "tab"
+        }
+      },
+      "declaredAt": 1790607447587,
+      "id": "inline:tab-names-are-tuner-chords-learn-songs-games-tem-c5c79c86",
+      "provenBy": {
+        "at": 1790607447627,
+        "grade": "presence",
+        "verdictId": "reticle_assert:1790607447627"
+      },
+      "state": "proved",
+      "statement": "Tab names are Tuner, Chords, Learn, Songs, Games, Tempo.",
+      "status": "proved",
+      "subject": "unsorted",
+      "surface": {
+        "route": "/chords"
+      },
+      "updatedAt": 1790607447643
+    },
+    "inline:the-standardtune-web-shell-shows-the-tuner-activ-ba09078e": {
+      "binding": {
+        "contains": "Tuner",
+        "kind": "text"
+      },
+      "declaredAt": 1790599892822,
+      "id": "inline:the-standardtune-web-shell-shows-the-tuner-activ-ba09078e",
+      "provenBy": {
+        "at": 1790599892871,
+        "grade": "presence",
+        "verdictId": "reticle_assert:1790599892871"
+      },
+      "state": "proved",
+      "statement": "The StandardTune web shell shows the Tuner activity.",
+      "status": "proved",
+      "subject": "unsorted",
+      "updatedAt": 1790599892875
+    }
+  },
+  "subject": "unsorted",
+  "version": 1
+}

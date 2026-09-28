@@ -1,7 +1,11 @@
 module.exports = function (api) {
-  api.cache(true);
+  api.cache.using(() => process.env.NODE_ENV);
+  const production = process.env.NODE_ENV === 'production';
   return {
     presets: ['babel-preset-expo'],
-    plugins: ['react-native-reanimated/plugin'],
+    plugins: [
+      ...(production ? [] : [require('@reticlehq/babel-plugin')]),
+      'react-native-reanimated/plugin',
+    ],
   };
 };

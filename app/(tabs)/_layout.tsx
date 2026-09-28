@@ -6,7 +6,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type MCIName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 function TabIcon({ name, color }: { name: MCIName; color: ColorValue }) {
-  return <MaterialCommunityIcons name={name} size={24} color={color} />;
+  return (
+    <MaterialCommunityIcons
+      name={name}
+      size={24}
+      color={color}
+      accessible={false}
+      importantForAccessibility="no"
+    />
+  );
 }
 
 export default function TabLayout() {
@@ -60,6 +68,7 @@ export default function TabLayout() {
               <Ionicons name="settings-outline" size={22} color="#9ca3af" />
             </Pressable>
           ),
+          tabBarAccessibilityLabel: 'Tuner',
           tabBarIcon: ({ color }) => <TabIcon name="tune-vertical" color={color} />,
         }}
       />
@@ -67,6 +76,7 @@ export default function TabLayout() {
         name="chords"
         options={{
           title: 'Chords',
+          tabBarAccessibilityLabel: 'Chords',
           tabBarIcon: ({ color }) => <TabIcon name="guitar-acoustic" color={color} />,
         }}
       />
@@ -75,6 +85,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Learn',
+          tabBarAccessibilityLabel: 'Learn',
           tabBarIcon: ({ color }) => <TabIcon name="book-open-variant" color={color} />,
         }}
       />
@@ -83,6 +94,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Songs',
+          tabBarAccessibilityLabel: 'Songs',
           tabBarIcon: ({ color }) => <TabIcon name="music-note" color={color} />,
         }}
       />
@@ -91,6 +103,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Games',
+          tabBarAccessibilityLabel: 'Games',
           tabBarIcon: ({ color }) => <TabIcon name="gamepad-variant" color={color} />,
         }}
       />
@@ -99,6 +112,7 @@ export default function TabLayout() {
         options={{
           headerShown: false,
           title: 'Tempo',
+          tabBarAccessibilityLabel: 'Tempo',
           tabBarIcon: ({ color }) => <TabIcon name="metronome" color={color} />,
         }}
       />

@@ -1,0 +1,18 @@
+{
+  "intents": {
+    "flow:open-chords": {
+      "declaredAt": 1790607446175,
+      "id": "flow:open-chords",
+      "state": "declared",
+      "statement": "A player on Expo web can open Chords from Tuner; the route becomes /chords. This does not prove native microphone tuning.",
+      "status": "proposed",
+      "subject": "open-chords",
+      "surface": {
+        "flow": "open-chords"
+      },
+      "updatedAt": 1790607446178
+    }
+  },
+  "subject": "open-chords",
+  "version": 1
+}

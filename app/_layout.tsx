@@ -1,6 +1,10 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { connectReticle } from '../features/dev/connectReticle';
+
+connectReticle();
+
 export default function RootLayout() {
   return (
     <>

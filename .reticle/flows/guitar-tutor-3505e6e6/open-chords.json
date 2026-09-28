@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "name": "open-chords",
+  "projectId": "guitar-tutor-3505e6e6",
+  "createdAt": 1790607446175,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "tab",
+        "name": "Chords"
+      },
+      "args": {},
+      "action": "click",
+      "expect": {
+        "kind": "route",
+        "contains": "/chords"
+      }
+    }
+  ],
+  "startPath": "/",
+  "intent": "A player on Expo web can open Chords from Tuner; the route becomes /chords. This does not prove native microphone tuning.",
+  "intentId": "flow:open-chords"
+}

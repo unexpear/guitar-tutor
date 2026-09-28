@@ -1,0 +1,47 @@
+{
+  "entries": [
+    {
+      "id": "flow:open-chords",
+      "statement": "A player on Expo web can open Chords from Tuner; the route becomes /cho…",
+      "status": "proposed",
+      "subject": "open-chords"
+    },
+    {
+      "id": "inline:opening-chords-shows-the-chord-library-not-the-t-b6b01d0c",
+      "statement": "Opening Chords shows the chord library, not the tuner.",
+      "status": "proved",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:standardtune-web-shows-labeled-tuner-navigation-e108308f",
+      "statement": "StandardTune web shows labeled Tuner navigation.",
+      "status": "proposed",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:standardtune-web-shows-the-tuner-activity-45bb8a16",
+      "statement": "StandardTune web shows the Tuner activity.",
+      "status": "proposed",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:standardtune-web-shows-the-tuner-activity-label-32ce8399",
+      "statement": "StandardTune web shows the Tuner activity label.",
+      "status": "proposed",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:tab-names-are-tuner-chords-learn-songs-games-tem-c5c79c86",
+      "statement": "Tab names are Tuner, Chords, Learn, Songs, Games, Tempo.",
+      "status": "proved",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:the-standardtune-web-shell-shows-the-tuner-activ-ba09078e",
+      "statement": "The StandardTune web shell shows the Tuner activity.",
+      "status": "proved",
+      "subject": "unsorted"
+    }
+  ],
+  "version": 1
+}
