@@ -3,32 +3,13 @@ import assert from 'node:assert/strict';
 
 import { LESSON_CONTENT } from '../features/lessons/data/lessonContent';
 import { getDrill } from '../features/lessons/data/drills';
+import { LESSONS } from '../features/lessons/data/curriculum';
 
 /**
  * Every lesson the lessons tab can open. The anatomy lesson is the one
  * deliberate exception — it renders an interactive diagram instead of prose.
  */
-const ALL_LESSON_IDS = [
-  'beginner-holding-the-guitar',
-  'beginner-tuning-up',
-  'beginner-guitar-anatomy',
-  'beginner-reading-diagrams',
-  'beginner-fretting-notes',
-  'beginner-reading-tabs',
-  'beginner-open-chords',
-  'beginner-basic-strumming',
-  'intermediate-barre-chords',
-  'intermediate-fingerpicking',
-  'intermediate-scales-101',
-  'intermediate-music-theory',
-  'advanced-improvisation',
-  'advanced-techniques',
-  'advanced-songwriting',
-  'bass-first-notes',
-  'bass-right-hand',
-  'bass-fretboard',
-  'bass-groove',
-];
+const ALL_LESSON_IDS = LESSONS.map(lesson => lesson.id);
 
 test('every lesson except anatomy has real instructional content', () => {
   for (const id of ALL_LESSON_IDS) {

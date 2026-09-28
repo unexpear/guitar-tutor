@@ -9,6 +9,8 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Layout } from '../../constants/Layout';
 import { Colors } from '../../constants/Colors';
 import { useSettingsStore } from '../../features/store/settingsStore';
 import { createBeatClock, BeatClock } from '../../features/timing/beatClock';
@@ -84,6 +86,7 @@ function BeatDot({
 }
 
 export default function MetronomeScreen() {
+  const insets = useSafeAreaInsets();
   const [bpm, setBpm] = useState(100);
   const [isPlaying, setIsPlaying] = useState(false);
   usePracticeTimer(isPlaying);
@@ -220,7 +223,7 @@ export default function MetronomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.headerTitle}>Metronome</Text>
       </View>
 
@@ -240,6 +243,8 @@ export default function MetronomeScreen() {
             />
           ))}
         </View>
+
+        <Text style={styles.beatHint}>{timeSignature === '6/8' ? 'Six eighth-note clicks per bar. Beat 1 is accented.' : 'One click per beat. Beat 1 is accented.'}</Text>
 
         <View style={styles.bpmDisplay}>
           <Text style={styles.bpmValue}>{bpm}</Text>
@@ -297,7 +302,7 @@ export default function MetronomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Tap tempo"
           >
-            <Text style={styles.tapTempoText}>TAP</Text>
+            <Text style={styles.tapTempoText}>Tap tempo</Text>
           </PressableScale>
 
           <PressableScale
@@ -309,8 +314,8 @@ export default function MetronomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={isPlaying ? 'Stop metronome' : 'Start metronome'}
           >
-            <Text style={{ fontSize: 32, color: '#FFFFFF' }}>
-              {isPlaying ? '⏹' : '▶️'}
+            <Text style={{ fontSize: 20, color: '#071408', fontWeight: '700' }}>
+              {isPlaying ? 'Stop' : 'Play'}
             </Text>
           </PressableScale>
         </View>
@@ -353,30 +358,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f23',
   },
   header: {
+    width: '100%', maxWidth: Layout.readingWidth, alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 8,
     paddingBottom: 10,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   bodyScroll: {
     flex: 1,
   },
+  beatHint: { color: Colors.dark.muted, fontSize: 14, lineHeight: 21, textAlign: 'center' },
   body: {
+    width: '100%', maxWidth: Layout.readingWidth, alignSelf: 'center',
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    paddingHorizontal: 16,
     paddingBottom: 40,
-    gap: 28,
+    gap: 20,
   },
   beatsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap', justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    gap: 8,
   },
   beatDot: {
     width: 44,
@@ -495,13 +504,16 @@ const styles = StyleSheet.create({
   },
   controlsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: 24,
   },
   tapTempoButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    minWidth: 110,
+    minHeight: 64,
+    padding: 12,
+    borderRadius: 16,
     backgroundColor: '#1a1a3e',
     borderWidth: 2,
     borderColor: '#2a2a5e',
@@ -515,9 +527,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   playStopButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    minWidth: 88,
+    minHeight: 64,
+    padding: 12,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -539,7 +552,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   timeSigRow: {
-    flexDirection: 'row',
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
     gap: 10,
   },
   timeSigButton: {

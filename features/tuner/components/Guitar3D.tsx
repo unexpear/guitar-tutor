@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useIsFocused } from 'expo-router';
 import html from './mobileGuitarHtml.json';
@@ -21,6 +21,7 @@ function GuitarScene({design,modelId,highlightedString}:Props) {
   const sentModel=useRef<string|null>(null);
   const [ready,setReady]=useState(false),[failed,setFailed]=useState(false);
   const [renderedKey,setRenderedKey]=useState<string|null>(null);
+  const [sceneHeight,setSceneHeight]=useState(210);
   const sceneKey=JSON.stringify([modelId,isImportedGuitar(modelId)?null:design]);
   const expectedKey=useRef(sceneKey);expectedKey.current=sceneKey;
   const payload=JSON.stringify({design,modelId,highlightedString:highlightedString??null,requestKey:sceneKey});
@@ -34,14 +35,15 @@ function GuitarScene({design,modelId,highlightedString}:Props) {
   // Renderer readiness does not guarantee that decoding the model completed.
   // Pitch updates must not restart this deadline indefinitely.
   useEffect(()=>{if(!focused||!ready||failed||renderedKey===sceneKey)return;const timer=setTimeout(()=>setFailed(true),15000);return()=>clearTimeout(timer);},[focused,ready,failed,sceneKey,renderedKey]);
-  return <View pointerEvents="box-none" style={styles.fill}>
+  return <View pointerEvents="box-none" style={styles.fill} onLayout={event=>setSceneHeight(event.nativeEvent.layout.height)}>
     {focused&&!failed?<WebView pointerEvents="none" ref={ref} source={source} originWhitelist={['*']} style={styles.web}
       javaScriptEnabled scrollEnabled={false} bounces={false} domStorageEnabled={false}
       allowFileAccess={false} allowFileAccessFromFileURLs={false} allowUniversalAccessFromFileURLs={false}
       setSupportMultipleWindows={false} onShouldStartLoadWithRequest={request=>request.url==='about:blank'}
       onMessage={event=>{try{const message=JSON.parse(event.nativeEvent.data);if(message.type==='ready')setReady(true);if(message.type==='rendered'&&message.requestKey===expectedKey.current)setRenderedKey(message.requestKey);if(message.type==='error')setFailed(true);}catch{setFailed(true);}}}
       onError={()=>setFailed(true)} onRenderProcessGone={()=>setFailed(true)} />:null}
-    {failed&&<View style={styles.fallback}><FullGuitarSvg design={design} modelId={modelId} width={112} height={150} highlightedString={highlightedString}/><Text style={styles.label}>3D unavailable · image preview</Text><Pressable accessibilityRole="button" onPress={()=>{sentModel.current=null;setReady(false);setRenderedKey(null);setFailed(false);}} style={{padding:12,minHeight:44}}><Text style={{color:'#FFD166'}}>Retry 3D</Text></Pressable></View>}
+    {focused&&!failed&&renderedKey!==sceneKey&&<View pointerEvents="none" style={styles.loading}><ActivityIndicator color="#b3b8c7"/><Text style={styles.label}>Loading guitar…</Text></View>}
+    {failed&&<View style={styles.fallback}><FullGuitarSvg design={design} modelId={modelId} width={88} height={Math.max(40,Math.min(150,sceneHeight-86))} highlightedString={highlightedString}/><Text style={[styles.label,{textAlign:'center'}]}>Image preview</Text><Pressable accessibilityRole="button" accessibilityLabel="3D unavailable. Retry 3D guitar" onPress={()=>{sentModel.current=null;setReady(false);setRenderedKey(null);setFailed(false);}} style={{padding:8,minHeight:48,justifyContent:'center'}}><Text style={{color:'#FFD166',fontSize:14}}>Retry 3D</Text></Pressable></View>}
   </View>;
 }
-const styles=StyleSheet.create({fill:{position:'absolute',top:0,bottom:0,left:0,right:0,overflow:'hidden',borderRadius:20},web:{flex:1,backgroundColor:'#141522'},fallback:{alignItems:'center'},label:{color:'#aaa',fontSize:10}});
+const styles=StyleSheet.create({fill:{position:'absolute',top:0,bottom:0,left:0,right:0,overflow:'hidden',borderRadius:20},web:{flex:1,backgroundColor:'#141522'},loading:{...StyleSheet.absoluteFill,alignItems:'center',justifyContent:'center',gap:8,backgroundColor:'#141522'},fallback:{alignItems:'center',alignSelf:'center',maxWidth:'40%',flex:1,justifyContent:'center'},label:{color:'#b3b8c7',fontSize:12}});

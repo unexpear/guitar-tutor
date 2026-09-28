@@ -12,6 +12,9 @@ import {
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Layout } from '../../constants/Layout';
+import { signalHelp } from '../../features/tuner/signalHelp';
 import { useKeepAwake } from 'expo-keep-awake';
 import Animated, {
   useSharedValue,
@@ -66,20 +69,29 @@ const VERDICT_COLORS: Record<TuneVerdict, string> = {
 
 function StageMode({ note, cents, label, color, active, starting, error, onToggle, onClose }: { note: string; cents: string; label: string; color: string; active: boolean; starting: boolean; error: string | null; onToggle: () => void; onClose: () => void }) {
   useKeepAwake('standardtune-stage');
+  const insets = useSafeAreaInsets();
+  const { width, height, fontScale } = useWindowDimensions();
+  const landscape = width > height && fontScale < 1.5;
+  const [showHelp, setShowHelp] = useState(false);
   return (
     <Modal visible animationType="fade" onRequestClose={onClose}>
       <View style={styles.stageContainer}>
-        <PressableScale onPress={onClose} style={styles.stageClose} accessibilityRole="button" accessibilityLabel="Exit large tuner display"><Text style={styles.stageCloseText}>Exit</Text></PressableScale>
-        <ScrollView style={{ width: '100%', flex: 1 }} contentContainerStyle={styles.stageContent}>
-        <Text style={[styles.stageNote, { color }]}>{note}</Text>
-        <Text style={[styles.stageCents, { color }]}>{cents}¢</Text>
+        <View style={[styles.stageToolbar, { paddingTop: insets.top + 8, paddingRight: insets.right + 16 }]}>
+          <PressableScale onPress={() => setShowHelp(!showHelp)} style={styles.stageToggle} accessibilityState={{ expanded: showHelp }}><Text style={styles.stageCloseText}>About this display</Text></PressableScale>
+          <PressableScale onPress={onClose} style={styles.stageToggle} accessibilityRole="button" accessibilityLabel="Exit large tuner display"><Text style={styles.stageCloseText}>Exit</Text></PressableScale>
+        </View>
+        <ScrollView style={{ width: '100%', flex: 1 }} contentContainerStyle={[styles.stageContent, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.stageReadings, landscape && { flexDirection: 'row', gap: 32 }]}>
+        <Text style={[styles.stageNote, { color, fontSize: landscape ? 100 : 130 }]}>{note}</Text>
+        <Text style={[styles.stageCents, { color }]}>{cents} <Text style={{ fontSize: 22 }}>cents</Text></Text>
+        </View>
         <Text style={[styles.stageLabel, { color }]}>{label}</Text>
         <PressableScale onPress={onToggle} disabled={starting} style={styles.stageToggle}
           accessibilityState={{ disabled: starting }} accessibilityLabel={active ? 'Stop tuning' : 'Start tuning'}>
           <Text style={styles.stageCloseText}>{starting ? 'Starting…' : active ? 'Stop tuning' : 'Start tuning'}</Text>
         </PressableScale>
         {error && <Text style={styles.stageHelp}>{error}</Text>}
-        <Text style={styles.stageHelp}>Large display (stage mode) makes the tuner easier to read from a distance and keeps the screen awake. Your tuning settings and accuracy are unchanged.</Text>
+        {showHelp && <Text style={styles.stageHelp}>Larger readings and a screen that stays awake. Your tuning settings and accuracy are unchanged.</Text>}
         </ScrollView>
       </View>
     </Modal>
@@ -179,6 +191,7 @@ export default function TunerScreen() {
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const spokenFeedbackEnabled = useSettingsStore((s) => s.spokenFeedbackEnabled);
   const autoAdvanceStrings = useSettingsStore((s) => s.autoAdvanceStrings);
+  const closeToleranceCents = useSettingsStore((s) => s.closeToleranceCents);
   const [tuning, setTuning] = useState<TuningPreset>(
     () => customTunings.find((item) => item.id === alternateTuning) ?? findTuningPreset(alternateTuning, guitarType) ?? TUNING_PRESETS[0],
   );
@@ -234,7 +247,7 @@ export default function TunerScreen() {
   const isTuned = hasPitch && tuner.verdict === 'in-tune';
 
   // One verdict drives every colour on this screen. Its green window comes
-  // from Settings; amber remains the near zone and red begins at ten cents.
+  // and red boundary both come from Settings.
   const centsColor =
     hasPitch && tuner.verdict ? VERDICT_COLORS[tuner.verdict] : Colors.dark.muted;
   const noteColor = isTuned ? Colors.success : Colors.dark.text;
@@ -245,7 +258,7 @@ export default function TunerScreen() {
     ? displayCents > 0
       ? `+${formattedCents}`
       : formattedCents
-    : (0).toFixed(centsPrecision);
+    : '—';
   const centsLabel = !hasPitch
     ? tuner.isActive
       ? 'Listening…'
@@ -416,13 +429,11 @@ export default function TunerScreen() {
     transform: [{ scale: pulseValue.value }],
   }));
 
-  const compactLayout = height < 700 || fontScale > 1.3;
+  const landscape = width > height && width >= 650 && fontScale < 1.5;
+  const help = signalHelp({ active: tuner.isActive, starting: tuner.isStarting, error: tuner.error?.message, signal: tuner.signal });
   // Keep guided tuning available at every text size; the page can scroll.
   const showStringControls = true;
-  const circleSize = Math.min(
-    width * (tuning.strings.length > 8 ? 0.09 : 0.12),
-    tuning.strings.length > 8 ? 40 : compactLayout ? 40 : 48,
-  );
+  const circleSize = 48;
   const usesGuitarHeadstock =
     tuning.strings.length === 6 && profile.headstock !== undefined && showStringControls;
 
@@ -439,15 +450,8 @@ export default function TunerScreen() {
     [handlePlayReference]
   );
 
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.mainScroll}
-        contentContainerStyle={styles.mainContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-      <View style={styles.topArea}>
+  const compactHeight = height < 720 && fontScale < 1.5;
+  const tuningControls = <View style={[styles.topArea, compactHeight && styles.compactTop]}>
         <PressableScale
           onPress={() => setPickerVisible(true)}
           style={styles.tuningIndicator}
@@ -457,30 +461,117 @@ export default function TunerScreen() {
           <Text style={styles.tuningLabel}>{tuning.name}</Text>
           <Text style={styles.tuningChevron}>v</Text>
         </PressableScale>
-        <Text style={styles.instrumentLabel}>
+        <Text style={[styles.instrumentLabel, compactHeight && styles.compactInstrument]}>
           {profile.name} · A4 {tuner.referencePitchHz} Hz
           {profile.experimental ? ' · experimental low range' : ''}
         </Text>
-        <View style={styles.modeButtons}>
-          <PressableScale onPress={() => setStageVisible(true)} style={styles.modeButton} accessibilityRole="button" accessibilityLabel="Open large tuner display" accessibilityHint="Larger readings and a screen that stays awake. Does not change tuning settings.">
-            <Text style={styles.modeButtonText}>Large display</Text>
-          </PressableScale>
-          <PressableScale onPress={() => setDiagnosticsVisible(true)} style={styles.modeButton} accessibilityRole="button">
-            <Text style={styles.modeButtonText}>Signal help</Text>
-          </PressableScale>
-          {profile.headstock && (
-            <PressableScale
-              onPress={() => setModelPickerVisible(true)}
-              style={styles.modeButton}
-              accessibilityRole="button"
-              accessibilityLabel={`My Guitars: inventory, free box and unlocks. Current model: ${activeModel?.name ?? 'default'}.`}
-            >
-              <Text style={styles.modeButtonText}>My Guitars · {activeModel?.name ?? 'Default'} ›</Text>
-            </PressableScale>
-          )}
-        </View>
-      </View>
 
+      </View>;
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.mainScroll}
+        contentContainerStyle={styles.mainContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+      {!landscape && tuningControls}
+      <View style={[styles.workspace, landscape && styles.workspaceLandscape]}>
+      <View style={[styles.centerDisplay, landscape && styles.landscapePanel]}>
+        <View style={styles.pitchSummary}>
+        <View
+          style={[
+            styles.noteCircle,
+            {
+              borderColor: hasPitch ? centsColor : Colors.dark.cardBorder,
+              backgroundColor: isTuned
+                ? 'rgba(76,175,80,0.12)'
+                : Colors.dark.surface,
+            },
+          ]}
+        >
+          <Text
+            style={[styles.noteText, { color: noteColor }]}
+            accessibilityLabel={
+              hasPitch
+                ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents).toFixed(centsPrecision)} cents`
+                : tuner.isActive
+                ? 'Listening for a note'
+                : 'Tuner inactive'
+            }
+          >
+            {displayNote}
+          </Text>
+        </View>
+
+        <View>
+        <View style={styles.centsRow}>
+          <Text style={[styles.centsValue, { color: centsColor }]}>
+            {centsDisplay}
+          </Text>
+          <Text style={styles.centsUnit}>cents</Text>
+        </View>
+        <Text style={[styles.centsLabel, { color: centsColor }]}>
+          {centsLabel}
+        </Text>
+        </View>
+        </View>
+
+        {meterStyle === 'needle' ? <View style={[styles.gauge, compactHeight && { height: 36 }]}>
+          <View style={styles.tickRow}>
+            {GAUGE_TICKS.map((i) => (
+              <View
+                key={i}
+                style={[
+                  styles.tick,
+                  i % 5 === 0 && styles.tickMajor,
+                  i === 10 && styles.tickCenter,
+                ]}
+              />
+            ))}
+          </View>
+          <Animated.View
+            style={[
+              styles.gaugeNeedle,
+              { backgroundColor: centsColor },
+              needleStyle,
+            ]}
+          />
+        </View> : <View style={[styles.strobeWindow, { borderColor: centsColor }]} accessibilityLabel={`Strobe meter, ${centsLabel}`}>
+          <Animated.View style={[styles.strobeBand, strobeStyle]}>
+            {Array.from({ length: 18 }, (_, index) => (
+              <View key={index} style={[styles.strobeStripe, { backgroundColor: index % 2 === 0 ? centsColor : 'transparent' }]} />
+            ))}
+          </Animated.View>
+          <View style={styles.strobeCenter} />
+        </View>}
+        <View style={styles.gaugeScaleRow}>
+          <Text style={styles.gaugeScaleText}>-50</Text>
+          <Text style={styles.gaugeScaleText}>0</Text>
+          <Text style={styles.gaugeScaleText}>+50</Text>
+        </View>
+
+        {hasPitch && <Text style={styles.freqText}>
+          {hasPitch
+            ? `${tuner.frequency.toFixed(1)} Hz · ${Math.round(tuner.confidence * 100)}% signal`
+            : ' '}
+        </Text>}
+        {hasPitch && <View style={styles.history} accessibilityLabel="Recent pitch stability history">
+          {pitchHistory.map((value, index) => (
+            <View key={index} style={[styles.historyDot, { backgroundColor: Math.abs(value) <= tuner.inTuneCents ? Colors.success : Math.abs(value) < closeToleranceCents ? Colors.warning : Colors.danger, transform: [{ translateY: (value / 50) * 8 }] }]} />
+          ))}
+        </View>}
+        {!!signalHint && <Text
+          style={[
+            styles.signalHint,
+            tuner.signal === 'noisy' && { color: Colors.warning },
+          ]}
+          accessibilityLiveRegion="polite"
+        >
+          {signalHint}
+        </Text>}
+      </View>
+      <View style={[styles.guitarPanel, landscape && styles.landscapePanel]}>
       <Text style={styles.aimHint}>
         {!showStringControls
           ? 'Large text mode · automatic string detection'
@@ -488,10 +579,9 @@ export default function TunerScreen() {
           ? `Tuning ${stringLabels[selectedString]} · tap it again for auto`
           : tuning.strings.length === 0
           ? 'Chromatic mode · play one clear note at a time'
-          : 'Tap a string for the most accurate guided tuning'}
+          : 'Tap a string to guide tuning'}
       </Text>
-
-      {usesGuitarHeadstock ? <View style={styles.stringsArea}>
+      {usesGuitarHeadstock ? <View style={[styles.stringsArea, { minHeight: compactHeight ? 176 : 210 }]}>
         <Guitar3D
           design={{ ...selectedGuitarDesign, guitarType: activeModel?.guitarType ?? profile.headstock ?? 'acoustic' }}
           modelId={activeModelId!}
@@ -567,97 +657,28 @@ export default function TunerScreen() {
         </View>
       ) : null}
 
-      <View style={[styles.centerDisplay, compactLayout && styles.centerDisplayCompact]}>
-        <View
-          style={[
-            styles.noteCircle,
-            {
-              borderColor: hasPitch ? centsColor : Colors.dark.cardBorder,
-              backgroundColor: isTuned
-                ? 'rgba(76,175,80,0.12)'
-                : Colors.dark.surface,
-            },
-          ]}
-        >
-          <Text
-            style={[styles.noteText, { color: noteColor }]}
-            accessibilityLabel={
-              hasPitch
-                ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents).toFixed(centsPrecision)} cents`
-                : tuner.isActive
-                ? 'Listening for a note'
-                : 'Tuner inactive'
-            }
-          >
-            {displayNote}
-          </Text>
-        </View>
 
-        <View style={styles.centsRow}>
-          <Text style={[styles.centsValue, { color: centsColor }]}>
-            {centsDisplay}
-          </Text>
-          <Text style={styles.centsUnit}>cents</Text>
-        </View>
-        <Text style={[styles.centsLabel, { color: centsColor }]}>
-          {centsLabel}
-        </Text>
-
-        {meterStyle === 'needle' ? <View style={styles.gauge}>
-          <View style={styles.tickRow}>
-            {GAUGE_TICKS.map((i) => (
-              <View
-                key={i}
-                style={[
-                  styles.tick,
-                  i % 5 === 0 && styles.tickMajor,
-                  i === 10 && styles.tickCenter,
-                ]}
-              />
-            ))}
-          </View>
-          <Animated.View
-            style={[
-              styles.gaugeNeedle,
-              { backgroundColor: centsColor },
-              needleStyle,
-            ]}
-          />
-        </View> : <View style={[styles.strobeWindow, { borderColor: centsColor }]} accessibilityLabel={`Strobe meter, ${centsLabel}`}>
-          <Animated.View style={[styles.strobeBand, strobeStyle]}>
-            {Array.from({ length: 18 }, (_, index) => (
-              <View key={index} style={[styles.strobeStripe, { backgroundColor: index % 2 === 0 ? centsColor : 'transparent' }]} />
-            ))}
-          </Animated.View>
-          <View style={styles.strobeCenter} />
-        </View>}
-        <View style={styles.gaugeScaleRow}>
-          <Text style={styles.gaugeScaleText}>-50</Text>
-          <Text style={styles.gaugeScaleText}>0</Text>
-          <Text style={styles.gaugeScaleText}>+50</Text>
-        </View>
-
-        <Text style={styles.freqText}>
-          {hasPitch
-            ? `${tuner.frequency.toFixed(1)} Hz · ${Math.round(tuner.confidence * 100)}% signal`
-            : ' '}
-        </Text>
-        <View style={styles.history} accessibilityLabel="Recent pitch stability history">
-          {pitchHistory.map((value, index) => (
-            <View key={index} style={[styles.historyDot, { backgroundColor: Math.abs(value) <= tuner.inTuneCents ? Colors.success : Math.abs(value) < 10 ? Colors.warning : Colors.danger, transform: [{ translateY: (value / 50) * 8 }] }]} />
-          ))}
-        </View>
-        <Text
-          style={[
-            styles.signalHint,
-            tuner.signal === 'noisy' && { color: Colors.warning },
-          ]}
-          numberOfLines={2}
-          accessibilityLiveRegion="polite"
-        >
-          {signalHint || ' '}
-        </Text>
       </View>
+      </View>
+        {landscape && tuningControls}
+        <View style={styles.modeButtons}>
+          <PressableScale onPress={() => setStageVisible(true)} style={styles.modeButton} accessibilityRole="button" accessibilityLabel="Open large tuner display" accessibilityHint="Larger readings and a screen that stays awake. Does not change tuning settings.">
+            <Text style={styles.modeButtonText}>Large display</Text>
+          </PressableScale>
+          <PressableScale onPress={() => setDiagnosticsVisible(true)} style={styles.modeButton} accessibilityRole="button">
+            <Text style={styles.modeButtonText}>Signal help</Text>
+          </PressableScale>
+          {profile.headstock && (
+            <PressableScale
+              onPress={() => setModelPickerVisible(true)}
+              style={styles.modeButton}
+              accessibilityRole="button"
+              accessibilityLabel={`My Guitars: inventory, free box and unlocks. Current model: ${activeModel?.name ?? 'default'}.`}
+            >
+              <Text style={styles.modeButtonText}>My Guitars ›</Text>
+            </PressableScale>
+          )}
+        </View>
       </ScrollView>
 
       <View style={styles.bottomArea}>
@@ -665,7 +686,6 @@ export default function TunerScreen() {
           <Text
             style={styles.tunerError}
             accessibilityRole="alert"
-            numberOfLines={2}
           >
             {tuner.error.message.replace(/[.\s]+$/, '')}. Enable the mic in your
             device settings.
@@ -705,7 +725,7 @@ export default function TunerScreen() {
                 ? 'Stop'
                 : tuner.error
                 ? 'Try Again'
-                : 'Tap to Tune'}
+                : 'Start tuning'}
             </Text>
           </PressableScale>
         </Animated.View>
@@ -787,12 +807,18 @@ export default function TunerScreen() {
       <Modal visible={diagnosticsVisible} transparent animationType="fade" onRequestClose={() => setDiagnosticsVisible(false)}>
         <Pressable style={styles.diagnosticOverlay} onPress={() => setDiagnosticsVisible(false)}>
           <Pressable style={styles.diagnosticCard} onPress={(event) => event.stopPropagation()}>
-            <Text style={styles.diagnosticTitle}>Why no steady reading?</Text>
-            <Text style={styles.diagnosticText}>Signal: {tuner.signal} · level {Math.round(tuner.rmsDb)} dBFS · confidence {Math.round(tuner.confidence * 100)}%</Text>
-            <Text style={styles.diagnosticText}>Pluck one string once, mute the others, uncover the phone microphone, and move away from fans or speech.</Text>
-            <Text style={styles.diagnosticText}>For bass or a soft acoustic instrument, choose Quiet sensitivity in Settings. In a loud room, choose Noisy.</Text>
-            {tuner.harmonicRatio !== 1 && <Text style={styles.diagnosticWarning}>An overtone was corrected ×{tuner.harmonicRatio}. Guided string mode is safer than automatic mode here.</Text>}
-            <PressableScale onPress={() => setDiagnosticsVisible(false)} style={styles.diagnosticButton}><Text style={styles.diagnosticButtonText}>Got it</Text></PressableScale>
+            <ScrollView showsVerticalScrollIndicator contentContainerStyle={{ padding: 20 }}>
+              <Text style={styles.diagnosticTitle}>Signal help</Text>
+              <Text style={styles.diagnosticText}>{help.title}</Text>
+              <Text style={styles.diagnosticText}>{help.advice}</Text>
+              {tuner.isActive && <View style={styles.diagnosticReadings}>
+                <Text style={styles.diagnosticText}>Status: {tuner.signal}</Text>
+                <Text style={styles.diagnosticText}>Input level: {Math.round(tuner.rmsDb)} dBFS</Text>
+                <Text style={styles.diagnosticText}>Note confidence: {Math.round(tuner.confidence * 100)}%</Text>
+              </View>}
+              {tuner.isActive && tuner.harmonicRatio !== 1 && <Text style={styles.diagnosticWarning}>An overtone was corrected. Select the string you are tuning and mute the others.</Text>}
+              <PressableScale onPress={() => setDiagnosticsVisible(false)} style={styles.diagnosticButton}><Text style={styles.diagnosticButtonText}>Back to tuner</Text></PressableScale>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -818,18 +844,30 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: Layout.contentWidth,
+    alignSelf: 'center',
+    paddingBottom: 8,
   },
+  workspace: { gap: 4 },
+  workspaceLandscape: { flexDirection: 'row', alignItems: 'flex-start' },
+  landscapePanel: { flex: 1, minWidth: 0 },
+  guitarPanel: { flexShrink: 0 },
+  pitchSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' },
   topArea: {
     alignItems: 'center',
     paddingTop: 12,
     paddingBottom: 4,
   },
+  compactTop: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 4 },
+  compactInstrument: { flexShrink: 1, maxWidth: '50%', textAlign: 'center', marginTop: 0 },
   tuningIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.dark.surfaceElevated,
     paddingHorizontal: 16,
     paddingVertical: 8,
+    minHeight: 48,
     borderRadius: 20,
     gap: 6,
   },
@@ -840,8 +878,8 @@ const styles = StyleSheet.create({
   },
   instrumentLabel: {
     color: Colors.dark.muted,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     marginTop: 5,
   },
   modeButtons: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 7, paddingHorizontal: 12 },
@@ -941,28 +979,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   centerDisplay: {
-    flex: 1,
-    // Without a floor the readout is squeezed by anything that appears
-    // below it (the mic-permission message) and its fixed-height children
-    // spill over the text underneath instead of the column reflowing.
-    minHeight: 0,
-    flexShrink: 1,
+    flexShrink: 0,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 8,
     paddingVertical: 8,
   },
-  centerDisplayCompact: {
-    minHeight: 280,
-    flex: 0,
-  },
   noteCircle: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    minWidth: 72,
+    minHeight: 72,
+    padding: 8,
+    borderRadius: 36,
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 0,
   },
   noteText: {
     fontSize: 40,
@@ -1025,7 +1055,7 @@ const styles = StyleSheet.create({
   centsRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginTop: 14,
+    marginTop: 0,
     gap: 6,
   },
   centsValue: {
@@ -1055,8 +1085,7 @@ const styles = StyleSheet.create({
   history: { width: 154, height: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 3 },
   historyDot: { width: 3, height: 3, borderRadius: 2 },
   signalHint: {
-    minHeight: 32,
-    maxWidth: 310,
+    maxWidth: 440,
     marginTop: 5,
     paddingHorizontal: 10,
     color: Colors.dark.muted,
@@ -1111,6 +1140,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
     borderRadius: 26,
     minWidth: 176,
+    minHeight: 48,
     alignItems: 'center',
     ...CARD_SHADOW,
   },
@@ -1202,19 +1232,21 @@ const styles = StyleSheet.create({
   manageTuningsButton: { minHeight: 52, margin: 12, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: Colors.success },
   manageTuningsText: { color: Colors.success, fontWeight: '700' },
   diagnosticOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  diagnosticCard: { width: '100%', maxWidth: 440, borderRadius: 18, backgroundColor: Colors.dark.card, borderWidth: 1, borderColor: Colors.dark.cardBorder, padding: 20 },
+  diagnosticCard: { width: '100%', maxWidth: 440, borderRadius: 18, backgroundColor: Colors.dark.card, borderWidth: 1, borderColor: Colors.dark.cardBorder, maxHeight: '90%' },
+  diagnosticReadings: { backgroundColor: Colors.dark.surfaceElevated, borderRadius: 12, padding: 12, marginVertical: 8 },
   diagnosticTitle: { color: Colors.dark.text, fontSize: 21, fontWeight: '800', marginBottom: 12 },
   diagnosticText: { color: Colors.dark.text, fontSize: 14, lineHeight: 21, marginBottom: 10 },
   diagnosticWarning: { color: Colors.warning, fontSize: 13, lineHeight: 19, marginBottom: 10 },
   diagnosticButton: { minHeight: 48, marginTop: 6, borderRadius: 12, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center' },
   diagnosticButtonText: { color: '#071408', fontWeight: '800' },
   stageContainer: { flex: 1, backgroundColor: '#030307', alignItems: 'center', justifyContent: 'center' },
-  stageClose: { position: 'absolute', zIndex: 2, top: 42, right: 20, minWidth: 64, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24, borderWidth: 1, borderColor: '#555' },
+  stageToolbar: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 12, paddingLeft: 16 },
+  stageReadings: { alignItems: 'center', justifyContent: 'center' },
   stageCloseText: { color: '#fff', fontWeight: '700' },
   stageNote: { fontSize: 150, fontWeight: '900' },
   stageCents: { fontSize: 54, fontWeight: '800', fontVariant: ['tabular-nums'] },
   stageLabel: { fontSize: 23, fontWeight: '800', letterSpacing: 3, textTransform: 'uppercase', marginTop: 8 },
-  stageContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 100, paddingBottom: 38 },
-  stageToggle: { minHeight: 48, paddingHorizontal: 24, paddingVertical: 14, borderWidth: 1, borderColor: '#777', borderRadius: 12, marginTop: 20 },
+  stageContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 8, gap: 8 },
+  stageToggle: { minHeight: 48, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: '#777', borderRadius: 12, justifyContent: 'center' },
   stageHelp: { color: '#bbb', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 16, maxWidth: 460 },
 });

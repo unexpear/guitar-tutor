@@ -6,6 +6,8 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Layout, collectionColumns } from '../../constants/Layout';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -54,7 +56,6 @@ const GAMES: Game[] = [
     icon: '🎯',
     difficulty: 'Beginner',
     color: '#42A5F5',
-    recommended: true,
   },
   {
     id: 'chord-quiz',
@@ -130,6 +131,8 @@ const DIFFICULTY_BADGE_COLORS: Record<Difficulty, string> = {
 
 export default function PracticeGamesScreen() {
   const { width, fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [contentWidth, setContentWidth] = useState(Math.min(width, Layout.contentWidth));
   const router = useRouter();
   // Another screen can deep-link straight into a game, e.g. the Songs tab
   // sending you to practise the changes in a song.
@@ -170,14 +173,10 @@ export default function PracticeGamesScreen() {
     },
     [highScores]
   );
-  const cardGap = 14;
-  const sidePadding = 20;
-  const effectiveWidth = width / Math.max(1, fontScale);
-  const columns = effectiveWidth >= 1000 ? 4 : effectiveWidth >= 700 ? 3 : effectiveWidth >= 360 ? 2 : 1;
-  const cardWidth = Math.min(
-    columns === 1 ? width : 280,
-    (width - sidePadding * 2 - cardGap * (columns - 1)) / columns,
-  );
+  const cardGap = Layout.gap;
+  const sidePadding = Layout.page;
+  const columns = Math.min(3, collectionColumns(contentWidth, fontScale));
+  const cardWidth = (contentWidth - sidePadding * 2 - cardGap * (columns - 1)) / columns;
 
   const handleGamePress = useCallback((game: Game) => {
     setActiveGame(game.id);
@@ -211,7 +210,7 @@ export default function PracticeGamesScreen() {
         </View>
         {bestFor(game.id) > 0 ? (
           <Text style={styles.bestScore}>Best {bestFor(game.id)}</Text>
-        ) : game.recommended ? <Text style={styles.startHere}>START HERE</Text> : null}
+        ) : null}
       </View>
     </PressableScale>
   );
@@ -251,9 +250,10 @@ export default function PracticeGamesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <ScrollView onLayout={event => setContentWidth(Math.min(event.nativeEvent.layout.width, Layout.contentWidth))} contentContainerStyle={styles.pageContent}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.headerTitle}>Practice Games</Text>
-        <Text style={styles.headerSubtitle}>New here? Start with String Scout, then Tune Sense.</Text>
+        <Text style={styles.headerSubtitle}>Short rounds. Learn at your own pace.</Text>
         <PressableScale
           onPress={() => setActiveGame('guitar-locker')}
           style={styles.playerCard}
@@ -262,18 +262,22 @@ export default function PracticeGamesScreen() {
         >
           <View style={styles.levelBadge}><Text style={styles.levelNumber}>{playerLevel.level}</Text></View>
           <View style={styles.playerProgress}>
-            <View style={styles.playerLine}><Text style={styles.playerTitle}>LEVEL {playerLevel.level}</Text><Text style={styles.lockerLink}>My Guitars · Free box ›</Text></View>
+            <View style={styles.playerLine}><Text style={styles.playerTitle}>LEVEL {playerLevel.level}</Text><Text style={styles.lockerLink}>My Guitars ›</Text></View>
             <View style={styles.xpTrack}><View style={[styles.xpFill, { width: `${playerLevel.percent}%` }]} /></View>
             <Text style={styles.playerMeta}>{playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP · {roundsPlayed} rounds · {recordsSet} records</Text>
           </View>
         </PressableScale>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.grid, { paddingHorizontal: sidePadding }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {GAMES.map((game) => renderGameCard(game))}
+      <View style={styles.recommended}>
+        <Text style={styles.sectionHeading}>New here? Start with String Scout</Text>
+        <Text style={styles.headerSubtitle}>Learn the string names first. No guitar or microphone needed.</Text>
+        <PressableScale onPress={() => setActiveGame('string-scout')} style={styles.startButton}><Text style={styles.startText}>Play String Scout</Text></PressableScale>
+      </View>
+      {(['Beginner', 'Intermediate', 'Advanced'] as const).map(difficulty => <View key={difficulty} style={styles.group}>
+        <Text style={styles.sectionHeading}>{difficulty}</Text>
+        <View style={styles.grid}>{GAMES.filter(game => game.difficulty === difficulty).map(renderGameCard)}</View>
+      </View>)}
       </ScrollView>
     </View>
   );
@@ -284,13 +288,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f23',
   },
+  pageContent: { width: '100%', maxWidth: Layout.contentWidth, alignSelf: 'center', paddingBottom: 24 },
+  group: { paddingHorizontal: Layout.page, gap: 12 },
+  sectionHeading: { fontSize: 19, fontWeight: '700', color: Colors.dark.text },
+  recommended: { margin: Layout.page, padding: 16, borderRadius: 16, backgroundColor: '#193629', gap: 8 },
+  startButton: { minHeight: 48, padding: 12, backgroundColor: Colors.success, borderRadius: 12, justifyContent: 'center' },
+  startText: { color: '#071408', fontSize: 16, fontWeight: '700' },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingHorizontal: Layout.page,
     paddingBottom: 20,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -302,14 +311,14 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
-    paddingBottom: 32,
+    gap: Layout.gap,
+    paddingBottom: 24,
   },
   playerCard: { marginTop: 18, minHeight: 92, borderRadius: 18, borderWidth: 1, borderColor: '#343760', backgroundColor: '#1a1a3e', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 13, ...CARD_SHADOW },
   levelBadge: { width: 58, height: 58, borderRadius: 17, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center' },
   levelNumber: { color: '#071408', fontSize: 27, fontWeight: '900' },
   playerProgress: { flex: 1, gap: 7 },
-  playerLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  playerLine: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' },
   playerTitle: { color: Colors.dark.text, fontWeight: '900', letterSpacing: 1 },
   lockerLink: { color: Colors.success, fontWeight: '800', fontSize: 12 },
   xpTrack: { height: 7, borderRadius: 4, backgroundColor: '#34365B', overflow: 'hidden' },
@@ -333,15 +342,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   gameTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 4,
   },
   gameDescription: {
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.dark.muted,
-    lineHeight: 17,
+    lineHeight: 21,
     marginBottom: 12,
   },
   cardFooter: {
@@ -366,6 +375,6 @@ const styles = StyleSheet.create({
   difficultyText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#071408',
   },
 });

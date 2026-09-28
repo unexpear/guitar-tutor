@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
+  Modal,
   ScrollView,
   Pressable,
   useWindowDimensions,
@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
+import SearchField from '../../components/SearchField';
+import { Layout, collectionColumns } from '../../constants/Layout';
 import PressableScale from '../../components/PressableScale';
 import ChordDiagram from '../../components/ChordDiagram';
 import {
@@ -86,7 +88,7 @@ function FilterButton({
       accessibilityState={{ selected: active }}
       accessibilityLabel={`Filter by ${label}`}
     >
-      <Text style={[styles.filterText, { color: active ? '#fff' : color.text }]}>
+      <Text style={[styles.filterText, { color: active ? '#071408' : color.text }]}>
         {label}
       </Text>
     </PressableScale>
@@ -147,6 +149,7 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
   };
 
   return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
     <Animated.View entering={FadeIn.duration(200)} style={styles.detailOverlay}>
       <Pressable
         style={styles.detailBackdrop}
@@ -264,11 +267,14 @@ function DetailView({ chord, onClose }: { chord: Chord; onClose: () => void }) {
         </ScrollView>
       </Animated.View>
     </Animated.View>
+    </Modal>
   );
 }
 
 export default function ChordsScreen() {
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  const [contentWidth, setContentWidth] = useState(Math.min(width, Layout.contentWidth));
+  const [showTypes, setShowTypes] = useState(false);
   const color = Colors.dark;
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChordType | null>(null);
@@ -283,17 +289,15 @@ export default function ChordsScreen() {
     [chordStats]
   );
   const showNeedsWork = needsWorkOnly && shakyChords.length > 0;
-  // Unstarring the last favourite hides the chip, so the filter must fall
-  // back to off on its own or the user is stranded on an empty list with no
-  // control left to switch it back.
-  const showFavourites = favouritesOnly && favoriteChords.length > 0;
+  // Saved is always visible, including its useful empty state.
+  const showFavourites = favouritesOnly;
 
-  const numColumns = width >= 600 ? 4 : width >= 400 ? 3 : 2;
+  const numColumns = collectionColumns(contentWidth, fontScale);
   const gridGap = numColumns >= 4 ? 10 : 12;
   // Full-bleed grid: subtract the list's horizontal padding (16 each side)
   // and the inter-card gaps so the columns span the same width as the
   // search bar above.
-  const cardWidth = Math.floor((width - 32 - gridGap * (numColumns - 1)) / numColumns);
+  const cardWidth = Math.floor((contentWidth - 32 - gridGap * (numColumns - 1)) / numColumns);
 
   const filtered = useMemo(() => {
     let result: Chord[] = CHORDS;
@@ -336,36 +340,17 @@ export default function ChordsScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: color.background }]} edges={[]}>
-      <View style={[styles.searchWrap, { backgroundColor: color.surface, borderColor: color.cardBorder }]}>
-        <Ionicons name="search" size={16} color={color.muted} style={styles.searchIcon} />
-        <TextInput
-          style={[styles.searchInput, { color: color.text }]}
-          placeholder="Search chords..."
-          placeholderTextColor={color.muted}
-          value={search}
-          onChangeText={setSearch}
-          autoCorrect={false}
-          autoCapitalize="characters"
-        />
-        {search.length > 0 && (
-          <Pressable
-            onPress={() => setSearch('')}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Clear chord search"
-          >
-            <Ionicons name="close" size={18} color={color.muted} />
-          </Pressable>
-        )}
+    <SafeAreaView style={[styles.container, { backgroundColor: color.background }]} edges={[]} onLayout={event => setContentWidth(Math.min(event.nativeEvent.layout.width, Layout.contentWidth))}>
+      <View style={styles.searchContainer}><SearchField value={search} onChangeText={setSearch} placeholder="Search chords" /></View>
+      <View style={styles.quickFilters}>
+        <FilterButton label={activeFilter ? `Type: ${CHORD_TYPE_LABELS[activeFilter]}` : 'Chord types'} active={showTypes} onPress={() => setShowTypes(!showTypes)} />
+        <FilterButton label="All chords" active={!activeFilter && !showFavourites && !showNeedsWork} onPress={() => { setActiveFilter(null); setFavouritesOnly(false); setNeedsWorkOnly(false); }} />
+        <FilterButton label="★ Saved" active={showFavourites} onPress={() => setFavouritesOnly(!favouritesOnly)} />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterRow}
-      >
+      <Modal visible={showTypes} transparent animationType="slide" onRequestClose={() => setShowTypes(false)}>
+      <View style={styles.filterOverlay}><View style={styles.filterSheet}>
+      <ScrollView contentContainerStyle={styles.filterRow}>
         <FilterButton
           label="All"
           active={activeFilter === null && !showFavourites && !showNeedsWork}
@@ -394,10 +379,12 @@ export default function ChordsScreen() {
             key={t}
             label={CHORD_TYPE_LABELS[t]}
             active={activeFilter === t}
-            onPress={() => setActiveFilter(activeFilter === t ? null : t)}
+            onPress={() => { setActiveFilter(activeFilter === t ? null : t); setShowTypes(false); }}
           />
         ))}
       </ScrollView>
+      <PressableScale style={styles.filterBtn} onPress={() => setShowTypes(false)}><Text style={styles.filterClose}>Show chords</Text></PressableScale>
+      </View></View></Modal>
 
       {sections.length === 0 ? (
         <View style={styles.emptyState}>
@@ -415,11 +402,13 @@ export default function ChordsScreen() {
               : 'No chords found'}
           </Text>
           <Text style={[styles.emptySubtitle, { color: color.muted }]}>
-            Try a different search
+            {showFavourites && favoriteChords.length === 0 ? 'Open a chord and tap the star to save it here.' : 'Try a different search or clear the filters.'}
           </Text>
+          <PressableScale style={styles.detailCloseBtn} onPress={() => { setSearch(''); setActiveFilter(null); setFavouritesOnly(false); setNeedsWorkOnly(false); }}><Text style={styles.filterClose}>Show all chords</Text></PressableScale>
         </View>
       ) : (
         <FlatList
+          keyboardShouldPersistTaps="handled"
           data={sections}
           keyExtractor={(s) => s.type}
           contentContainerStyle={styles.listContent}
@@ -456,6 +445,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  searchContainer: { width: '100%', maxWidth: Layout.contentWidth, alignSelf: 'center', paddingHorizontal: 16, marginTop: 8, marginBottom: 16 },
+  quickFilters: { width: '100%', maxWidth: Layout.contentWidth, alignSelf: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, marginBottom: 12 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -477,9 +468,14 @@ const styles = StyleSheet.create({
   },
   filterScroll: {
     flexGrow: 0,
+    maxHeight: 220,
     marginBottom: 12,
   },
+  filterOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 16 },
+  filterSheet: { maxHeight: '85%', width: '100%', maxWidth: 680, alignSelf: 'center', paddingVertical: 16, borderRadius: 16, backgroundColor: Colors.dark.card, gap: 12 },
+  filterClose: { color: Colors.success, fontSize: 16, fontWeight: '700' },
   filterRow: {
+    flexDirection: 'row', flexWrap: 'wrap',
     paddingHorizontal: 16,
     gap: 8,
     alignItems: 'center',
@@ -498,6 +494,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
+    width: '100%', maxWidth: Layout.contentWidth, alignSelf: 'center',
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
@@ -538,6 +535,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: 60,
+    paddingHorizontal: 16,
   },
   emptyIcon: {
     marginBottom: 16,
@@ -606,7 +604,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   detailStringCol: {
-    minWidth: 44,
+    minWidth: 48,
     minHeight: 48,
     alignItems: 'center',
     gap: 6,
@@ -634,11 +632,14 @@ const styles = StyleSheet.create({
   },
   detailActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
     marginTop: 4,
   },
   detailPlayBtn: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -652,8 +653,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   detailFavBtn: {
-    width: 46,
-    height: 46,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     borderWidth: 1.5,
     alignItems: 'center',

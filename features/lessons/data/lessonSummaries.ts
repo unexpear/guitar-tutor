@@ -1,0 +1,22 @@
+/** Short catalog copy; complete instructions remain in the lesson itself. */
+export const LESSON_SUMMARIES: Record<string, string> = {
+  'bass-first-notes': 'Set up, tune E–A–D–G, and play a clear note.',
+  'bass-right-hand': 'Alternate fingers and mute unused strings.',
+  'bass-fretboard': 'Find roots and octaves on your bass.',
+  'bass-groove': 'Keep steady time with notes and rests.',
+  'beginner-holding-the-guitar': 'Get comfortable and learn how to hold a pick.',
+  'beginner-tuning-up': 'Tune each string before you practise.',
+  'beginner-guitar-anatomy': 'Meet the parts of your guitar.',
+  'beginner-reading-diagrams': 'Read the dots, strings, frets, and finger numbers.',
+  'beginner-fretting-notes': 'Place your fingers for clear, buzz-free notes.',
+  'beginner-reading-tabs': 'Read tabs and pluck your first notes.',
+  'beginner-open-chords': 'Learn essential open chord shapes.',
+  'beginner-basic-strumming': 'Build a steady down-and-up strum.',
+  'intermediate-barre-chords': 'Move chord shapes across the neck.',
+  'intermediate-fingerpicking': 'Play patterns with independent fingers.',
+  'intermediate-scales-101': 'Explore major and minor scale patterns.',
+  'intermediate-music-theory': 'Connect chords, keys, and intervals.',
+  'advanced-improvisation': 'Create solos using the notes you know.',
+  'advanced-techniques': 'Explore slides, bends, vibrato, and tapping.',
+  'advanced-songwriting': 'Build your own progressions and melodies.',
+};

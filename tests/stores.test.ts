@@ -639,5 +639,31 @@ test('an unsupported lesson guitar type is migrated on load, and hydration is fl
   const state = useUserPreferencesStore.getState();
   assert.equal(state.hasHydrated, true, 'hydration must be signalled after load');
   assert.equal(state.guitarType, 'electric', 'the closest supported type is electric');
+  assert.equal(state.learningInstrument, 'bass', 'the separate learning path preserves the bass choice');
   assert.equal(state.experienceLevel, 'intermediate');
+});
+
+test('changing learning instruments preserves progress, XP and the independent tuner choice', async () => {
+  resetProgress();
+  useProgressStore.getState().completeLesson('music-pulse', 100);
+  useProgressStore.getState().setAlternateTuning('guitar-electric-drop-d');
+  const before = useProgressStore.getState();
+  useUserPreferencesStore.getState().setLearningInstrument('bass');
+  useUserPreferencesStore.getState().setLearningInstrument('classical');
+  useUserPreferencesStore.getState().setLearningInstrument('bass');
+  await useUserPreferencesStore.persist.rehydrate();
+  assert.equal(useUserPreferencesStore.getState().learningInstrument, 'bass');
+  assert.equal(useUserPreferencesStore.getState().guitarType, 'classical');
+  assert.deepEqual(useProgressStore.getState().completedLessons, before.completedLessons);
+  assert.equal(useProgressStore.getState().totalXp, before.totalXp);
+  assert.equal(useProgressStore.getState().alternateTuning, before.alternateTuning);
+});
+
+test('old classical preferences restore the classical path and reset returns to acoustic', async () => {
+  mem.entries.set('standardtune-user-preferences', JSON.stringify({ state: { guitarType: 'classical', hasCompletedQuestionnaire: true }, version: 0 }));
+  await useUserPreferencesStore.persist.rehydrate();
+  assert.equal(useUserPreferencesStore.getState().learningInstrument, 'classical');
+  useUserPreferencesStore.getState().resetQuestionnaire();
+  assert.equal(useUserPreferencesStore.getState().learningInstrument, 'acoustic');
+  assert.equal(useUserPreferencesStore.getState().hasCompletedQuestionnaire, false);
 });

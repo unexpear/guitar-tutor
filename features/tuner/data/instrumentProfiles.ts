@@ -260,8 +260,12 @@ export function instrumentProfile(id: InstrumentId): InstrumentProfile {
  * explicit low-note range after configuration.
  */
 export function guitarPracticeEngineOptions(referencePitchHz = 440): TunerConfig {
+  return lessonPracticeEngineOptions(referencePitchHz, false);
+}
+
+export function lessonPracticeEngineOptions(referencePitchHz = 440, bass = false): TunerConfig {
   return {
-    ...instrumentProfile('guitar-acoustic').engine,
+    ...instrumentProfile(bass ? 'bass-4' : 'guitar-acoustic').engine,
     a4: referencePitchHz,
     confidenceThreshold: 0.5,
     noiseGateDb: -52,

@@ -2,12 +2,16 @@ import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
+  Modal,
   FlatList,
   ScrollView,
   StyleSheet,
   Pressable,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import SearchField from '../../components/SearchField';
+import ChoiceChips from '../../components/ChoiceChips';
+import { Layout } from '../../constants/Layout';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
@@ -94,6 +98,7 @@ function SongDetail({
   const canPractise = practisePair.length === 2;
 
   return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
     <Animated.View entering={FadeIn.duration(200)} style={styles.detailOverlay}>
       <Pressable
         style={styles.detailBackdrop}
@@ -115,10 +120,10 @@ function SongDetail({
             </Text>
           </View>
           <View style={styles.detailHeadText}>
-            <Text style={styles.detailTitle} numberOfLines={2}>
+            <Text style={styles.detailTitle}>
               {song.title}
             </Text>
-            <Text style={styles.detailArtist} numberOfLines={1}>
+            <Text style={styles.detailArtist}>
               {song.artist}
             </Text>
           </View>
@@ -230,10 +235,14 @@ function SongDetail({
         </ScrollView>
       </Animated.View>
     </Animated.View>
+    </Modal>
   );
 }
 
 export default function SongLibraryScreen() {
+  const insets = useSafeAreaInsets();
+  const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState<'catalog' | 'title' | 'difficulty'>('catalog');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<Difficulty | 'All'>('All');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -294,7 +303,7 @@ export default function SongLibraryScreen() {
       (libraryFilter === 'saved' && favoriteSongs.includes(song.id)) ||
       (libraryFilter === 'setlist' && mySetIds.includes(song.id));
     return matchesSearch && matchesFilter && matchesLibrary;
-  });
+  }).sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : sort === 'difficulty' ? DIFFICULTY_FILTERS.indexOf(a.difficulty) - DIFFICULTY_FILTERS.indexOf(b.difficulty) : 0);
 
   const renderSongItem = ({ item }: { item: Song }) => {
     const art = artForArtist(item.artist);
@@ -318,11 +327,11 @@ export default function SongLibraryScreen() {
           </Text>
         </View>
         <View style={styles.songInfo}>
-          <Text style={styles.songTitle} numberOfLines={1}>
+          <Text style={styles.songTitle}>
             {item.title}
           </Text>
-          <Text style={styles.songArtist} numberOfLines={1}>
-            {item.artist}{isPracticeExercise(item) ? ' · Playable' : ' · Chord reference'}
+          <Text style={styles.songArtist}>
+            {isPracticeExercise(item) ? 'Playable exercise' : 'Song chord reference'}
           </Text>
           <View style={styles.songMeta}>
             <View
@@ -341,8 +350,7 @@ export default function SongLibraryScreen() {
             </Text>
             <Text style={styles.metaSeparator}>·</Text>
             <Text style={styles.songDuration}>{item.duration}</Text>
-            <Text style={styles.metaSeparator}>·</Text>
-            <Text style={styles.songDuration}>{item.chords.length} chords</Text>
+
           </View>
         </View>
         <Ionicons name="chevron-forward" size={16} color={Colors.dark.muted} />
@@ -352,77 +360,35 @@ export default function SongLibraryScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.headerTitle}>Songs & Exercises</Text>
         <Text style={styles.headerSubtitle}>{filteredSongs.length} items</Text>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={18} color={Colors.dark.muted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search exercises, songs, artists, chords..."
-          placeholderTextColor={Colors.dark.muted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          accessibilityLabel="Search songs and exercises"
-        />
-        {searchQuery.length > 0 && (
-          <Pressable
-            onPress={() => setSearchQuery('')}
-            accessibilityLabel="Clear search"
-            hitSlop={10}
-          >
-            <Ionicons name="close-circle" size={18} color={Colors.dark.muted} />
-          </Pressable>
-        )}
-      </View>
-
-      <View style={styles.filterContainer}>
-        {DIFFICULTY_FILTERS.map((filter) => (
-          <PressableScale
-            key={filter}
-            style={[
-              styles.filterButton,
-              activeFilter === filter && styles.filterButtonActive,
-            ]}
-            onPress={() => setActiveFilter(filter)}
-            accessibilityRole="button"
-            accessibilityLabel={`Filter by ${filter}`}
-            accessibilityState={{ selected: activeFilter === filter }}
-          >
-            <Text
-              style={[
-                styles.filterButtonText,
-                activeFilter === filter && styles.filterButtonTextActive,
-              ]}
-            >
-              {filter}
-            </Text>
+      <View style={styles.libraryControls}>
+        <SearchField value={searchQuery} onChangeText={setSearchQuery} placeholder="Search songs, exercises or chords" />
+        <View style={styles.toolbar}>
+          <PressableScale onPress={() => setShowFilters(!showFilters)} style={styles.filterButton} accessibilityState={{ expanded: showFilters }}>
+            <Text style={styles.filterButtonText}>Filters{activeFilter !== 'All' || libraryFilter !== 'all' ? ' · active' : ''} {showFilters ? '−' : '+'}</Text>
           </PressableScale>
-        ))}
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.libraryFilters}>
-        {([
-          ['all', 'Everything'],
-          ['exercises', 'Exercises'],
-          ['songs', 'Song references'],
-          ['saved', `Saved ${favoriteSongs.length}`],
-          ['setlist', `My set ${mySetIds.length}`],
-        ] as const).map(([value, label]) => (
-          <PressableScale
-            key={value}
-            style={[styles.libraryFilter, libraryFilter === value && styles.libraryFilterActive]}
-            onPress={() => setLibraryFilter(value)}
-            accessibilityState={{ selected: libraryFilter === value }}
-          >
-            <Text style={[styles.libraryFilterText, libraryFilter === value && styles.libraryFilterTextActive]}>{label}</Text>
+          <PressableScale onPress={() => setSort(sort === 'catalog' ? 'title' : sort === 'title' ? 'difficulty' : 'catalog')} style={styles.filterButton} accessibilityLabel={`Sort: ${sort}. Tap to change.`}>
+            <Text style={styles.filterButtonText}>Sort: {sort === 'catalog' ? 'Catalog' : sort === 'title' ? 'Title' : 'Difficulty'} ↕</Text>
           </PressableScale>
-        ))}
-      </ScrollView>
+        </View>
+      </View>
 
       <FlatList
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={showFilters ? <View style={styles.filtersPanel}>
+          <Text style={styles.headerSubtitle}>Difficulty</Text>
+          <ChoiceChips label="Song difficulty" value={activeFilter} onChange={setActiveFilter} options={DIFFICULTY_FILTERS.map(value => ({ value, label: value }))} />
+          <Text style={styles.headerSubtitle}>Library</Text>
+          <ChoiceChips label="Library type" value={libraryFilter} onChange={setLibraryFilter} options={[
+            { value: 'all', label: 'Everything' }, { value: 'exercises', label: 'Exercises' },
+            { value: 'songs', label: 'Song references' }, { value: 'saved', label: `Saved (${favoriteSongs.length})` },
+            { value: 'setlist', label: `My set (${mySetIds.length})` },
+          ]} />
+        </View> : null}
         data={filteredSongs}
         renderItem={renderSongItem}
         keyExtractor={(item) => item.id}
@@ -431,7 +397,8 @@ export default function SongLibraryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="musical-notes-outline" size={48} color={Colors.dark.muted} />
-            <Text style={styles.emptyText}>No matching items</Text>
+            <Text style={styles.emptyText}>No matching items. Try another search or clear the filters.</Text>
+            <PressableScale style={styles.filterButton} onPress={() => { setSearchQuery(''); setActiveFilter('All'); setLibraryFilter('all'); }}><Text style={styles.filterButtonText}>Clear search & filters</Text></PressableScale>
           </View>
         }
       />
@@ -514,10 +481,12 @@ const styles = StyleSheet.create({
   },
   detailFacts: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   detailFact: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 90,
     backgroundColor: Colors.dark.surface,
     borderRadius: 12,
     paddingVertical: 10,
@@ -620,12 +589,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f23',
   },
   header: {
+    width: '100%', maxWidth: Layout.readingWidth, alignSelf: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 8,
     paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -677,10 +647,14 @@ const styles = StyleSheet.create({
   filterButtonTextActive: {
     color: '#FFFFFF',
   },
+  libraryControls: { paddingHorizontal: Layout.page, width: '100%', maxWidth: Layout.readingWidth, alignSelf: 'center', gap: 8 },
+  toolbar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 12 },
+  filtersPanel: { gap: 8, paddingBottom: 16 },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-    gap: 8,
+    width: '100%', maxWidth: Layout.readingWidth, alignSelf: 'center',
+    paddingHorizontal: Layout.page,
+    paddingBottom: 24,
+    gap: 12,
   },
   libraryFilters: {
     paddingHorizontal: 20,
@@ -707,9 +681,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#1a1a3e',
     borderRadius: 14,
-    paddingVertical: 10,
-    paddingLeft: 10,
-    paddingRight: 14,
+    minHeight: 100,
+    padding: 16,
     ...CARD_SHADOW,
   },
   artTile: {
@@ -735,10 +708,11 @@ const styles = StyleSheet.create({
   },
   songInfo: {
     flex: 1,
+    minWidth: 0,
     marginRight: 10,
   },
   songTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 2,
@@ -750,6 +724,7 @@ const styles = StyleSheet.create({
   },
   songMeta: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 5,
   },

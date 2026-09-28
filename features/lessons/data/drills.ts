@@ -1,6 +1,8 @@
 import { Target, DetectionMode } from '../playalong/matcher';
 
 export interface Drill {
+  /** Omitted means the existing standard six-string guitar practice. */
+  instrument?: 'bass';
   /** Lesson this drill belongs to. */
   lessonId: string;
   title: string;
@@ -34,11 +36,26 @@ const chord = (chordName: string, strums = 1): Target => ({
 });
 
 export const DRILLS: Record<string, Drill> = {
+  'beginner-two-chords': {
+    lessonId: 'beginner-two-chords', title: 'Em and Am, Slowly',
+    intro: 'Form Em, then Am, with no countdown in Follow Me. Check each string yourself too: chord-tone evidence is useful feedback, not proof of fingering or every string.',
+    targets: [chord('Em'), chord('Am'), chord('Em'), chord('Am')], defaultMode: 'poly', secondsPerTarget: 12,
+  },
+  'classical-first-touch': {
+    lessonId: 'classical-first-touch', title: 'Open Treble Strings',
+    intro: 'Alternate i and m on open G, B and high e. Play gently and evenly. The app checks the sounding pitch, not which finger you use.',
+    targets: [note(3, 0, 'G open'), note(4, 0, 'B open'), note(5, 0, 'e open'), note(4, 0, 'B open'), note(3, 0, 'G open')], defaultMode: 'mono', secondsPerTarget: 8,
+  },
+  'classical-reading-music': {
+    lessonId: 'classical-reading-music', title: 'Name the Treble Notes',
+    intro: 'Name the written note before playing the open string. Written G4, B4 and E5 sound as G3, B3 and E4 on guitar. This drill checks pitch, not sight-reading fluency.',
+    targets: [note(3, 0, 'G: written G4'), note(5, 0, 'e: written E5'), note(4, 0, 'B: written B4'), note(3, 0, 'G: written G4')], defaultMode: 'mono', secondsPerTarget: 8,
+  },
   'beginner-fretting-notes': {
     lessonId: 'beginner-fretting-notes',
     title: 'One Note at a Time',
     intro:
-      'One note per target, on the two thickest strings. The app listens for the note actually ringing, so a buzzed or muted string will not count - which is the point. It waits for you, so take as long as you need.',
+      'One note per target on the two thickest strings. Listen for a clear sound and use light pressure. A pitch match cannot judge buzz or hand position, and a missed reading can also come from room noise or the microphone. Follow Me waits for you.',
     targets: [
       note(0, 0, 'E open'),
       note(0, 1, 'E fret 1'),
@@ -89,7 +106,7 @@ export const DRILLS: Record<string, Drill> = {
     lessonId: 'beginner-open-chords',
     title: 'Chord Changes',
     intro:
-      'Form each chord with the diagram and strum once. Full chord mode is on, because it is the only setting that checks the whole chord rang - in Easy mode a single open string counts as a hit, and you would pass without fretting anything. Switch to Easy only if a chord is genuinely beyond you today.',
+      'Form each chord with the diagram and strum once. Full chord mode looks for several chord tones, but cannot prove that every string or finger is correct. Easy mode accepts a single chord tone. Listen string by string as well, and begin with the two-chord lesson if these changes feel too big.',
     targets: [
       chord('Em'),
       chord('Am'),
@@ -127,7 +144,7 @@ export const DRILLS: Record<string, Drill> = {
     lessonId: 'intermediate-barre-chords',
     title: 'Barre Check',
     intro:
-      'Full chord mode is on, because the whole question with a barre is whether every string actually rings. If a hit will not register, your index finger is not flat enough - roll it slightly onto its side and try again.',
+      'Full chord mode looks for several chord tones. Check the intended strings one by one and release your hand between attempts. If a match fails, check tuning and the sound reaching the microphone too; the app cannot inspect your barre or prove every string is ringing.',
     targets: [
       chord('F'),
       chord('Bb'),
@@ -167,7 +184,7 @@ export const DRILLS: Record<string, Drill> = {
     lessonId: 'intermediate-scales-101',
     title: 'C Major, One Octave',
     intro:
-      'The position from the lesson: A string 3-5-7, D string 3-5-7, G string 4-5. One finger per fret. Say each note name aloud as you play it, then run it back down.',
+      'The position from the lesson: A string 3-5-7, D string 3-5-7, G string 4-5. Shift the hand comfortably to reach fret 7 rather than forcing a stretch. Say each note name aloud, then run it back down.',
     targets: [
       note(1, 3, 'C'),
       note(1, 5, 'D'),
@@ -287,6 +304,20 @@ export const DRILLS: Record<string, Drill> = {
     beatsPerBar: 4,
   },
 };
+
+export const BASS_OPEN_MIDI = [28, 33, 38, 43] as const; // E1 A1 D2 G2
+const bassDrill = (lessonId: string, title: string, targets: Target[]): Drill => ({
+  lessonId, title, instrument: 'bass', targets, defaultMode: 'mono', secondsPerTarget: 8,
+  intro: 'Standard four-string bass: E1-A1-D2-G2. Read the four-line tab, pluck one note and mute unused strings. Follow Me waits for you. Low bass detection depends on the phone and room; a missed match is not proof of bad fingering.',
+});
+Object.assign(DRILLS, {
+  'bass-first-notes': bassDrill('bass-first-notes', 'Four Open Bass Strings', [note(0, 0, 'E open'), note(1, 0, 'A open'), note(2, 0, 'D open'), note(3, 0, 'G open')]),
+  'bass-right-hand': bassDrill('bass-right-hand', 'Alternate and Change Strings', [note(0, 0, 'E · i'), note(1, 0, 'A · m'), note(0, 0, 'E · i'), note(1, 0, 'A · m')]),
+  'bass-clean-notes': bassDrill('bass-clean-notes', 'Clear Low Bass Notes', [note(0, 0, 'E'), note(0, 1, 'F'), note(0, 3, 'G'), note(1, 0, 'A'), note(1, 2, 'B'), note(1, 3, 'C')]),
+  'bass-reading-tabs': bassDrill('bass-reading-tabs', 'Read Four Lines', [note(0, 0, 'E open'), note(0, 3, 'E fret 3'), note(1, 0, 'A open'), note(1, 2, 'A fret 2'), note(2, 0, 'D open'), note(3, 0, 'G open')]),
+  'bass-fretboard': bassDrill('bass-fretboard', 'Find Bass Octaves', [note(0, 0, 'E1'), note(2, 2, 'E2'), note(1, 0, 'A1'), note(3, 2, 'A2')]),
+  'bass-roots-fifths': bassDrill('bass-roots-fifths', 'Root and Fifth', [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(0, 3, 'G root'), note(0, 5, 'A root'), note(1, 7, 'E fifth'), note(0, 5, 'A root')]),
+});
 
 export function getDrill(lessonId: string): Drill | undefined {
   return DRILLS[lessonId];

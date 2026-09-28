@@ -81,6 +81,8 @@ export interface PitchSample {
 
 export interface MatcherConfig {
   mode: DetectionMode;
+  /** Low-to-high sounding pitches; omitted preserves the six-string guitar map. */
+  openStringMidi?: readonly number[];
   /** Concert pitch used to turn measured frequency into a MIDI-note offset. */
   referencePitchHz: number;
   /** Ignore samples below this detector confidence. */
@@ -367,7 +369,11 @@ export class TargetMatcher {
     this.bassMidi = this.chordMidis.length ? Math.min(...this.chordMidis) : null;
     this.bassClass = this.bassMidi !== null ? pitchClassOf(this.bassMidi) : null;
     this.noteMidi =
-      target.kind === 'note' ? stringFretToMidi(target.stringIndex, target.fret) : null;
+      target.kind === 'note'
+        ? this.config.openStringMidi
+          ? this.config.openStringMidi[target.stringIndex] + target.fret
+          : stringFretToMidi(target.stringIndex, target.fret)
+        : null;
   }
 
   /** Reset per-target accumulation (call when a new target becomes active). */

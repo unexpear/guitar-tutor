@@ -16,7 +16,7 @@ import ChordDiagram from '../../../components/ChordDiagram';
 import PressableScale from '../../../components/PressableScale';
 import { getChord, NOTE_NAMES } from '../../chords/data/chords';
 import { useSettingsStore } from '../../store/settingsStore';
-import { Drill } from '../data/drills';
+import { Drill, BASS_OPEN_MIDI } from '../data/drills';
 import { TargetMatcher, Target, DetectionMode } from './matcher';
 import { practiceScore, targetDurationMs } from './timing';
 import { createBeatClock, BeatClock, gradeTiming, TimingVerdict } from '../../timing/beatClock';
@@ -24,7 +24,7 @@ import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { usePracticeTimer } from '../../practice/usePracticeTimer';
 import { useProgressStore } from '../../store/progressStore';
 import { useMicReleaseOnLeave } from '../../audio/useMicReleaseOnLeave';
-import { guitarPracticeEngineOptions } from '../../tuner/data/instrumentProfiles';
+import { lessonPracticeEngineOptions } from '../../tuner/data/instrumentProfiles';
 
 const ACCENT_CLICK = require('../../../assets/audio/click-accent.wav');
 const REGULAR_CLICK = require('../../../assets/audio/click.wav');
@@ -54,16 +54,16 @@ export function coachingMessage({
   pace: Pace;
 }): string {
   if (pace === 'flow' && missed > 0) {
-    return 'The chart moved past a few changes. Try Follow Me, or lower the song speed and loop one section.';
+    return 'The chart moved past a few targets. Try Follow Me so each target waits for you, then repeat at a comfortable pace.';
   }
   if (wrong > 2 || pitchScore < 55) {
-    return 'The mic heard extra or incomplete notes. Check muted strings, fret close behind the wire, and strum once cleanly.';
+    return 'Several notes did not match. Check tuning, room noise and microphone position, then play one target at a time. A missed match is not proof of poor technique.';
   }
   if (timingScore > 0 && timingScore < 70) {
-    return 'Your shapes are landing, but the attacks drift from the click. Mute the strings and rehearse the rhythm alone once.';
+    return 'Your notes are matching, but some starts drift from the click. Tap and count the rhythm first, then add the notes.';
   }
   if (pitchScore >= 90 && (timingScore === 0 || timingScore >= 85)) {
-    return 'Clean and steady. Raise the speed or practise the next section.';
+    return 'The app matched most targets. Listen for an even sound and relaxed playing, then repeat or try the next lesson.';
   }
   return 'Good progress. Repeat once at the same speed; consistency matters more than a single high score.';
 }
@@ -71,11 +71,12 @@ export function coachingMessage({
 /** Tab-convention string labels, top row = high e. */
 const TAB_ROWS = ['e', 'B', 'G', 'D', 'A', 'E']; // display order (stringIndex 5 -> 0)
 
-function TabStrip({ target }: { target: Extract<Target, { kind: 'note' }> }) {
+function TabStrip({ target, bass }: { target: Extract<Target, { kind: 'note' }>; bass: boolean }) {
+  const rows = bass ? ['G', 'D', 'A', 'E'] : TAB_ROWS;
   return (
     <View style={styles.tabStrip}>
-      {TAB_ROWS.map((label, row) => {
-        const stringIndex = 5 - row;
+      {rows.map((label, row) => {
+        const stringIndex = rows.length - 1 - row;
         const active = stringIndex === target.stringIndex;
         return (
           <View key={label} style={styles.tabRow}>
@@ -176,8 +177,8 @@ export default function PlayAlongLesson({
 }) {
   const referencePitchHz = useSettingsStore((state) => state.referencePitchHz);
   const engineOptions = useMemo(
-    () => guitarPracticeEngineOptions(referencePitchHz),
-    [referencePitchHz],
+    () => lessonPracticeEngineOptions(referencePitchHz, drill.instrument === 'bass'),
+    [referencePitchHz, drill.instrument],
   );
   const engine = useTunerEngine(engineOptions);
   const { start, stop, latest, isRunning, error } = engine;
@@ -243,6 +244,7 @@ export default function PlayAlongLesson({
     matcherRef.current = new TargetMatcher(target, {
       mode,
       referencePitchHz,
+      openStringMidi: drill.instrument === 'bass' ? BASS_OPEN_MIDI : undefined,
     });
     matcherRef.current.reset();
     setHeardState({
@@ -521,7 +523,7 @@ export default function PlayAlongLesson({
                 accessibilityState={{ selected: mode === m }}
               >
                 <Text style={[styles.toggleText, mode === m && styles.toggleTextActive]}>
-                  {m === 'mono' ? 'Any tone' : 'Full chord'}
+                  {m === 'mono' ? 'Any tone' : 'Chord tones'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -734,7 +736,7 @@ export default function PlayAlongLesson({
                       {TAB_ROWS[5 - target.stringIndex]} string ·{' '}
                       {target.fret === 0 ? 'open' : `fret ${target.fret}`}
                     </Text>
-                    <TabStrip target={target} />
+                    <TabStrip target={target} bass={drill.instrument === 'bass'} />
                   </>
                 ) : null}
               </View>

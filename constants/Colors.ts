@@ -25,7 +25,7 @@ export const Colors = {
     tabIconSelected: tintColorDark,
     card: '#1a1a2e',
     cardBorder: '#2a2a4a',
-    muted: '#9ca3af',
+    muted: '#b3b8c7',
     surface: '#1a1a2e',
     surfaceElevated: '#252545',
     textOnTint: '#ffffff',
@@ -36,6 +36,7 @@ export const Colors = {
   spacing: {
     xs: 4,
     sm: 8,
+    gap: 12,
     md: 16,
     lg: 24,
     xl: 32,

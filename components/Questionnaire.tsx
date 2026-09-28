@@ -5,27 +5,23 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../constants/Colors';
+import { collectionColumns } from '../constants/Layout';
 import {
   useUserPreferencesStore,
-  GuitarType,
   ExperienceLevel,
   TuningPreference,
 } from '../features/store/userPreferencesStore';
 import { useProgressStore } from '../features/store/progressStore';
 import { findTuningPreset } from '../features/tuner/data/tunings';
+import { LEARNING_INSTRUMENTS, learningInstrumentLabel, learningTuningId } from '../features/lessons/data/learningInstrument';
 
 interface QuestionnaireProps {
   onComplete: () => void;
 }
-
-const GUITAR_TYPES: { value: GuitarType; label: string; icon: string }[] = [
-  { value: 'acoustic', label: 'Acoustic', icon: '🎸' },
-  { value: 'electric', label: 'Electric', icon: '🎸' },
-  { value: 'classical', label: 'Classical', icon: '🎸' },
-];
 
 const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string; icon: string }[] = [
   { value: 'beginner', label: 'Beginner', icon: '🌱' },
@@ -42,12 +38,15 @@ const TUNING_OPTIONS: { value: TuningPreference; label: string; description: str
 ];
 
 export default function Questionnaire({ onComplete }: QuestionnaireProps) {
+  const { width, fontScale } = useWindowDimensions();
+  const singleColumn = collectionColumns(width, fontScale) === 1;
   const [step, setStep] = useState(0);
   const {
     guitarType,
+    learningInstrument,
+    setLearningInstrument,
     experienceLevel,
     tuningPreference,
-    setGuitarType,
     setExperienceLevel,
     setTuningPreference,
     completeQuestionnaire,
@@ -55,11 +54,9 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
   const setAlternateTuning = useProgressStore((state) => state.setAlternateTuning);
 
   const handleQuickStart = () => {
-    setGuitarType('acoustic');
     setExperienceLevel('beginner');
     setTuningPreference('standard');
-    const preset = findTuningPreset('Standard E', 'acoustic');
-    if (preset) setAlternateTuning(preset.id);
+    setAlternateTuning(learningTuningId(learningInstrument));
     completeQuestionnaire();
     onComplete();
   };
@@ -72,7 +69,7 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
       open_d: 'Open D',
       dadgad: 'DADGAD',
     };
-    const preset = findTuningPreset(preferredName[tuningPreference], guitarType);
+    const preset = findTuningPreset(learningInstrument === 'bass' ? learningTuningId('bass') : preferredName[tuningPreference], guitarType);
     if (preset) setAlternateTuning(preset.id);
     completeQuestionnaire();
     onComplete();
@@ -81,7 +78,7 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
   const canProceed = () => {
     switch (step) {
       case 0:
-        return guitarType !== null;
+        return learningInstrument !== null;
       case 1:
         return experienceLevel !== null;
       case 2:
@@ -96,25 +93,26 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
       case 0:
         return (
           <Animated.View entering={FadeInDown.duration(400)}>
-            <Text style={styles.questionTitle}>What type of guitar do you have?</Text>
-            <Text style={styles.questionSubtitle}>This helps us show you the right parts</Text>
+            <Text style={styles.questionTitle}>What do you want to learn?</Text>
+            <Text style={styles.questionSubtitle}>Choose one instrument. You can switch paths later without losing progress.</Text>
             <View style={styles.optionsGrid}>
-              {GUITAR_TYPES.map((type) => (
+              {LEARNING_INSTRUMENTS.map((type) => (
                 <TouchableOpacity
                   key={type.value}
                   style={[
                     styles.optionCard,
-                    guitarType === type.value && styles.optionCardSelected,
+                    singleColumn && { width: '100%' },
+                    learningInstrument === type.value && styles.optionCardSelected,
                   ]}
-                  onPress={() => setGuitarType(type.value)}
+                  onPress={() => setLearningInstrument(type.value)}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: guitarType === type.value }}
+                  accessibilityState={{ checked: learningInstrument === type.value }}
                 >
-                  <Text style={styles.optionIcon}>{type.icon}</Text>
+                  <Text style={styles.optionIcon}>🎸</Text>
                   <Text
                     style={[
                       styles.optionLabel,
-                      guitarType === type.value && styles.optionLabelSelected,
+                      learningInstrument === type.value && styles.optionLabelSelected,
                     ]}
                   >
                     {type.label}
@@ -129,7 +127,7 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
         return (
           <Animated.View entering={FadeInDown.duration(400)}>
             <Text style={styles.questionTitle}>What's your experience level?</Text>
-            <Text style={styles.questionSubtitle}>This opens the best lesson path for your starting point</Text>
+            <Text style={styles.questionSubtitle}>Save your starting point. All lessons stay available, so you can review the basics or explore later units.</Text>
             <View style={styles.optionsList}>
               {EXPERIENCE_LEVELS.map((level) => (
                 <TouchableOpacity
@@ -158,10 +156,14 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
         );
 
       case 2:
+        if (learningInstrument === 'bass') return <View>
+          <Text style={styles.questionTitle}>Standard four-string bass</Text>
+          <Text style={styles.questionSubtitle}>This path uses E1–A1–D2–G2. Five- and six-string bass can still be tuned in the Tuner, but this course's diagrams and drills use four strings.</Text>
+        </View>;
         return (
           <Animated.View entering={FadeInDown.duration(400)}>
             <Text style={styles.questionTitle}>What tuning do you use?</Text>
-            <Text style={styles.questionSubtitle}>Most beginners start with Standard E</Text>
+            <Text style={styles.questionSubtitle}>The lesson drills use Standard E. Other tunings remain available in the Tuner.</Text>
             <View style={styles.optionsList}>
               {TUNING_OPTIONS.map((tuning) => (
                 <TouchableOpacity
@@ -209,10 +211,10 @@ export default function Questionnaire({ onComplete }: QuestionnaireProps) {
               style={styles.quickStartButton}
               onPress={handleQuickStart}
               accessibilityRole="button"
-              accessibilityLabel="Quick start with acoustic guitar, beginner lessons, and Standard E tuning"
+              accessibilityLabel={`Quick start ${learningInstrumentLabel(learningInstrument)} with beginner lessons and standard tuning`}
             >
               <Text style={styles.quickStartText}>Quick Start · Beginner</Text>
-              <Text style={styles.quickStartDetail}>Acoustic · Standard E · ready to play</Text>
+              <Text style={styles.quickStartDetail}>{learningInstrumentLabel(learningInstrument)} · Standard tuning</Text>
             </TouchableOpacity>
           )}
         </Animated.View>
@@ -358,6 +360,7 @@ const styles = StyleSheet.create({
     marginBottom: Colors.spacing.sm,
   },
   optionLabel: {
+    textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
     color: Colors.dark.text,
@@ -386,6 +389,7 @@ const styles = StyleSheet.create({
     marginRight: Colors.spacing.md,
   },
   optionRowLabel: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '600',
     color: Colors.dark.text,
@@ -429,6 +433,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   nextButtonText: {
+    textAlign: 'center',
     fontSize: 16,
     fontWeight: '700',
     color: '#071408',

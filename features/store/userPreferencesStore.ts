@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { restoreLearningInstrument, type LearningInstrument } from '../lessons/data/learningInstrument';
 
 /**
- * This preference describes the six-string guitar learning curriculum, not
- * every instrument supported by the tuner. Bass, ukulele, and extended-range
- * instruments are selected independently on the Tuner screen; listing them
- * here would imply that lessons and chord diagrams adapt to those instruments.
+ * Kept for guitar anatomy and legacy tuning lookup. The separate
+ * learningInstrument preference also supports the four-string bass path;
+ * neither type implies a curriculum for every instrument in the tuner.
  */
 export type GuitarType = 'acoustic' | 'electric' | 'classical';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
@@ -14,6 +14,8 @@ export type TuningPreference = 'standard' | 'drop_d' | 'open_g' | 'open_d' | 'da
 
 export interface UserPreferences {
   guitarType: GuitarType;
+  /** One curriculum at a time; independent of temporary tuner selections. */
+  learningInstrument: LearningInstrument;
   experienceLevel: ExperienceLevel;
   tuningPreference: TuningPreference;
   hasCompletedQuestionnaire: boolean;
@@ -24,6 +26,7 @@ interface UserPreferencesState extends UserPreferences {
   hasHydrated: boolean;
   setHasHydrated: (hydrated: boolean) => void;
   setGuitarType: (type: GuitarType) => void;
+  setLearningInstrument: (instrument: LearningInstrument) => void;
   setExperienceLevel: (level: ExperienceLevel) => void;
   setTuningPreference: (tuning: TuningPreference) => void;
   completeQuestionnaire: () => void;
@@ -34,13 +37,18 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
   persist(
     (set, get) => ({
       guitarType: 'acoustic',
+      learningInstrument: 'acoustic',
       experienceLevel: 'beginner',
       tuningPreference: 'standard',
       hasCompletedQuestionnaire: false,
       hasHydrated: false,
 
       setHasHydrated: (hydrated: boolean) => set({ hasHydrated: hydrated }),
-      setGuitarType: (type: GuitarType) => set({ guitarType: type }),
+      setGuitarType: (type: GuitarType) => set({ guitarType: type, learningInstrument: type }),
+      setLearningInstrument: (instrument: LearningInstrument) => set({
+        learningInstrument: instrument,
+        ...(instrument === 'bass' ? {} : { guitarType: instrument }),
+      }),
       setExperienceLevel: (level: ExperienceLevel) => set({ experienceLevel: level }),
       setTuningPreference: (tuning: TuningPreference) => set({ tuningPreference: tuning }),
       
@@ -48,6 +56,7 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       resetQuestionnaire: () =>
         set({
           guitarType: 'acoustic',
+          learningInstrument: 'acoustic',
           experienceLevel: 'beginner',
           tuningPreference: 'standard',
           hasCompletedQuestionnaire: false,
@@ -57,6 +66,10 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
     {
       name: 'standardtune-user-preferences',
       storage: createJSONStorage(() => AsyncStorage),
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<UserPreferences>;
+        return { ...current, ...saved, learningInstrument: restoreLearningInstrument(saved.learningInstrument, saved.guitarType) };
+      },
       partialize: (state) => {
         // Don't persist the transient hydration flag.
         const { hasHydrated, ...rest } = state;

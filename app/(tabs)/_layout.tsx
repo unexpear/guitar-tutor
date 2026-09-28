@@ -1,6 +1,7 @@
 import { Tabs, useRouter } from 'expo-router';
 import { ColorValue, Pressable, useWindowDimensions } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type MCIName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -11,6 +12,7 @@ function TabIcon({ name, color }: { name: MCIName; color: ColorValue }) {
 export default function TabLayout() {
   const router = useRouter();
   const { width, fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const usesSidebar = width >= 768;
 
   return (
@@ -23,16 +25,23 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#0f0f23',
           borderTopColor: '#2a2a4a',
-          height: usesSidebar ? undefined : 84,
-          width: usesSidebar ? 104 : undefined,
-          paddingTop: 8,
+          height: usesSidebar ? undefined : 64 + insets.bottom + Math.max(0, Math.min(fontScale, 1.5) - 1) * 12,
+          // The navigator applies the cutout inset inside the rail's width.
+          width: usesSidebar ? 104 + insets.left : undefined,
+          paddingTop: 8 + (usesSidebar ? insets.top : 0),
         },
         tabBarPosition: usesSidebar ? 'left' : 'bottom',
         tabBarVariant: usesSidebar ? 'material' : 'uikit',
         tabBarLabelPosition: 'below-icon',
+        // Six material items otherwise include enough vertical margins to
+        // push the final activity below a landscape phone's safe area.
+        tabBarItemStyle: usesSidebar ? { flex: 1, minHeight: 48, marginVertical: 0 } : undefined,
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#9ca3af',
-        tabBarShowLabel: fontScale <= 1.4,
+        tabBarShowLabel: true,
+        // Keep all six names visible; full-size accessible names remain on each tab.
+        tabBarAllowFontScaling: false,
+        tabBarActiveBackgroundColor: '#1b302c',
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
@@ -65,7 +74,7 @@ export default function TabLayout() {
         name="lessons"
         options={{
           headerShown: false,
-          title: 'Lessons',
+          title: 'Learn',
           tabBarIcon: ({ color }) => <TabIcon name="book-open-variant" color={color} />,
         }}
       />

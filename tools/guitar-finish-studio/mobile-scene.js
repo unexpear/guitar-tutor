@@ -40,11 +40,20 @@ try {
   const render=()=>renderer.render(scene,camera);
   const fitModel=()=>{
     if(!model)return;
-    const sphere=new T.Box3().setFromObject(model).getBoundingSphere(new T.Sphere());
-    const direction=camera.position.clone().sub(sphere.center).normalize();
-    const halfAngle=Math.atan(Math.tan(T.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect));
-    camera.position.copy(sphere.center).addScaledVector(direction,sphere.radius/Math.sin(halfAngle)*1.08);
-    camera.lookAt(sphere.center);
+    const bounds=new T.Box3().setFromObject(model),center=bounds.getCenter(new T.Vector3());
+    const direction=camera.position.clone().sub(center).normalize();
+    const right=new T.Vector3().crossVectors(camera.up,direction).normalize();
+    const up=new T.Vector3().crossVectors(direction,right).normalize();
+    const tanV=Math.tan(T.MathUtils.degToRad(camera.fov/2)),tanH=tanV*camera.aspect;
+    // Fit all eight corners to the actual portrait/landscape frustum. A sphere
+    // treats a long narrow guitar as equally wide, leaving tiny thumbnails.
+    let distance=0;
+    for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){
+      const p=new T.Vector3(x,y,z).sub(center);
+      distance=Math.max(distance,p.dot(direction)+Math.max(Math.abs(p.dot(right))/tanH,Math.abs(p.dot(up))/tanV));
+    }
+    camera.position.copy(center).addScaledVector(direction,distance*1.12);
+    camera.lookAt(center);
   };
   window.updateGuitar = async payload => {try {
     latestPayload=payload;
@@ -88,7 +97,15 @@ try {
     render();
     if(payload.requestKey&&acknowledgedKey!==payload.requestKey){
       acknowledgedKey=payload.requestKey;
-      window.ReactNativeWebView?.postMessage(JSON.stringify({type:'rendered',requestKey:payload.requestKey}));
+      // Capture in the same task as render; do not retain the drawing buffer.
+      // Only the collection worker requests this bounded, unhighlighted image.
+      let thumbnail;
+      if(payload.captureThumbnail){
+        const small=document.createElement('canvas');small.width=288;small.height=384;
+        small.getContext('2d').drawImage(canvas,0,0,288,384);
+        thumbnail=small.toDataURL('image/jpeg',.75);
+      }
+      window.ReactNativeWebView?.postMessage(JSON.stringify({type:'rendered',requestKey:payload.requestKey,thumbnail}));
     }
     window.guitarDiagnostics={...model.userData.statistics,modelId:payload.modelId,selectedString:payload.highlightedString,drawCalls:renderer.info.render.calls,textures:renderer.info.memory.textures};
   }catch{if(latestPayload?.modelId===payload.modelId)send('error');}};

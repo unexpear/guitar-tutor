@@ -1,3 +1,5 @@
+import { FOUNDATION_CONTENT } from './foundationContent';
+
 export interface LessonSection {
   heading: string;
   body: string;
@@ -9,21 +11,24 @@ export interface LessonSection {
  * intentionally has no entry here.
  */
 export const LESSON_CONTENT: Record<string, LessonSection[]> = {
+  ...FOUNDATION_CONTENT,
   'bass-first-notes': [
-    { heading: 'Tune before you practise', body: 'A standard four-string bass is E1-A1-D2-G2 from the thickest string to the thinnest. Five-string bass adds B0 below E; six-string adds C3 above G. In the tuner choose your exact bass, select one string, pluck once near the neck pickup, and let it ring. Guided mode is especially useful on B0 and E1 because phones can hear a stronger overtone than the fundamental.' },
+    { heading: 'Tune before you practise', body: 'This path uses a standard four-string bass: E1-A1-D2-G2 from the thickest string to the thinnest. Use Tune for this path, start listening, select one string, pluck once and let it ring. Guided mode helps on low E because a phone can hear a stronger overtone than the fundamental. Make small adjustments and stop if you are unsure which tuning machine or octave is correct.' },
     { heading: 'Clean low notes', body: 'Rest the bass against your body with the neck slightly raised. Fret immediately behind the metal fret using the pad near your fingertip. Use only enough pressure to stop buzz. If the tuner jumps, mute the other strings with both hands and move the phone closer to the instrument or a quiet amplifier.' },
+    { heading: 'Try the open-string drill', body: 'Open the listening drill and use Follow Me. It waits while you find E, A, D and G. Pluck just one string and quiet the others. The pitch score is a useful prompt, not a test of posture or tone; listen for yourself and take relaxed breaks.' },
   ],
   'bass-right-hand': [
     { heading: 'Alternate index and middle', body: 'Pluck toward the next thicker string, alternating index and middle fingers. Start on one open string and listen for equal volume and tone. The motion is small: the finger passes through the string and comes to rest on its neighbour instead of pulling upward away from the body.' },
     { heading: 'Muting is half the technique', body: 'Let the thumb rest on a pickup or a lower string. As you move to thinner strings, let the thumb follow. Your fretting hand can lightly touch unused higher strings. Play E-E-rest-E at 60 BPM and listen during every rest; silence is the goal.' },
+    { heading: 'Practise one change at a time', body: 'Use the listening drill for slow E-to-A changes. Alternate index and middle, and silence the old string before the next note. The app listens for pitch, not which finger you used or how well you muted: judge those by listening and looking at your hand.' },
   ],
   'bass-fretboard': [
     { heading: 'Learn landmarks first', body: 'The open strings repeat at fret 12. On any string, the octave is twelve frets higher. A second useful octave shape is two strings thinner and two frets higher, as long as both strings are tuned in fourths. Start with E, A, D and G at frets 0, 5, 7 and 12.' },
-    { heading: 'Five- and six-string extensions', body: 'A low B string follows the same chromatic sequence as every other string: C is fret 1, D fret 3, E fret 5. A high C string begins at C3. Use Fretboard Explorer in Practice Games and say each answer aloud before tapping it.' },
+    { heading: 'Practice two octave pairs', body: 'On your four-string bass, play open E and then E at D-string fret 2. Next play open A and A at G-string fret 2. Use this lesson’s bass octave drill. Guitar-only fretboard games use a different string map, so they are not a substitute for these bass targets.' },
   ],
   'bass-groove': [
     { heading: 'Make the click feel like a drummer', body: 'Set the metronome to 60 BPM and play one root on each click. When that is effortless, keep the same tempo and play two even eighth notes per click. Do not chase a late note; leave it behind and meet the next click cleanly.' },
-    { heading: 'Add rests and changes', body: 'Try one bar each of E, A, D and A. Then play beat one, rest on beat two, and play beats three and four. Record a minute in Rhythm Master. Consistent space between notes matters more than speed.' },
+    { heading: 'Add rests and changes', body: 'Try one bar each of E, A, D and A. Then play beat one, rest on beat two, and play beats three and four. Count through the rest and stop the ringing string deliberately. Use Tempo for the click; it does not record or grade your performance. Consistent spacing matters more than speed.' },
   ],
   'beginner-holding-the-guitar': [
     {
@@ -43,14 +48,14 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
       body: 'None of this course requires a pick. If it feels hopeless at first, brush the strings with the side of your thumb and come back to the pick later. Plenty of players never use one.',
     },
     {
-      heading: 'Your fingers will hurt, and then they will not',
-      body: 'Pressing steel strings hurts for the first week or two. That is normal and it is not damage - the skin on your fingertips thickens into calluses and the pain stops. Fifteen minutes a day beats an hour once a week, both for your fingers and for how fast you learn. Stop when the tips feel raw and come back tomorrow.',
+      heading: 'Keep practice comfortable',
+      body: 'Start with short, relaxed attempts and use only the pressure needed for a clear note. Take breaks and stop if playing hurts, causes tingling, or leaves your skin sore. Do not push through pain for a score or streak. A teacher or instrument technician can help check playing position and a difficult setup.',
     },
   ],
   'beginner-tuning-up': [
     {
       heading: 'Do this before you play anything',
-      body: 'A guitar that has been in a box or a cupboard is always out of tune, and often badly. This matters more than it sounds: if the guitar is out of tune, everything you play sounds wrong even when your fingers are in exactly the right place, and the practice drills in this app will tell you that you missed when you did not. Tune first, every time you pick it up.',
+      body: 'Check tuning before practice. Temperature, handling and time can change it, even when a guitar sounded fine last time. The lesson drills assume standard tuning; another tuning can make correct finger positions sound like different target notes. Use Tune for this path to select the intended instrument and tuning.',
     },
     {
       heading: 'The six strings and their names',
@@ -58,11 +63,11 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Using the tuner in this app',
-      body: 'Open the Tuner tab. Tap the string you want on screen - start with the thick E on the left - then pluck that same string on the guitar and let it ring. The app listens and tells you what to do. Green means it is right. Amber means you are close. Red means keep turning.',
+      body: 'Open the Tuner tab and start listening. Select the labeled string, pluck that same string and let it ring. Green is within your chosen tuning window and amber is close. Read the flat/sharp direction before adjusting; red alone does not tell you which way to turn. Check the string label rather than relying on left or right placement.',
     },
     {
       heading: 'Which way to turn the peg',
-      body: 'Tightening a string raises its pitch, loosening lowers it. If the app says you are flat, the string is too loose - tighten it. If it says sharp, it is too tight - loosen it. Turn the peg slowly, a little at a time, and keep plucking as you go so you can hear it move. If a string is very loose it can read as a completely different note, so tighten gently until the app starts reacting.',
+      body: 'Tightening raises pitch and loosening lowers it, but clockwise direction depends on the peg and string winding. Confirm the correct peg and make a tiny change while plucking again. If the reading is far from the target or you are unsure of the octave, stop and check with a reference or teacher. Do not keep tightening an uncertain string to chase the display.',
     },
     {
       heading: 'Go through all six',
@@ -88,7 +93,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Try it',
-      body: 'Start the practice drill below. It asks for one note at a time on the two thickest strings, open and fretted, and listens to check each one actually rang. Take as long as you like on each - the drill waits for you. If a note will not register, it is almost always cause one or three above.',
+      body: 'Start the practice drill below and play one target at a time. Follow Me waits for the pitch. Listen for buzz yourself: the app cannot see your fingers or certify a clean tone. If a note is missed, check tuning, input level, microphone position and room noise as well as the fingering.',
     },
   ],
   'beginner-reading-diagrams': [
@@ -210,7 +215,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'One octave, one position',
-      body: 'Play C major starting at the A-string 3rd fret: A string frets 3-5-7, D string frets 3-5-7, G string frets 4-5. Say the note names aloud as you play. Then play it descending. Use one finger per fret - the index covers the lowest fret in the position. Lock it in with this lesson’s C Major practice drill, which asks the same notes and tells you whether each one actually sounded.',
+      body: 'Play C major starting at A-string fret 3: A string 3-5-7, D string 3-5-7, G string 4-5. Say C-D-E-F-G-A-B-C, then descend. This covers more than a four-fret position, so shift the hand comfortably rather than forcing a stretch. The C Major practice drill follows these notes.',
     },
     {
       heading: 'The minor pentatonic',
@@ -224,11 +229,11 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
   'intermediate-music-theory': [
     {
       heading: 'Intervals are distances',
-      body: 'An interval is the distance between two notes, counted in half steps (frets). The ones to know: 3 frets = minor third (sad), 4 frets = major third (happy), 7 frets = perfect fifth (power chords). Chords are just stacked thirds.',
+      body: 'An interval is a distance between pitches. In this equal-tempered fretboard system, three frets make a minor third, four a major third and seven a perfect fifth. Play the intervals and listen. Major and minor can suggest different moods, but context, rhythm and performance matter too.',
     },
     {
       heading: 'How chords are built',
-      body: 'A major chord = root + major third + perfect fifth. A minor chord lowers the third by one fret. That single note is the entire difference between happy and sad. A 7th chord stacks one more third on top.',
+      body: 'A major triad contains a root, major third and perfect fifth. A minor triad lowers that third by one semitone. A seventh chord adds a seventh above the root; the kind of third and seventh determines the chord quality. Not every chord is built only from stacked thirds.',
     },
     {
       heading: 'Keys and the chord family',
@@ -236,7 +241,7 @@ export const LESSON_CONTENT: Record<string, LessonSection[]> = {
     },
     {
       heading: 'Progressions you already know',
-      body: 'I-V-vi-IV (C-G-Am-F) is the most used progression in pop music. ii-V-I rules jazz. I-IV-V is the blues. Play C-G-Am-F in a loop and you will recognize a dozen songs. Then transpose it to G major (G-D-Em-C) using the Roman numerals.',
+      body: 'I-V-vi-IV, ii-V-I and I-IV-V are common ways to organize chords. In C major, try C-G-Am-F slowly, then compare G-D-Em-C in G major. The Roman numerals describe each chord’s place in the key, so they help you move a pattern without memorizing a separate rule for every key.',
     },
   ],
   'advanced-improvisation': [

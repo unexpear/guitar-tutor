@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
+  BackHandler,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -13,7 +14,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useIsFocused } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Layout } from '../../constants/Layout';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import { useProgressStore } from '../../features/store/progressStore';
@@ -24,8 +27,15 @@ import Questionnaire from '../../components/Questionnaire';
 import GuitarAnatomy from '../../components/GuitarAnatomy';
 import ChordDiagramLesson from '../../components/ChordDiagramLesson';
 import { LESSON_CONTENT } from '../../features/lessons/data/lessonContent';
+import { LESSON_SUMMARIES } from '../../features/lessons/data/lessonSummaries';
 import { getDrill } from '../../features/lessons/data/drills';
 import PlayAlongLesson from '../../features/lessons/playalong/PlayAlongLesson';
+import ChoiceChips from '../../components/ChoiceChips';
+import ChordDiagram from '../../components/ChordDiagram';
+import { getChord } from '../../features/chords/data/chords';
+import { curriculumFor, curriculumProgress, type GuidedLesson as Lesson, type CurriculumUnit as LessonCategory } from '../../features/lessons/data/curriculum';
+import { LEARNING_INSTRUMENTS, learningInstrumentLabel, learningTuningId, type LearningInstrument } from '../../features/lessons/data/learningInstrument';
+import StaffPrimer from '../../features/lessons/StaffPrimer';
 
 
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
@@ -58,165 +68,6 @@ const LESSON_ICONS: Record<string, MCIName> = {
 
 const FALLBACK_ICON: MCIName = 'music-note';
 
-interface Lesson {
-  id: string;
-  title: string;
-  description: string;
-  difficulty: Difficulty;
-  component?: 'guitar-anatomy' | 'chord-diagrams';
-}
-
-interface LessonCategory {
-  id: string;
-  label: string;
-  difficulty: Difficulty;
-  lessons: Lesson[];
-}
-
-const LESSON_DATA: LessonCategory[] = [
-  {
-    id: 'bass-path',
-    label: 'Bass Path',
-    difficulty: 'beginner',
-    lessons: [
-      { id: 'bass-first-notes', title: 'Bass Setup & First Notes', description: 'Tune E-A-D-G, set a comfortable playing position, and make clean low notes without fret buzz.', difficulty: 'beginner' },
-      { id: 'bass-right-hand', title: 'Alternating Fingers', description: 'Build an even index-middle plucking motion and mute strings that should stay quiet.', difficulty: 'beginner' },
-      { id: 'bass-fretboard', title: 'Bass Fretboard Map', description: 'Find roots and octaves on four-, five-, and six-string bass without memorizing every fret at once.', difficulty: 'beginner' },
-      { id: 'bass-groove', title: 'Lock In the Groove', description: 'Use the metronome to place steady roots, rests, and eighth notes around a drum-like pulse.', difficulty: 'beginner' },
-    ],
-  },
-  {
-    id: 'beginner',
-    label: 'Beginner',
-    difficulty: 'beginner',
-    lessons: [
-      {
-        id: 'beginner-holding-the-guitar',
-        title: 'Holding the Guitar',
-        description:
-          'Sit with it properly, work out which hand does what, and hold a pick. Start here if you have never picked one up.',
-        difficulty: 'beginner',
-      },
-      {
-        id: 'beginner-tuning-up',
-        title: 'Tuning Up',
-        description:
-          'A guitar out of a box is always out of tune, and nothing sounds right until you fix it. Do this before every practice.',
-        difficulty: 'beginner',
-      },
-      {
-        id: 'beginner-guitar-anatomy',
-        title: 'Guitar Anatomy',
-        description:
-          'Learn the parts of your guitar, from headstock to bridge, and understand what each part does.',
-        difficulty: 'beginner',
-        component: 'guitar-anatomy',
-      },
-      {
-        id: 'beginner-reading-diagrams',
-        title: 'Reading Chord Diagrams',
-        description:
-          'What the dots, numbers, crosses and circles mean, so every chord in the app tells you exactly where your fingers go.',
-        difficulty: 'beginner',
-        component: 'chord-diagrams',
-      },
-      {
-        id: 'beginner-fretting-notes',
-        title: 'Fretting Clean Notes',
-        description:
-          'Where to put your fingertip, where your thumb goes, and the four reasons a string buzzes. The lesson that stops chords sounding dead.',
-        difficulty: 'beginner',
-      },
-      {
-        id: 'beginner-reading-tabs',
-        title: 'Reading Tabs',
-        description:
-          'Read tablature and pluck your first single notes, one string at a time.',
-        difficulty: 'beginner',
-      },
-      {
-        id: 'beginner-open-chords',
-        title: 'Open Chords',
-        description:
-          'Play essential open chords like G, C, D, E minor, and A minor to strum your first songs.',
-        difficulty: 'beginner',
-      },
-      {
-        id: 'beginner-basic-strumming',
-        title: 'Basic Strumming',
-        description:
-          'Master fundamental strumming patterns using downstrokes and upstrokes with consistent rhythm.',
-        difficulty: 'beginner',
-      },
-    ],
-  },
-  {
-    id: 'intermediate',
-    label: 'Intermediate',
-    difficulty: 'intermediate',
-    lessons: [
-      {
-        id: 'intermediate-barre-chords',
-        title: 'Barre Chords',
-        description:
-          'Unlock the fretboard with movable barre chord shapes and play in any key.',
-        difficulty: 'intermediate',
-      },
-      {
-        id: 'intermediate-fingerpicking',
-        title: 'Fingerpicking',
-        description:
-          'Develop finger independence and learn classic fingerpicking patterns for acoustic guitar.',
-        difficulty: 'intermediate',
-      },
-      {
-        id: 'intermediate-scales-101',
-        title: 'Scales 101',
-        description:
-          'Learn the major and minor scales to understand melody construction and soloing foundations.',
-        difficulty: 'intermediate',
-      },
-      {
-        id: 'intermediate-music-theory',
-        title: 'Music Theory',
-        description:
-          'Explore chord progressions, keys, intervals, and how music is structured.',
-        difficulty: 'intermediate',
-      },
-    ],
-  },
-  {
-    id: 'advanced',
-    label: 'Advanced',
-    difficulty: 'advanced',
-    lessons: [
-      {
-        id: 'advanced-improvisation',
-        title: 'Improvisation',
-        description:
-          'Express yourself freely by learning how to improvise solos over backing tracks.',
-        difficulty: 'advanced',
-      },
-      {
-        id: 'advanced-techniques',
-        title: 'Advanced Techniques',
-        description:
-          'Master hammer-ons, pull-offs, slides, bends, vibrato, and tapping.',
-        difficulty: 'advanced',
-      },
-      {
-        id: 'advanced-songwriting',
-        title: 'Songwriting',
-        description:
-          'Combine your skills to write original songs with compelling chord progressions and melodies.',
-        difficulty: 'advanced',
-      },
-    ],
-  },
-];
-
-/** Derived, not hardcoded: adding a lesson used to silently skew the bar. */
-const TOTAL_LESSONS = LESSON_DATA.reduce((n, c) => n + c.lessons.length, 0);
 
 function DifficultyDot({ difficulty }: { difficulty: Difficulty }) {
   return (
@@ -248,7 +99,7 @@ function ProgressOverview({
   return (
     <View style={[styles.card, CARD_SHADOW]}>
       <View style={styles.progressHeader}>
-        <Text style={styles.progressTitle}>Your Progress</Text>
+        <Text style={styles.progressTitle}>This learning path</Text>
         <Text style={styles.progressCount}>
           {completedCount}/{totalLessons} lessons
         </Text>
@@ -258,7 +109,7 @@ function ProgressOverview({
       </View>
       <Text style={styles.progressHint}>
         {completedCount === totalLessons
-          ? 'All lessons complete — you rock!'
+          ? 'Path complete. Revisit any lesson and keep making music.'
           : `${totalLessons - completedCount} lesson${totalLessons - completedCount === 1 ? '' : 's'} remaining`}
       </Text>
       <PracticeToday />
@@ -400,12 +251,13 @@ function LessonCard({
         />
       </View>
       <View style={styles.lessonBody}>
-        <Text style={styles.lessonTitle} numberOfLines={1}>
+        <Text style={styles.lessonTitle}>
           {lesson.title}
         </Text>
-        <Text style={styles.lessonDescription} numberOfLines={2}>
-          {lesson.description}
+        <Text style={styles.lessonDescription}>
+          {LESSON_SUMMARIES[lesson.id] ?? lesson.description}
         </Text>
+        <Text style={styles.lessonDescription}>{lesson.minutes} min practice idea</Text>
       </View>
       {completed ? (
         <View style={styles.lessonTrailing}>
@@ -430,12 +282,16 @@ function LessonDetail({
   onClose,
   onComplete,
   onPractice,
+  instrument,
+  onTune,
 }: {
   lesson: Lesson;
   completed: boolean;
   onClose: () => void;
   onComplete: () => void;
   onPractice: (() => void) | null;
+  instrument: LearningInstrument;
+  onTune: () => void;
 }) {
   const sections = LESSON_CONTENT[lesson.id] ?? [];
 
@@ -443,6 +299,12 @@ function LessonDetail({
     <Modal transparent animationType="fade" visible onRequestClose={onClose}>
     <View style={[styles.detailOverlay, styles.detailContainer]}>
       <View style={[styles.detailCard, CARD_SHADOW]} accessibilityViewIsModal>
+        <View style={styles.detailToolbar}>
+          <Text style={styles.sectionHeading}>Lesson</Text>
+          <TouchableOpacity onPress={onClose} style={styles.detailClose} accessibilityRole="button" accessibilityLabel="Close lesson detail">
+            <Ionicons name="close" size={24} color={Colors.dark.text} />
+          </TouchableOpacity>
+        </View>
         <ScrollView
           style={styles.detailScroll}
           showsVerticalScrollIndicator={false}
@@ -461,6 +323,19 @@ function LessonDetail({
 
           <Text style={styles.detailTitle}>{lesson.title}</Text>
           <Text style={styles.detailDescription}>{lesson.description}</Text>
+          <Text style={styles.sectionHeading}>Your aim</Text>
+          <Text style={styles.sectionBody}>{lesson.outcome}</Text>
+          <Text style={styles.pathNote}>{learningInstrumentLabel(instrument)} · standard tuning · no deadline</Text>
+          <PressableScale onPress={onTune} style={styles.closeButton} accessibilityRole="button">
+            <Text style={styles.closeButtonText}>Tune for this path</Text>
+          </PressableScale>
+          {(lesson.id === 'classical-reading-music' || lesson.id === 'bass-reading-music') && <StaffPrimer clef={instrument === 'bass' ? 'bass' : 'treble'} />}
+          {lesson.id === 'beginner-two-chords' && <View style={styles.chordPair}>
+            {['Em', 'Am'].map(name => <View key={name} style={styles.chordPreview}>
+              <Text style={styles.sectionHeading}>{name}</Text>
+              <ChordDiagram chord={getChord(name)!} />
+            </View>)}
+          </View>}
 
           {sections.map((section, i) => (
             <View key={section.heading} style={styles.sectionBlock}>
@@ -470,15 +345,22 @@ function LessonDetail({
               <Text style={styles.sectionBody}>{section.body}</Text>
             </View>
           ))}
+          <View style={styles.practicePlan}>
+            <Text style={styles.sectionHeading}>Try it · about {lesson.minutes} minutes</Text>
+            <Text style={styles.sectionBody}>{lesson.practice}</Text>
+            <Text style={styles.sectionHeading}>Ready for the next step?</Text>
+            <Text style={styles.sectionBody}>{lesson.readyWhen}</Text>
+            <Text style={styles.pathNote}>Repeat whenever useful. Completion records practice, not certified mastery.</Text>
+          </View>
 
           {onPractice && (
             <PressableScale
               onPress={onPractice}
               style={styles.practiceButton}
-              accessibilityLabel="Practice this lesson with your guitar"
+              accessibilityLabel={`Practice this lesson on ${learningInstrumentLabel(instrument)}`}
             >
               <Ionicons name="mic-outline" size={18} color="#fff" />
-              <Text style={styles.startButtonText}>Practice with Your Guitar</Text>
+              <Text style={styles.startButtonText}>Try the listening drill</Text>
             </PressableScale>
           )}
           <PressableScale
@@ -489,14 +371,14 @@ function LessonDetail({
             }
           >
             <Text style={[styles.startButtonText, !completed && styles.successButtonText]}>
-              {completed ? 'Mark Complete Again' : 'Mark as Complete'}
+              {completed ? 'Finish review' : 'I practised this lesson'}
             </Text>
           </PressableScale>
 
           <PressableScale
             onPress={onClose}
             style={styles.closeButton}
-            accessibilityLabel="Close lesson detail"
+            accessibilityLabel="Back to lessons"
           >
             <Text style={styles.closeButtonText}>Back to Lessons</Text>
           </PressableScale>
@@ -517,14 +399,20 @@ function GuitarAnatomyLessonContent({
 }
 
 export default function LessonsScreen() {
+  const focused = useIsFocused();
+  const insets = useSafeAreaInsets();
   const { completedLessons, completeLesson, isLessonCompleted, getLessonScore } =
     useProgressStore();
   const {
     hasCompletedQuestionnaire,
     hasHydrated,
-    resetQuestionnaire,
-    experienceLevel,
+    learningInstrument,
+    setLearningInstrument,
   } = useUserPreferencesStore();
+  const setAlternateTuning = useProgressStore(state => state.setAlternateTuning);
+  const units = useMemo(() => curriculumFor(learningInstrument), [learningInstrument]);
+  const pathProgress = useMemo(() => curriculumProgress(learningInstrument, completedLessons), [learningInstrument, completedLessons]);
+  const [choosingInstrument, setChoosingInstrument] = useState(false);
 
   // Derived from the store so "Retake Questionnaire" (here or in Settings)
   // works even while this tab stays mounted.
@@ -532,21 +420,32 @@ export default function LessonsScreen() {
   const showQuestionnaire = hasHydrated && !hasCompletedQuestionnaire;
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set([experienceLevel ?? 'beginner']),
+    new Set<string>(),
   );
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeLessonContent, setActiveLessonContent] = useState<string | null>(null);
   const [practiceLesson, setPracticeLesson] = useState<Lesson | null>(null);
 
   useEffect(() => {
-    if (!hasCompletedQuestionnaire) return;
-    setExpandedCategories((previous) => new Set(previous).add(experienceLevel));
-  }, [experienceLevel, hasCompletedQuestionnaire]);
+    if (!focused || (!activeLessonContent && !practiceLesson)) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setActiveLessonContent(null); setPracticeLesson(null); return true;
+    });
+    return () => subscription.remove();
+  }, [focused, activeLessonContent, practiceLesson]);
 
-  const completedCount = useMemo(
-    () => Object.values(completedLessons).filter((l) => l.completed).length,
-    [completedLessons],
-  );
+  useEffect(() => {
+    if (!hasCompletedQuestionnaire) return;
+    const nextUnit = units.find(unit => unit.lessons.some(lesson => !completedLessons[lesson.id]?.completed)) ?? units[0];
+    setExpandedCategories(new Set([nextUnit.id]));
+    setSelectedLesson(null); setActiveLessonContent(null); setPracticeLesson(null);
+  }, [learningInstrument, hasCompletedQuestionnaire]);
+
+  const handleTune = () => {
+    setSelectedLesson(null);
+    setAlternateTuning(learningTuningId(learningInstrument));
+    router.push('/');
+  };
 
   const toggleCategory = useCallback((categoryId: string) => {
     setExpandedCategories((prev) => {
@@ -651,7 +550,7 @@ export default function LessonsScreen() {
   if (activeLessonContent === 'guitar-anatomy') {
     return (
       <View style={styles.screen}>
-        <View style={styles.lessonHeader}>
+        <View style={[styles.lessonHeader, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
             style={styles.lessonBackButton}
             onPress={handleCloseLessonContent}
@@ -671,7 +570,7 @@ export default function LessonsScreen() {
   if (activeLessonContent === 'chord-diagrams') {
     return (
       <View style={styles.screen}>
-        <View style={styles.lessonHeader}>
+        <View style={[styles.lessonHeader, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
             style={styles.lessonBackButton}
             onPress={handleCloseLessonContent}
@@ -694,7 +593,7 @@ export default function LessonsScreen() {
     <View style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 8 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
@@ -705,17 +604,40 @@ export default function LessonsScreen() {
             accessibilityRole="button"
             accessibilityLabel="Settings"
           >
-            <Text style={styles.settingsButtonText}>⚙️</Text>
+            <Ionicons name="settings-outline" size={22} color={Colors.dark.muted} />
           </TouchableOpacity>
         </View>
 
+        <View style={[styles.card, CARD_SHADOW]}>
+          <Text style={styles.progressTitle}>{learningInstrumentLabel(learningInstrument)}</Text>
+          <Text style={styles.pathNote}>{learningInstrument === 'bass' ? 'Four strings · E1–A1–D2–G2' : 'Six strings · E2–A2–D3–G3–B3–E4'}</Text>
+          <PressableScale style={styles.closeButton} onPress={() => setChoosingInstrument(value => !value)} accessibilityRole="button" accessibilityState={{ expanded: choosingInstrument }}>
+            <Text style={styles.closeButtonText}>{choosingInstrument ? 'Close instrument choices' : 'Change learning instrument'}</Text>
+          </PressableScale>
+          {choosingInstrument && <>
+            <ChoiceChips label="Learning instrument" value={learningInstrument} options={LEARNING_INSTRUMENTS} onChange={value => { setLearningInstrument(value); setChoosingInstrument(false); }} />
+            <Text style={styles.pathNote}>One path at a time. Your saved progress stays; shared foundations carry over. Other instruments remain available in the tuner.</Text>
+          </>}
+          <PressableScale style={styles.closeButton} onPress={handleTune} accessibilityRole="button"><Text style={styles.closeButtonText}>Tune for this path</Text></PressableScale>
+        </View>
+
         <ProgressOverview
-          completedCount={completedCount}
-          totalLessons={TOTAL_LESSONS}
-          progressPercent={(completedCount / TOTAL_LESSONS) * 100}
+          completedCount={pathProgress.completed}
+          totalLessons={pathProgress.total}
+          progressPercent={(pathProgress.completed / pathProgress.total) * 100}
         />
 
-        {LESSON_DATA.map((category) => (
+        {pathProgress.next && <View style={[styles.card, CARD_SHADOW]}>
+          <Text style={styles.pathNote}>{pathProgress.completed ? 'NEXT SMALL STEP' : 'START HERE'}</Text>
+          <Text style={styles.progressTitle}>{pathProgress.next.title}</Text>
+          <Text style={styles.pathNote}>{pathProgress.next.outcome}</Text>
+          <PressableScale style={styles.startButton} accessibilityRole="button" onPress={() => handleLessonTap(pathProgress.next!)}>
+            <Text style={[styles.startButtonText, styles.successButtonText]}>Open lesson · {pathProgress.next.minutes} min practice</Text>
+          </PressableScale>
+        </View>}
+        <Text style={styles.pathNote}>Suggested order, not locked levels. Open any unit to review or explore. Practice time is shared across the app.</Text>
+
+        {units.map((category) => (
           <CategorySection
             key={category.id}
             category={category}
@@ -735,6 +657,8 @@ export default function LessonsScreen() {
           onClose={handleCloseDetail}
           onComplete={handleLessonComplete}
           onPractice={getDrill(selectedLesson.id) ? handleStartPractice : null}
+          instrument={learningInstrument}
+          onTune={handleTune}
         />
       )}
     </View>
@@ -742,6 +666,10 @@ export default function LessonsScreen() {
 }
 
 const styles = StyleSheet.create({
+  pathNote: { color: Colors.dark.muted, fontSize: 14, lineHeight: 21, marginVertical: 8 },
+  practicePlan: { backgroundColor: Colors.dark.surfaceElevated, padding: 12, borderRadius: 12, gap: 8, marginVertical: 16 },
+  chordPair: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 },
+  chordPreview: { alignItems: 'center', minWidth: 130 },
   screen: {
     flex: 1,
     backgroundColor: '#0f0f23',
@@ -750,8 +678,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: Colors.spacing.lg,
-    paddingTop: 60,
+    width: '100%', maxWidth: Layout.readingWidth, alignSelf: 'center',
+    padding: Layout.page,
     paddingBottom: Colors.spacing.xxl * 2,
   },
   topBar: {
@@ -761,11 +689,12 @@ const styles = StyleSheet.create({
     marginBottom: Colors.spacing.lg,
   },
   header: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: Colors.dark.text,
   },
   settingsButton: {
+    minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center',
     padding: Colors.spacing.sm,
   },
   settingsButtonText: {
@@ -780,7 +709,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.dark.cardBorder,
   },
   progressHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Colors.spacing.sm,
@@ -835,6 +764,7 @@ const styles = StyleSheet.create({
     marginBottom: Colors.spacing.lg,
   },
   categoryHeader: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Colors.spacing.sm,
@@ -848,6 +778,7 @@ const styles = StyleSheet.create({
     marginRight: Colors.spacing.sm,
   },
   categoryLabel: {
+    flexShrink: 1,
     fontSize: 17,
     fontWeight: '700',
     color: Colors.dark.text,
@@ -902,15 +833,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   lessonTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.dark.text,
     marginBottom: 2,
   },
   lessonDescription: {
-    fontSize: 12.5,
+    fontSize: 14,
     color: Colors.dark.muted,
-    lineHeight: 17,
+    lineHeight: 21,
   },
   lessonScore: {
     marginTop: 2,
@@ -942,7 +873,10 @@ const styles = StyleSheet.create({
   },
   detailScroll: {
     flexGrow: 0,
+    flexShrink: 1,
   },
+  detailToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  detailClose: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   sectionBlock: {
     marginBottom: Colors.spacing.md,
   },
@@ -959,6 +893,7 @@ const styles = StyleSheet.create({
   },
   detailHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
     marginBottom: Colors.spacing.md,
@@ -1000,12 +935,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b82f6',
     borderRadius: Colors.radius.md,
     paddingVertical: 14,
+    paddingHorizontal: 12,
     marginBottom: Colors.spacing.sm,
   },
   startButton: {
     backgroundColor: Colors.success,
     borderRadius: Colors.radius.md,
     paddingVertical: 14,
+    paddingHorizontal: 12,
     alignItems: 'center',
     marginBottom: Colors.spacing.sm,
   },
@@ -1015,6 +952,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.success,
   },
   startButtonText: {
+    flexShrink: 1,
+    textAlign: 'center',
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
@@ -1041,6 +980,9 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.dark.cardBorder,
   },
   lessonBackButton: {
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
     marginRight: Colors.spacing.md,
   },
   lessonBackButtonText: {
@@ -1049,6 +991,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   lessonHeaderTitle: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: '700',
     color: Colors.dark.text,

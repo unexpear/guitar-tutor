@@ -9,12 +9,15 @@ import {
   Switch,
   Modal,
   Pressable,
-  Platform,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Layout } from '../constants/Layout';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { Colors, CARD_SHADOW } from '../constants/Colors';
+import { learningInstrumentLabel } from '../features/lessons/data/learningInstrument';
 import PressableScale from '../components/PressableScale';
 import {
   TESTER_UNLOCK_XP,
@@ -52,10 +55,14 @@ function SectionCard({
   title: string;
   children: React.ReactNode;
 }) {
+  const [expanded, setExpanded] = useState(title === 'Setup mode');
   return (
     <View style={[styles.card, CARD_SHADOW]}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>{children}</View>
+      <PressableScale onPress={() => setExpanded(!expanded)} style={styles.sectionToggle} accessibilityState={{ expanded }} accessibilityLabel={`${title} settings`}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionChevron}>{expanded ? '−' : '+'}</Text>
+      </PressableScale>
+      {expanded && <View style={styles.sectionContent}>{children}</View>}
     </View>
   );
 }
@@ -63,15 +70,20 @@ function SectionCard({
 function SettingRow({
   label,
   right,
+  accessibilityLabel,
 }: {
   label: string;
   right: React.ReactNode;
   accessibilityLabel?: string;
 }) {
+  const { width, fontScale } = useWindowDimensions();
+  // Switches remain beside their labels. Multi-option controls need their own line.
+  const compactControl = React.isValidElement(right) && right.type === CustomSwitch;
+  const stacked = !compactControl && (width < 600 || fontScale > 1.2);
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      {right}
+    <View style={[styles.row, stacked && styles.rowStacked]}>
+      <Text accessibilityLabel={accessibilityLabel} style={[styles.rowLabel, stacked && styles.stackedLabel]}>{label}</Text>
+      <View style={stacked ? styles.stackedControl : styles.inlineControl}>{right}</View>
     </View>
   );
 }
@@ -376,6 +388,7 @@ function TuningPicker({
 }
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { alternateTuning, setAlternateTuning } = useProgressStore();
   const practiceLog = useProgressStore((s) => s.practiceLog);
@@ -390,7 +403,7 @@ export default function SettingsScreen() {
   void practiceLog;
   const minutesToday = minutesFrom(practiceSecondsToday());
   const streak = liveStreak();
-  const { guitarType, experienceLevel, tuningPreference, resetQuestionnaire } =
+  const { guitarType, learningInstrument, experienceLevel, tuningPreference, resetQuestionnaire } =
     useUserPreferencesStore();
   const selectedTunerPreset =
     useTuningStore((state) => state.customTunings).find((preset) => preset.id === alternateTuning) ??
@@ -475,15 +488,6 @@ export default function SettingsScreen() {
     );
   };
 
-  const getGuitarTypeLabel = () => {
-    switch (guitarType) {
-      case 'acoustic': return 'Acoustic Guitar';
-      case 'electric': return 'Electric Guitar';
-      case 'classical': return 'Classical Guitar';
-      default: return 'Not set';
-    }
-  };
-
   const getExperienceLabel = () => {
     switch (experienceLevel) {
       case 'beginner': return 'Beginner';
@@ -494,6 +498,7 @@ export default function SettingsScreen() {
   };
 
   const getTuningLabel = () => {
+    if (learningInstrument === 'bass') return 'Standard bass (EADG)';
     switch (tuningPreference) {
       case 'standard': return 'Standard E (EADGBE)';
       case 'drop_d': return 'Drop D (DADGBE)';
@@ -506,7 +511,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <PressableScale
           onPress={() => router.back()}
           style={styles.backButton}
@@ -749,9 +754,9 @@ export default function SettingsScreen() {
 
         <SectionCard title="Personalization">
           <SettingRow
-            label="Guitar Type"
-            accessibilityLabel={`Guitar type: ${getGuitarTypeLabel()}`}
-            right={<Text style={styles.rowValue}>{getGuitarTypeLabel()}</Text>}
+            label="Learning instrument"
+            accessibilityLabel={`Learning instrument: ${learningInstrumentLabel(learningInstrument)}`}
+            right={<Text style={styles.rowValue}>{learningInstrumentLabel(learningInstrument)}</Text>}
           />
           <SettingRow
             label="Experience"
@@ -846,16 +851,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dark.background,
   },
   header: {
+    width: '100%', maxWidth: Layout.readingWidth, alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 40,
     paddingHorizontal: Colors.spacing.md,
     paddingBottom: Colors.spacing.md,
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -872,6 +877,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    width: '100%',
+    maxWidth: Layout.readingWidth,
+    alignSelf: 'center',
     paddingHorizontal: Colors.spacing.md,
     paddingBottom: Colors.spacing.xxl,
   },
@@ -884,15 +892,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.dark.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    paddingHorizontal: Colors.spacing.md,
-    paddingTop: Colors.spacing.md,
-    paddingBottom: Colors.spacing.sm,
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.dark.text,
+    flex: 1,
   },
+  sectionToggle: { minHeight: 56, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sectionChevron: { fontSize: 22, color: Colors.dark.muted },
+  rowStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
+  stackedLabel: { flex: 0, marginRight: 0 },
+  stackedControl: { alignItems: 'flex-start', maxWidth: '100%' },
+  inlineControl: { flexShrink: 1, maxWidth: '60%' },
   sectionContent: {
     paddingHorizontal: Colors.spacing.md,
     paddingBottom: Colors.spacing.sm,
@@ -1044,8 +1054,8 @@ const styles = StyleSheet.create({
   modalScroll: {
     paddingHorizontal: Colors.spacing.md,
   },
-  choiceGroup: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4 },
-  choiceButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 9, borderRadius: 8, borderWidth: 1, borderColor: Colors.dark.cardBorder },
+  choiceGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  choiceButton: { minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: Colors.dark.cardBorder },
   choiceButtonActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   choiceText: { color: Colors.dark.muted, fontSize: 12, fontWeight: '600' },
   choiceTextActive: { color: '#071408' },
