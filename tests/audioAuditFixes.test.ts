@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { referenceSampleMapping } from '../features/audio/referenceSampleMapping';
+import { referenceSampleMapping, referenceSampleForFrequency } from '../features/audio/referenceSampleMapping';
 import { isReferenceAudible, trainingAudioSettings } from '../features/audio/audibility';
 import { guideChordMidiNotes } from '../features/songs/songPractice';
 import { CHORDS, chordMidiNotes } from '../features/chords/data/chords';
@@ -22,6 +22,13 @@ test('edge notes use calibrated frequency ratios; bank notes remain unchanged', 
     assert.ok(existsSync(new URL(`../assets/audio/${encodeURIComponent(mapped.note)}.wav`,import.meta.url)));
     assert.equal(mapped.rate,1);
   }
+});
+test('frequency playback uses the 440 Hz bank sample and an exact rate', () => {
+  const a4 = referenceSampleForFrequency(440);
+  assert.deepEqual(a4, { note: 'A4', rate: 1 });
+  const sharp = referenceSampleForFrequency(440 * 2 ** (7 / 1200));
+  assert.equal(sharp?.note, 'A4');
+  assert.ok(sharp && Math.abs(sharp.rate - 2 ** (7 / 1200)) < 1e-12);
 });
 test('audio games treat zero volume as muted and preserve nonzero preferences',()=>{
   assert.equal(isReferenceAudible({soundsEnabled:true,sampleVolume:0}),false);

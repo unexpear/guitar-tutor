@@ -42,9 +42,10 @@ DSP settings and reference tones through B0. Bass is intentionally still not
 an onboarding answer because the lesson, chord and game catalog is written for
 six-string guitar.
 
-The remaining work is a bass-specific curriculum: four-line tab, fretboard
-positions, rhythm/groove drills, bass anatomy and bass progress keys. It should
-not reuse guitar chord diagrams or mark guitar lessons as bass-ready.
+The remaining work is rights-cleared bass repertoire and teacher-observed
+exercises, not more guitar charts labelled as bass. A four-string path with
+tab, pulse, roots/fifths and bass-clef primers is already in Learn. Live
+bass mic checks are deferred until someone has a bass.
 
 **Effort:** large. **Value:** medium — the tuner is ready, but learning content
 needs its own product design and instrument-tested exercises.

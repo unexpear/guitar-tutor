@@ -51,7 +51,7 @@ export function frequencySpreadCents(values: number[]): number {
 
 export interface HarmonicCorrection {
   frequency: number;
-  /** 1 is uncorrected; 2–4 are overtones; 0.5 is period doubling. */
+  /** 1 is uncorrected; 2–6 are overtones; 0.5 and 1/3 are period errors. */
   ratio: number;
 }
 
@@ -67,7 +67,7 @@ export function correctSelectedStringHarmonic(
   toleranceCents = 45,
 ): HarmonicCorrection {
   if (frequency <= 0 || target <= 0) return { frequency, ratio: 1 };
-  const ratios = [1, 2, 3, 4, 0.5] as const;
+  const ratios = [1, 2, 3, 4, 5, 6, 0.5, 1 / 3] as const;
   let best = { frequency, ratio: 1 };
   let bestError = Math.abs(centsBetween(frequency, target));
 
@@ -151,11 +151,55 @@ export function nextTunerHoldString(
  * when nothing is close enough to be a plausible attempt at a string.
  */
 export const STRING_MATCH_CENTS = 250;
+/** Stay on the last auto-detected string until the player clearly leaves it. */
+export const STRING_HOLD_CENTS = 80;
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+/**
+ * Equal-temperament note, octave and cents from a measured frequency.
+ * Clip-on and strobe UIs show this after smoothing, not the detector's
+ * raw label, so a corrected overtone still reads as the aimed string.
+ */
+export function equalTemperamentReading(
+  frequency: number,
+  referencePitchHz = 440,
+): { noteName: string; octave: number; cents: number } {
+  if (!Number.isFinite(frequency) || frequency <= 0) {
+    return { noteName: '--', octave: 0, cents: 0 };
+  }
+  const a4 =
+    Number.isFinite(referencePitchHz) && referencePitchHz > 0
+      ? referencePitchHz
+      : 440;
+  const midi = 69 + 12 * Math.log2(frequency / a4);
+  if (!Number.isFinite(midi)) return { noteName: '--', octave: 0, cents: 0 };
+  const rounded = Math.round(midi);
+  const cents = Math.round((midi - rounded) * 1000) / 10;
+  const noteIndex = ((rounded % 12) + 12) % 12;
+  return {
+    noteName: NOTE_NAMES[noteIndex],
+    octave: Math.floor(rounded / 12) - 1,
+    cents,
+  };
+}
 
 export function nearestStringIndex(
   frequency: number,
-  stringFrequencies: number[]
+  stringFrequencies: number[],
+  preferredIndex: number | null = null,
 ): number | null {
+  if (
+    preferredIndex !== null &&
+    Number.isInteger(preferredIndex) &&
+    preferredIndex >= 0 &&
+    preferredIndex < stringFrequencies.length
+  ) {
+    const held = stringFrequencies[preferredIndex];
+    if (held > 0 && Math.abs(centsBetween(frequency, held)) <= STRING_HOLD_CENTS) {
+      return preferredIndex;
+    }
+  }
   let best: number | null = null;
   let bestAbs = Infinity;
   for (let i = 0; i < stringFrequencies.length; i++) {

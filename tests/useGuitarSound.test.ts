@@ -79,6 +79,10 @@ function makeEnv(overrides: Partial<SoundControllerDeps> = {}): FakeEnv {
       return player;
     },
     resolveSample: (note) => SAMPLES[note] ?? null,
+    resolveReferenceFrequency: (frequency) =>
+      Number.isFinite(frequency) && frequency > 0
+        ? { asset: 'asset:C4', rate: frequency / (440 * 2 ** ((60 - 69) / 12)) }
+        : null,
     getSettings: () => ({ ...settings }),
     setAudioMode: async (mode) => void modeCalls.push(mode),
     warn: (message) => void warns.push(message),
@@ -225,6 +229,19 @@ test('reference notes and chords follow the selected A4 calibration', async () =
     assert.equal(player.playbackRate, 442 / 440);
     assert.equal(player.shouldCorrectPitch, false);
   }
+});
+
+test('playFrequency pitches a sample to the exact hertz value', async () => {
+  const env = makeEnv();
+  env.settings.referencePitchHz = 442;
+  const target = 440 * 2 ** (7 / 1200);
+  await env.controller.playFrequency(target);
+  assert.equal(env.players[0].asset, 'asset:C4');
+  assert.equal(
+    Math.round(env.players[0].playbackRate * 1e9) / 1e9,
+    Math.round((target / (440 * 2 ** ((60 - 69) / 12))) * 1e9) / 1e9,
+  );
+  assert.equal(env.players[0].shouldCorrectPitch, false);
 });
 
 test('a second playNote releases the previous player exactly once', async () => {

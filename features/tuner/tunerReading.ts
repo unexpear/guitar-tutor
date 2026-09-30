@@ -3,6 +3,7 @@ import { instrumentProfile } from './data/instrumentProfiles';
 import {
   centsBetween,
   correctSelectedStringHarmonic,
+  equalTemperamentReading,
   nearestStringIndex,
   verdictForCents,
   TuneVerdict,
@@ -33,7 +34,7 @@ export interface TunerState {
   signal: TunerSignal;
   /** Raw detector value before a selected-string harmonic correction. */
   rawFrequency: number;
-  /** 2–4 for an overtone, 0.5 for period doubling, otherwise 1. */
+  /** 2–6 for an overtone, 0.5 or 1/3 for a period error, otherwise 1. */
   harmonicRatio: number;
 }
 
@@ -116,6 +117,8 @@ export function mapTunerReading(
     /** Median of the recent readings; 0 when nothing has been heard yet. */
     smoothHz: number;
     targetStringIndex: number | null;
+    preferredStringIndex?: number | null;
+    referencePitchHz?: number;
     tuning: TuningPreset;
     stringFrequencies: number[];
     /** Movement across the current JS window, measured peak-to-peak. */
@@ -138,6 +141,8 @@ export function mapTunerReading(
     inTuneCents = 1,
     closeCents = 10,
     minimumConfidence = 0.75,
+    preferredStringIndex = null,
+    referencePitchHz = 440,
   } = opts;
 
   if (!isRunning) return IDLE_STATE;
@@ -163,32 +168,30 @@ export function mapTunerReading(
   // Chromatic mode follows the detector's nearest semitone without forcing
   // the reading toward an instrument string.
   if (tuning.strings.length === 0) {
-    const chromaticCents = Number.isFinite(reading.cents)
-      ? Math.round(reading.cents * 10) / 10
-      : 0;
+    const chromatic = equalTemperamentReading(smoothHz, referencePitchHz);
     return {
-      note: reading.noteName,
-      octave: reading.octave,
-      cents: chromaticCents,
+      note: chromatic.noteName,
+      octave: chromatic.octave,
+      cents: chromatic.cents,
       frequency: smoothHz,
       confidence: reading.confidence,
       rmsDb: reading.rmsDb ?? -120,
       isActive: true,
       stringIndex: null,
-      nearestTarget: `${reading.noteName}${reading.octave}`,
-      targetCents: chromaticCents,
-      verdict: verdictForCents(chromaticCents, inTuneCents, closeCents),
+      nearestTarget:
+        chromatic.noteName === '--' ? null : `${chromatic.noteName}${chromatic.octave}`,
+      targetCents: chromatic.cents,
+      verdict: verdictForCents(chromatic.cents, inTuneCents, closeCents),
       signal: 'clear',
       rawFrequency: smoothHz,
       harmonicRatio: 1,
     };
   }
 
-  // Aimed at a string, or free to pick whichever is nearest.
   const idx =
     targetStringIndex !== null
       ? targetStringIndex
-      : nearestStringIndex(smoothHz, stringFrequencies);
+      : nearestStringIndex(smoothHz, stringFrequencies, preferredStringIndex);
 
   const target = idx !== null ? stringFrequencies[idx] : 0;
   const corrected =
@@ -197,11 +200,12 @@ export function mapTunerReading(
       : { frequency: smoothHz, ratio: 1 };
   const signed =
     target > 0 ? centsBetween(corrected.frequency, target) : null;
+  const displayed = equalTemperamentReading(corrected.frequency, referencePitchHz);
 
   return {
-    note: reading.noteName,
-    octave: reading.octave,
-    cents: Number.isFinite(reading.cents) ? Math.round(reading.cents * 10) / 10 : 0,
+    note: displayed.noteName,
+    octave: displayed.octave,
+    cents: displayed.cents,
     frequency: corrected.frequency,
     confidence: reading.confidence,
     rmsDb: reading.rmsDb ?? -120,

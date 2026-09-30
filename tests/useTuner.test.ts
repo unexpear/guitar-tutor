@@ -47,7 +47,7 @@ test('TUNER_ENGINE_OPTIONS pins the current native-engine contract', () => {
     emaAlpha: 0.42,
     hysteresisFrames: 2,
     hpfCutoffHz: 40,
-    quality: 'balanced',
+    quality: 'high-accuracy',
   });
   assert.ok(!('instrument' in TUNER_ENGINE_OPTIONS));
 });
@@ -160,8 +160,35 @@ test('selected-string mode corrects an octave overtone without changing auto mod
   assert.equal(selected.frequency, target);
   assert.equal(selected.harmonicRatio, 2);
   assert.equal(selected.targetCents, 0);
+  assert.equal(selected.note, 'E');
+  assert.equal(selected.octave, 2);
   assert.equal(automatic.harmonicRatio, 1);
   assert.equal(automatic.frequency, target * 2);
+});
+
+test('chromatic cents come from the measured frequency, not the engine label', () => {
+  const chromatic = TUNING_PRESETS.find((preset) => preset.id === 'chromatic');
+  assert.ok(chromatic);
+  const state = mapTunerReading(
+    reading({ noteName: 'A', octave: 4, cents: 40 }),
+    opts({
+      tuning: chromatic,
+      stringFrequencies: [],
+      smoothHz: 440 * 2 ** (7 / 1200),
+    }),
+  );
+  assert.equal(state.note, 'A');
+  assert.equal(state.octave, 4);
+  assert.equal(state.targetCents, 7);
+});
+
+test('auto-detect holds the last string through small wander', () => {
+  const e2 = noteToFrequency('E2');
+  const state = mapTunerReading(
+    reading({ noteName: 'E', octave: 2 }),
+    opts({ smoothHz: e2 * 2 ** (30 / 1200), preferredStringIndex: 0 }),
+  );
+  assert.equal(state.stringIndex, 0);
 });
 
 test('chromatic mode grades the nearest semitone without a string target', () => {
@@ -364,13 +391,13 @@ test('way above the tuner range reads as unmatched, not a broken note', () => {
   assert.equal(state.verdict, null);
 });
 
-test('the native fields pass straight through to the state', () => {
+test('the readout follows the measured pitch; confidence still comes from the engine', () => {
   const state = mapTunerReading(
     reading({ noteName: 'A', octave: 4, cents: -3, confidence: 0.87 }),
     opts({ smoothHz: noteToFrequency('A2'), targetStringIndex: 1 }),
   );
   assert.equal(state.note, 'A');
-  assert.equal(state.octave, 4);
-  assert.equal(state.cents, -3);
+  assert.equal(state.octave, 2);
+  assert.equal(state.cents, 0);
   assert.equal(state.confidence, 0.87);
 });

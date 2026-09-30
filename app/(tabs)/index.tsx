@@ -216,7 +216,7 @@ export default function TunerScreen() {
   const tuner = useTuner(tuning, selectedString);
   usePracticeTimer(tuner.isActive);
   useMicReleaseOnLeave(tuner.stopListening, tuner.isActive);
-  const { playNote } = useGuitarSound();
+  const { playNote, playFrequency } = useGuitarSound();
   const profile = instrumentProfile(tuning.instrumentId);
   const reward = rewardForInstrument(equippedReward, profile.headstock);
   const selectedGuitarDesign = reward?.design ?? guitarDesign(selectedGuitarDesignId);
@@ -479,7 +479,11 @@ export default function TunerScreen() {
       <View style={[styles.workspace, landscape && styles.workspaceLandscape]}>
       <View style={[styles.centerDisplay, landscape && styles.landscapePanel]}>
         <View style={styles.pitchSummary}>
-        <View
+        <PressableScale
+          onPress={() => {
+            if (tuner.frequency > 0) void playFrequency(tuner.frequency);
+          }}
+          disabled={!(tuner.frequency > 0)}
           style={[
             styles.noteCircle,
             {
@@ -489,20 +493,19 @@ export default function TunerScreen() {
                 : Colors.dark.surface,
             },
           ]}
+          accessibilityRole="button"
+          accessibilityLabel={
+            hasPitch
+              ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents).toFixed(centsPrecision)} cents. Tap to hear this pitch.`
+              : tuner.isActive
+              ? 'Listening for a note'
+              : 'Tuner inactive'
+          }
         >
-          <Text
-            style={[styles.noteText, { color: noteColor }]}
-            accessibilityLabel={
-              hasPitch
-                ? `Detected note: ${displayNote}, ${centsLabel} by ${Math.abs(displayCents).toFixed(centsPrecision)} cents`
-                : tuner.isActive
-                ? 'Listening for a note'
-                : 'Tuner inactive'
-            }
-          >
+          <Text style={[styles.noteText, { color: noteColor }]}>
             {displayNote}
           </Text>
-        </View>
+        </PressableScale>
 
         <View>
         <View style={styles.centsRow}>

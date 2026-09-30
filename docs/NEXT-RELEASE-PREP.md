@@ -13,12 +13,9 @@ and push a new tag until you mean a new Play candidate.
 | `516a7db` (`v1.3.0-12`) | Last tagged closed-testing release | Yes, that tag only |
 | `87eb530` | UI normalization + instrument-specific learning paths | Only as a **new** versionCode after physical device checks |
 | `d1fb779` | Expo-web Reticle harness | **No.** Agent/web verification only. Not a tuner, 3D, or microphone test |
+| later `main` (Learn catalog + tuner JS) | Catalog copy for new lessons; clip-on-style mapping/playback on the same engine | **No** until a new versionCode is cut on purpose. Not a live-instrument test |
 
-Reticle, `react-native-web`, and Expo web scripts are not product features.
-They must not appear in Play listing copy, screenshots, or `whatsnew`.
-Production Android still skips the Reticle Babel plugin and uses a no-op
-native `connectReticle`. Do not mix the web harness into a Play upload
-unless that is the explicit intent of the next tag.
+Owner has **no instrument** for a live tuner pass. Do not treat unit tests or Expo web as microphone acceptance. Unprocessed Android input, looping a drone under the mic, and sweetened tunings stay out of scope.
 
 Classical and Cotton Candy stay in the collection as **preview-only** bodies.
 They have not passed physical memory, WebView, GPU, or look acceptance.
@@ -54,25 +51,22 @@ validation. The later tag `v1.3.0-12` superseded that plan.
 
 ## Still required
 
-- Classical: first 1024px material bake now loads and validates (September 7).
-  Refine close-up edge/texture artifacts and coating parity, inspect all angles,
-  confirm final material acceptance on the phone.
-- Cotton Candy: first PBR reconstruction loads and validates (September 7),
-  reusing packed wood/inlay/knob/string color images and excluding logo objects.
-  Confirm coating parity and geometry/draw-call cost on the phone.
-  Both imports are now wired into the phone source as fixed-finish previews;
-  they have not shipped or passed physical Android acceptance.
-- Explorer and Parlor remain excluded. Existing four phone models and unlocks
-  remain intact. See IMPORTED-GUITAR-AUDIT.md for source selection and provenance.
-- Test Android WebView startup, background/foreground, tab switching, fallback,
-  microphone coexistence and memory on the owner's phone.
-- Confirm tuner framing and string visibility with large text and small screens.
-- Check daily gift persistence, equipping, reset and existing level unlocks.
-- Hear chords and reference notes on-device; exercise Follow Me, backing playback
-  and microphone scoring together. Passing file tests is not an audible device test.
-- Review the complete dirty worktree and prepare accurate release notes/screenshots
-  for the actual included feature set. Do not advertise imported guitars or completed
-  photorealism before they are integrated and accepted.
+- Classical / Cotton Candy: still **preview-only**. Phone 3D (memory, WebView,
+  tab switch, fallback) does not need a guitar, but it does need an Android
+  device. No physical acceptance has been recorded. Listing/`whatsnew` must
+  not name them.
+- Explorer and Parlor remain excluded. Existing four catalog bodies stay.
+- Live tuner/mic/Follow Me with a real instrument is **deferred** (owner has
+  none). Do not remove experimental low-range labels from that.
+- Prepare accurate release notes only for a tag you actually upload.
+  Current `main` is not a Play candidate.
+
+## Next without an instrument
+
+- Keep the Play freeze until you deliberately bump versionCode.
+- Do not add UNPROCESSED mic, looping drone-under-tuner, or sweetened tunings.
+- Later product (not this commit): rights-cleared repertoire per path, and
+  more bass-only material. Do not mark guitar charts as bass arrangements.
 
 ## September 7 integration update
 

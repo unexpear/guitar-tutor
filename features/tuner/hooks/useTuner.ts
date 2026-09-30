@@ -151,6 +151,7 @@ export function useTuner(
     setHeldReading(null);
   }, [targetStringIndex, tuningId, tuning.instrumentId]);
 
+  const lastStringRef = useRef<number | null>(null);
   const state: TunerState = useMemo(
     () =>
       mapTunerReading(heldReading ?? latest, {
@@ -161,6 +162,8 @@ export function useTuner(
         closeCents,
         minimumConfidence: engineOptions.confidenceThreshold,
         targetStringIndex,
+        preferredStringIndex: lastStringRef.current,
+        referencePitchHz,
         tuning,
         stringFrequencies,
       }),
@@ -171,6 +174,7 @@ export function useTuner(
       heldReading,
       latest,
       engineOptions.confidenceThreshold,
+      referencePitchHz,
       smoothHz,
       spreadCents,
       stringFrequencies,
@@ -178,6 +182,14 @@ export function useTuner(
       tuning,
     ],
   );
+
+  useEffect(() => {
+    if (!isRunning) {
+      lastStringRef.current = null;
+      return;
+    }
+    if (state.signal === 'clear') lastStringRef.current = state.stringIndex;
+  }, [isRunning, state.signal, state.stringIndex]);
 
   return {
     ...state,

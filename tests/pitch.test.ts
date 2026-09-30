@@ -12,6 +12,8 @@ import {
   nextTunerHoldString,
   SMOOTH_WINDOW,
   OFF_CENTS,
+  equalTemperamentReading,
+  STRING_HOLD_CENTS,
   STRING_MATCH_CENTS,
 } from '../features/tuner/pitch';
 
@@ -85,6 +87,9 @@ test('selected-string correction recognizes overtones and period doubling', () =
   assert.equal(correctSelectedStringHarmonic(E2 * 3, E2).ratio, 3);
   assert.equal(correctSelectedStringHarmonic(E2 * 4, E2).ratio, 4);
   assert.equal(correctSelectedStringHarmonic(E2 / 2, E2).ratio, 0.5);
+  assert.equal(correctSelectedStringHarmonic(E2 * 5, E2).ratio, 5);
+  assert.equal(correctSelectedStringHarmonic(E2 * 6, E2).ratio, 6);
+  assert.equal(correctSelectedStringHarmonic(E2 / 3, E2).ratio, 1 / 3);
 });
 
 test('harmonic correction does not force an unrelated pitch onto the target', () => {
@@ -157,6 +162,22 @@ test('tuner hold cannot carry its latch to another string or invalid reading', (
   assert.equal(nextTunerHoldString(2, 3, 0.8, 1), 3);
   assert.equal(nextTunerHoldString(2, null, 0, 1), null);
   assert.equal(nextTunerHoldString(2, 2, Number.NaN, 1), null);
+});
+
+test('equal temperament readout follows the measured frequency, not a stale label', () => {
+  const sharpA = equalTemperamentReading(440 * 2 ** (7 / 1200));
+  assert.equal(sharpA.noteName, 'A');
+  assert.equal(sharpA.octave, 4);
+  assert.equal(sharpA.cents, 7);
+  const e2 = equalTemperamentReading(82.406889228);
+  assert.equal(e2.noteName, 'E');
+  assert.equal(e2.octave, 2);
+});
+
+test('auto-detect keeps the current string until the pitch clearly leaves it', () => {
+  assert.equal(nearestStringIndex(E2 * 2 ** (40 / 1200), STANDARD, 0), 0);
+  assert.equal(nearestStringIndex(A2, STANDARD, 0), 1);
+  assert.ok(STRING_HOLD_CENTS < 100);
 });
 
 test('the nearest string is the one actually being played', () => {

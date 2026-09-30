@@ -3,7 +3,7 @@ import { useEffect, useRef, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { useSettingsStore } from '../../store/settingsStore';
 import { createSoundController, type SoundController } from '../soundController';
-import { sampleForNote, referenceSample } from '../data/audioAssets';
+import { sampleForNote, referenceSample, referenceFrequency } from '../data/audioAssets';
 import { recordedChordSample } from '../data/chordAudioAssets';
 
 let lastAudioNotice = 0;
@@ -32,6 +32,7 @@ export function useGuitarSound() {
       createPlayer: (asset) => createAudioPlayer(asset),
       resolveSample: sampleForNote,
       resolveReferenceSample: referenceSample,
+      resolveReferenceFrequency: referenceFrequency,
       resolveChordSample: recordedChordSample,
       getSettings: () => useSettingsStore.getState(),
       setAudioMode: setAudioModeAsync,
@@ -48,6 +49,7 @@ export function useGuitarSound() {
   return useMemo(
     () => ({
       playNote: controller.playNote.bind(controller),
+      playFrequency: controller.playFrequency.bind(controller),
       playChord: controller.playChord.bind(controller),
       stopChord: controller.stopChord.bind(controller),
       stopAll: controller.releaseAll.bind(controller),

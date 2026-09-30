@@ -1,6 +1,6 @@
 # Multi-instrument tuner research
 
-Last reviewed: 2026-09-02
+Last reviewed: 2026-09-30
 
 ## What the installed engine already does
 
@@ -12,7 +12,13 @@ fundamental is weaker than its overtones.
 
 The app should not attempt to replace that DSP in JavaScript. Its useful role is
 to reject unstable output, match readings to the player's selected target, and
-correct only unambiguous target-selected octave/harmonic errors.
+correct only unambiguous target-selected octave/harmonic errors. Six-string
+guitar profiles use the engine's high-accuracy frame/overlap preset so low E
+has enough periods for clip-on-class cents, with onset reset still clearing
+the smoother on a fresh pluck. Auto-detect holds the last string within 80
+cents so the needle does not hop to a neighbour during a wavering sustain.
+The displayed note and chromatic cents are recomputed from the smoothed
+(and, when selected, harmonic-corrected) frequency against the chosen A4.
 
 Primary references:
 
@@ -90,8 +96,8 @@ Manufacturer references:
    sound and show an actionable message.
 5. Harmonic correction is only enabled after the user selects a particular
    string. Automatic mode cannot safely decide whether E3 is the second
-   harmonic of E2 or a real E3 target. Selected mode may correct ×2, ×3 and ×4
-   overtones and a half-frequency period-doubling error when the corrected
+   harmonic of E2 or a real E3 target. Selected mode may correct the 2nd–6th
+   partials and half- or third-period doubling errors when the corrected
    value is within 45 cents of the selected target.
 6. Corrections are disclosed in the UI rather than silently hidden.
 7. The native median-5 filter is followed by a moderate 0.32 EMA and
@@ -107,9 +113,10 @@ Manufacturer references:
 
 ## Physical-device release gate
 
-Synthetic and unit tests cannot characterize phone microphones, cases, rooms,
-amplifiers or device DSP. Before removing the “experimental low range” label
-from bass or eight-string guitar, test at least:
+Owner currently has no instrument, so live mic/string checks are deferred.
+Synthetic and unit tests still cannot characterize phone microphones. Before
+removing the “experimental low range” label from bass or eight-string guitar,
+someone with a bass/guitar and Android still needs to test at least:
 
 - A budget and a current midrange Android phone
 - Built-in mic with the instrument unplugged and through a quiet amplifier
@@ -140,6 +147,11 @@ Bundled reference samples were generated at A4=440. When calibration changes,
 reference-note and chord players use Expo Audio playback-rate control with pitch
 correction disabled, shifting the samples by the same `selected A4 / 440` ratio.
 This keeps listening references consistent with the detector and target maths.
+Tapping the detected-note readout plays a sample pitched to that exact hertz
+value so you can A/B what the engine heard against the string target (clip-on
+“sound” behaviour). Reference playback still uses `doNotMix` and does not
+share the microphone session; looping a drone under live detection would need
+a device-tested audio-session change.
 
 References:
 

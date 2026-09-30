@@ -39,6 +39,7 @@ export interface SoundControllerDeps {
   createPlayer: (asset: number | string) => SoundPlayer;
   resolveSample: (note: string) => number | string | null;
   resolveReferenceSample?: (note: string) => { asset: number | string; rate: number } | null;
+  resolveReferenceFrequency?: (frequency: number) => { asset: number | string; rate: number } | null;
   resolveChordSample?: (note: string) => { asset: number | string; rate: number } | null;
   getSettings: () => SoundSettings;
   setAudioMode: (
@@ -58,6 +59,7 @@ export interface SoundControllerDeps {
 export interface SoundController {
   configureMode(): Promise<void>;
   playNote(note: string): Promise<void>;
+  playFrequency(frequency: number): Promise<void>;
   playChord(notes: string[], staggerMs?: number): Promise<void>;
   stopChord(): void;
   releaseAll(): void;
@@ -70,6 +72,7 @@ export function createSoundController(
     createPlayer,
     resolveSample,
     resolveReferenceSample,
+    resolveReferenceFrequency,
     resolveChordSample,
     getSettings,
     onIssue,
@@ -96,17 +99,15 @@ export function createSoundController(
     player: SoundPlayer,
     settings: SoundSettings,
     sampleRate = 1,
+    applyReference = true,
   ) => {
     player.volume = settings.sampleVolume / 100;
     const reference =
       Number.isFinite(settings.referencePitchHz) && settings.referencePitchHz > 0
         ? settings.referencePitchHz
         : 440;
-    // Samples were generated at A4=440. Disabling time-stretch pitch
-    // correction makes this small rate change retune the sample itself.
     player.shouldCorrectPitch = false;
-    // Native Expo exposes playbackRate as a getter; use its cross-platform method.
-    player.setPlaybackRate(sampleRate * reference / 440);
+    player.setPlaybackRate(applyReference ? sampleRate * reference / 440 : sampleRate);
   };
 
   const stopChord: SoundController['stopChord'] = () => {
@@ -162,6 +163,33 @@ export function createSoundController(
         try { single?.release(); } catch { /* already released */ }
         single = null;
         warn(`Failed to play note: ${note}`);
+        onIssue?.('failed');
+      }
+    },
+
+    async playFrequency(frequency: number) {
+      try {
+        const settings = getSettings();
+        if (!settings.soundsEnabled || settings.sampleVolume <= 0) { onIssue?.('muted'); return; }
+
+        stopSingle();
+        stopChord();
+
+        const reference = resolveReferenceFrequency?.(frequency);
+        if (!reference) {
+          warn(`No audio sample for frequency: ${frequency}`);
+          onIssue?.('missing');
+          return;
+        }
+
+        const player = createPlayer(reference.asset);
+        single = player;
+        configurePlayer(player, settings, reference.rate, false);
+        player.play();
+      } catch {
+        try { single?.release(); } catch { /* already released */ }
+        single = null;
+        warn(`Failed to play frequency: ${frequency}`);
         onIssue?.('failed');
       }
     },

@@ -6,7 +6,7 @@
  * though the filenames follow a predictable pattern.
  */
 
-import { referenceSampleMapping } from '../referenceSampleMapping';
+import { referenceSampleMapping, referenceSampleForFrequency } from '../referenceSampleMapping';
 
 const ASSETS: Record<string, number | string> = {
   B0: require('../../../assets/audio/B0.wav'),
@@ -88,5 +88,11 @@ export function sampleForNote(note: string): number | string | null {
 export function referenceSample(note: string): { asset: number | string; rate: number } | null {
   const mapped = referenceSampleMapping(note);
   const asset = mapped ? sampleForNote(mapped.note) : null;
-  return mapped && asset !== null ? { asset, rate:mapped.rate } : null;
+  return mapped && asset !== null ? { asset, rate: mapped.rate } : null;
+}
+
+export function referenceFrequency(frequency: number): { asset: number | string; rate: number } | null {
+  const mapped = referenceSampleForFrequency(frequency);
+  const asset = mapped ? sampleForNote(mapped.note) : null;
+  return mapped && asset !== null ? { asset, rate: mapped.rate } : null;
 }

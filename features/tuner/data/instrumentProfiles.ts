@@ -63,7 +63,7 @@ export const INSTRUMENT_PROFILES: readonly InstrumentProfile[] = [
       minFrequency: 55,
       maxFrequency: 1400,
       hpfCutoffHz: 40,
-      quality: 'balanced',
+      quality: 'high-accuracy',
     },
   },
   {
@@ -78,7 +78,7 @@ export const INSTRUMENT_PROFILES: readonly InstrumentProfile[] = [
       minFrequency: 55,
       maxFrequency: 1400,
       hpfCutoffHz: 40,
-      quality: 'balanced',
+      quality: 'high-accuracy',
     },
   },
   {
@@ -93,7 +93,7 @@ export const INSTRUMENT_PROFILES: readonly InstrumentProfile[] = [
       minFrequency: 55,
       maxFrequency: 1400,
       hpfCutoffHz: 40,
-      quality: 'balanced',
+      quality: 'high-accuracy',
     },
   },
   {
@@ -150,7 +150,7 @@ export const INSTRUMENT_PROFILES: readonly InstrumentProfile[] = [
       minFrequency: 55,
       maxFrequency: 1400,
       hpfCutoffHz: 40,
-      quality: 'balanced',
+      quality: 'high-accuracy',
     },
   },
   {

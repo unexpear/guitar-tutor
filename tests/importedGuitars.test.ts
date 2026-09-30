@@ -48,6 +48,13 @@ test('Play store listing does not advertise imported preview bodies', async () =
   }
 });
 
+test('locker copy does not sell unaccepted preview bodies by name', async () => {
+  const locker = await readFile(new URL('../features/games/locker/GuitarLocker.tsx', import.meta.url), 'utf8');
+  assert.match(locker, /Preview-only bodies/);
+  assert.doesNotMatch(locker, /Original finishes stay on Classical/);
+  assert.doesNotMatch(locker, /Classical and Cotton Candy switch/);
+});
+
 test('fixed imported finishes stay outside new weighted rewards', () => {
   const originalIds = ['acoustic-grand', 'acoustic-cutaway', 'electric-doublecut', 'electric-singlecut'];
   for (let seed = 0; seed < 100; seed++) {

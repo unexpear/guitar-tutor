@@ -10,3 +10,16 @@ export function referenceSampleMapping(note: string): { note: string; rate: numb
   const names = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
   return { note: `${names[root%12]}${Math.floor(root/12)-1}`, rate:2**((midi-root)/12) };
 }
+
+/** Pitch a bank sample to an exact frequency. Samples were recorded at A4=440. */
+export function referenceSampleForFrequency(frequency: number): { note: string; rate: number } | null {
+  if (!Number.isFinite(frequency) || frequency <= 0) return null;
+  const midi = 69 + 12 * Math.log2(frequency / 440);
+  if (!Number.isFinite(midi) || midi < 21 || midi > 93) return null;
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const nearest = Math.round(midi);
+  const mapped = referenceSampleMapping(`${names[((nearest % 12) + 12) % 12]}${Math.floor(nearest / 12) - 1}`);
+  if (!mapped) return null;
+  const sampleMidi = Math.max(23, Math.min(88, nearest));
+  return { note: mapped.note, rate: frequency / (440 * 2 ** ((sampleMidi - 69) / 12)) };
+}

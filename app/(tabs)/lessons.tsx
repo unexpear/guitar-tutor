@@ -64,6 +64,19 @@ const LESSON_ICONS: Record<string, MCIName> = {
   'bass-right-hand': 'gesture-tap',
   'bass-fretboard': 'music-note',
   'bass-groove': 'metronome',
+  'music-pulse': 'metronome',
+  'music-listening': 'ear-hearing',
+  'music-practice': 'calendar-check',
+  'beginner-two-chords': 'music-clef-treble',
+  'electric-setup': 'volume-high',
+  'electric-power-chords': 'guitar-electric',
+  'classical-posture': 'account',
+  'classical-first-touch': 'gesture-tap',
+  'classical-reading-music': 'music-clef-treble',
+  'bass-reading-tabs': 'file-music',
+  'bass-clean-notes': 'music-note',
+  'bass-roots-fifths': 'music-note-plus',
+  'bass-reading-music': 'music-clef-bass',
 };
 
 const FALLBACK_ICON: MCIName = 'music-note';
@@ -225,12 +238,13 @@ function LessonCard({
   // A drill scores what you actually played; "Mark as Complete" stores 100.
   // Only the former is worth showing back.
   const showScore = completed && score > 0 && score < 100;
+  const summary = (LESSON_SUMMARIES[lesson.id] ?? lesson.description).replace(/\.+$/, '');
 
   return (
     <PressableScale
       onPress={onPress}
       style={[styles.lessonCard, completed && styles.lessonCardCompleted]}
-      accessibilityLabel={`${lesson.title}. ${lesson.description}. Difficulty: ${lesson.difficulty}. ${
+      accessibilityLabel={`${lesson.title}. ${summary}. Difficulty: ${lesson.difficulty}. ${
         completed ? `Completed${showScore ? `, best score ${score} percent` : ''}` : 'Not completed'
       }`}
       accessibilityRole="button"

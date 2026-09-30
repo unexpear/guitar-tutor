@@ -4,6 +4,7 @@ import { collectionColumns, Layout } from '../constants/Layout';
 import { signalHelp } from '../features/tuner/signalHelp';
 import { boundedThumbnails, readThumbnailCache, thumbnailKey, THUMBNAIL_CACHE_LIMIT } from '../features/games/locker/thumbnailCache';
 import { GUITAR_DESIGNS } from '../features/progression/guitarDesigns';
+import { LESSONS } from '../features/lessons/data/curriculum';
 import { LESSON_SUMMARIES } from '../features/lessons/data/lessonSummaries';
 import { dailyGiftStatus } from '../features/games/locker/dailyGiftStatus';
 
@@ -66,7 +67,13 @@ test('thumbnail cache is bounded, expendable, and rejects malformed entries', ()
   assert.deepEqual(boundedThumbnails({ oversized: uri.repeat(4) }), {});
 });
 
-test('all 19 lessons have short catalog copy separate from their full instruction', () => {
-  assert.equal(Object.keys(LESSON_SUMMARIES).length, 19);
-  for (const copy of Object.values(LESSON_SUMMARIES)) assert.ok(copy.length >= 20 && copy.length <= 90);
+test('every catalog lesson has short copy separate from coaching text', () => {
+  assert.equal(Object.keys(LESSON_SUMMARIES).length, LESSONS.length);
+  for (const lesson of LESSONS) {
+    const copy = LESSON_SUMMARIES[lesson.id];
+    assert.ok(copy, lesson.id);
+    assert.ok(copy.length >= 20 && copy.length <= 90, lesson.id);
+    assert.notEqual(copy, lesson.outcome);
+    assert.notEqual(copy, lesson.practice);
+  }
 });
