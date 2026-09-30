@@ -17,6 +17,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Colors, CARD_SHADOW } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
 import ChordDiagram from '../../components/ChordDiagram';
+import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 import {
   SONGS,
   Song,
@@ -95,7 +96,7 @@ function SongDetail({
   // The two chords a song opens on are the change you will hit first and
   // most often, so that is the pair worth drilling.
   const practisePair = song.chords.slice(0, 2);
-  const canPractise = practisePair.length === 2;
+  const canPractise = song.instrument !== 'bass' && practisePair.length === 2;
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -225,7 +226,9 @@ function SongDetail({
 
         <Text style={styles.detailFinePrint}>
           {isExercise
-            ? 'Generic CC0 practice material—not a song or recording. Includes section loops, speed control, capo planning, guide playback and microphone scoring.'
+            ? song.instrument === 'bass'
+              ? 'Original four-string bass exercise (CC0). Not a song transcription. Microphone scoring uses bass pitches.'
+              : 'Generic CC0 practice material—not a song or recording. Includes section loops, speed control, capo planning, guide playback and microphone scoring.'
             : 'Chord reference only - tap a shape to hear it. Practice is an original two-pass chord-set exercise, not the song arrangement.'}
         </Text>
 
@@ -255,6 +258,8 @@ export default function SongLibraryScreen() {
   const favoriteSongs = useProgressStore((state) => state.favoriteSongs);
   const songSetlists = useProgressStore((state) => state.songSetlists);
   const mySetIds = songSetlists.find((setlist) => setlist.id === 'my-set')?.songIds ?? [];
+  const learningInstrument = useUserPreferencesStore((state) => state.learningInstrument);
+  const bassPath = learningInstrument === 'bass';
   const practiceDrill = useMemo(
     () => (practiceSong ? buildSongPracticeDrill(practiceSong, practiceOptions) : null),
     [practiceSong, practiceOptions],
@@ -302,7 +307,8 @@ export default function SongLibraryScreen() {
       (libraryFilter === 'songs' && !isPracticeExercise(song)) ||
       (libraryFilter === 'saved' && favoriteSongs.includes(song.id)) ||
       (libraryFilter === 'setlist' && mySetIds.includes(song.id));
-    return matchesSearch && matchesFilter && matchesLibrary;
+    const matchesInstrument = bassPath ? song.instrument === 'bass' : song.instrument !== 'bass';
+    return matchesSearch && matchesFilter && matchesLibrary && matchesInstrument;
   }).sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : sort === 'difficulty' ? DIFFICULTY_FILTERS.indexOf(a.difficulty) - DIFFICULTY_FILTERS.indexOf(b.difficulty) : 0);
 
   const renderSongItem = ({ item }: { item: Song }) => {
@@ -331,7 +337,9 @@ export default function SongLibraryScreen() {
             {item.title}
           </Text>
           <Text style={styles.songArtist}>
-            {isPracticeExercise(item) ? 'Playable exercise' : 'Song chord reference'}
+            {item.instrument === 'bass'
+              ? 'Four-string bass exercise'
+              : isPracticeExercise(item) ? 'Playable exercise' : 'Song chord reference'}
           </Text>
           <View style={styles.songMeta}>
             <View
@@ -361,8 +369,12 @@ export default function SongLibraryScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.headerTitle}>Songs & Exercises</Text>
-        <Text style={styles.headerSubtitle}>{filteredSongs.length} items</Text>
+        <Text style={styles.headerTitle}>{bassPath ? 'Bass exercises' : 'Songs & Exercises'}</Text>
+        <Text style={styles.headerSubtitle}>
+          {bassPath
+            ? `${filteredSongs.length} original four-string patterns`
+            : `${filteredSongs.length} items`}
+        </Text>
       </View>
 
       <View style={styles.libraryControls}>
@@ -397,7 +409,11 @@ export default function SongLibraryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="musical-notes-outline" size={48} color={Colors.dark.muted} />
-            <Text style={styles.emptyText}>No matching items. Try another search or clear the filters.</Text>
+            <Text style={styles.emptyText}>
+              {bassPath && libraryFilter === 'songs'
+                ? 'Song chord references stay on a guitar learning path. These bass items are original exercises.'
+                : 'No matching items. Try another search or clear the filters.'}
+            </Text>
             <PressableScale style={styles.filterButton} onPress={() => { setSearchQuery(''); setActiveFilter('All'); setLibraryFilter('all'); }}><Text style={styles.filterButtonText}>Clear search & filters</Text></PressableScale>
           </View>
         }

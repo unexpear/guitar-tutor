@@ -1,6 +1,5 @@
-- My Guitars now brings owned gifts, free daily boxes and level unlocks together
-- Preview and equip saved gifts, with clearer save errors and retry controls
-- Refined string highlights, guitar framing, materials and lighting
-- Less frequent rounded double-cut gifts; existing guitars and rarity odds preserved
-- Retry 3D loading when a model fails
-- Owner testing build: on-phone performance, audio and microphone checks remain pending
+- Learning paths for acoustic, electric, and classical guitar, plus 4-string bass
+- Bass lessons for one root per bar, and a root-fifth-octave shape
+- Bass practice charts are original four-string patterns, not guitar songs
+- Guitar tuner holds the current string and can play the pitch it heard
+- Phone checks for low bass and 3D preview bodies are still pending

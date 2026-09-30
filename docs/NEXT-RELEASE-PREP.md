@@ -1,19 +1,21 @@
 # Next release preparation
 
-## Play upload boundary (2026-09-28)
+## Play upload (2026-09-30)
 
-**Do not run `npm run release` from current `main`.**
+Closed testing upload requested from current `main`. `npm run release` cuts
+**`v1.3.0-13`** (versionCode 13). The previous Play tag remains
+`v1.3.0-12` (`516a7db`).
 
-Last Play closed-testing tag: **`v1.3.0-12` (`516a7db`)**. That is the last
-intended upload. `app.json` still reads 1.3.0 / versionCode 12; do not bump
-and push a new tag until you mean a new Play candidate.
+This build includes learning paths, original four-string bass exercises, and
+tuner mapping on the existing engine. It does **not** include a live
+instrument or microphone check. Reticle is not a Play feature: production
+Android skips that plugin. Do not name preview bodies in `whatsnew` or the
+store listing.
 
 | Commit | What it is | Play |
 | --- | --- | --- |
-| `516a7db` (`v1.3.0-12`) | Last tagged closed-testing release | Yes, that tag only |
-| `87eb530` | UI normalization + instrument-specific learning paths | Only as a **new** versionCode after physical device checks |
-| `d1fb779` | Expo-web Reticle harness | **No.** Agent/web verification only. Not a tuner, 3D, or microphone test |
-| later `main` (Learn catalog + tuner JS) | Catalog copy for new lessons; clip-on-style mapping/playback on the same engine | **No** until a new versionCode is cut on purpose. Not a live-instrument test |
+| `516a7db` (`v1.3.0-12`) | Previous closed-testing tag | Already uploaded |
+| `v1.3.0-13` | This closed test: paths, bass exercises, tuner mapping | Yes, this tag |
 
 Owner has **no instrument** for a live tuner pass. Do not treat unit tests or Expo web as microphone acceptance. Unprocessed Android input, looping a drone under the mic, and sweetened tunings stay out of scope.
 

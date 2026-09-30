@@ -47,6 +47,8 @@ const newLessons = [
   added('bass-clean-notes', 'Fretting & Releasing Bass Notes', 'Make clear notes without a wide finger stretch.', [5, 'Fret near the wire and release a note deliberately.', 'Play open E, F at fret 1 and G at fret 3. Move the hand between positions instead of forcing one finger per fret.', 'You can start and stop each note cleanly without discomfort.']),
   added('bass-roots-fifths', 'Roots, Fifths & Simple Bass Lines', 'Choose a supporting note instead of strumming a guitar shape.', [6, 'Find a root and its fifth on bass.', 'Play G at E-string fret 3, then D at A-string fret 5. Shift to A at E fret 5 and E at A fret 7.', 'You can name each root and fifth and return to the root on beat one.']),
   added('bass-reading-music', 'Bass Clef & Note Lengths', 'Connect bass staff notes to your strings and the beat.', [6, 'Recognize the bass clef and the written open-string notes.', 'Compare the note guide with E-A-D-G on your instrument. Count four quarter notes, two half notes, then a whole note in 4/4.', 'You understand that vertical position gives pitch while note shape and meter give duration.']),
+  added('bass-quarter-roots', 'One Root per Bar', 'Support G, C and D with a single bass note.', [6, 'Place the root on beat one and let it last the bar.', 'At 72 BPM, play G, C, D, then G again, one note each bar. Mute at the bar line before the next root.', 'You can name each root and keep the pulse when the pitch changes.']),
+  added('bass-box-shapes', 'Root, Fifth & Octave', 'Move one small bass shape instead of hunting notes.', [6, 'Find a root, its fifth, and the octave above without a wide stretch.', 'From G at E fret 3, play D at A fret 5 and G at D fret 5. Shift the same shape to C at A fret 3.', 'You can play both shapes slowly and return to the root. This pattern is an exercise, not a song.']),
 ];
 
 export const LESSONS: readonly GuidedLesson[] = [
@@ -76,6 +78,7 @@ const paths: Record<LearningInstrument, UnitSpec[]> = {
     ['Your first bass notes', 'beginner', 'bass-first-notes', 'bass-right-hand', 'bass-clean-notes'],
     ['Read and keep time', 'beginner', 'bass-reading-tabs', 'music-pulse', 'bass-groove', 'music-listening'],
     ['Build a bass line', 'beginner', 'bass-fretboard', 'bass-roots-fifths', 'bass-reading-music', 'music-practice'],
+    ['Original bass patterns', 'beginner', 'bass-quarter-roots', 'bass-box-shapes'],
   ],
 };
 

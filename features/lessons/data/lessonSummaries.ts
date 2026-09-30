@@ -32,4 +32,6 @@ export const LESSON_SUMMARIES: Record<string, string> = {
   'bass-clean-notes': 'Make clear notes without a wide finger stretch.',
   'bass-roots-fifths': 'Choose a supporting note instead of strumming a guitar shape.',
   'bass-reading-music': 'Connect bass staff notes to your strings and the beat.',
+  'bass-quarter-roots': 'Play one root per bar on a four-string bass.',
+  'bass-box-shapes': 'Move a root, fifth and octave as one shape.',
 };

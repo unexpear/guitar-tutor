@@ -317,6 +317,8 @@ Object.assign(DRILLS, {
   'bass-reading-tabs': bassDrill('bass-reading-tabs', 'Read Four Lines', [note(0, 0, 'E open'), note(0, 3, 'E fret 3'), note(1, 0, 'A open'), note(1, 2, 'A fret 2'), note(2, 0, 'D open'), note(3, 0, 'G open')]),
   'bass-fretboard': bassDrill('bass-fretboard', 'Find Bass Octaves', [note(0, 0, 'E1'), note(2, 2, 'E2'), note(1, 0, 'A1'), note(3, 2, 'A2')]),
   'bass-roots-fifths': bassDrill('bass-roots-fifths', 'Root and Fifth', [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(0, 3, 'G root'), note(0, 5, 'A root'), note(1, 7, 'E fifth'), note(0, 5, 'A root')]),
+  'bass-quarter-roots': bassDrill('bass-quarter-roots', 'G, C, D, G', [note(0, 3, 'G'), note(1, 3, 'C'), note(1, 5, 'D'), note(0, 3, 'G')]),
+  'bass-box-shapes': bassDrill('bass-box-shapes', 'Two Bass Boxes', [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(2, 5, 'G octave'), note(0, 3, 'G root'), note(1, 3, 'C root'), note(2, 5, 'G fifth'), note(3, 5, 'C octave'), note(1, 3, 'C root')]),
 });
 
 export function getDrill(lessonId: string): Drill | undefined {

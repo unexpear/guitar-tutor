@@ -77,6 +77,8 @@ const LESSON_ICONS: Record<string, MCIName> = {
   'bass-clean-notes': 'music-note',
   'bass-roots-fifths': 'music-note-plus',
   'bass-reading-music': 'music-clef-bass',
+  'bass-quarter-roots': 'metronome',
+  'bass-box-shapes': 'music-note-plus',
 };
 
 const FALLBACK_ICON: MCIName = 'music-note';

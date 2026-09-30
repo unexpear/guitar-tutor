@@ -1,6 +1,6 @@
 import { Drill } from '../lessons/data/drills';
 import { Song, SongEvent } from './data/songs';
-import { chordMidiNotes, getChord, OPEN_STRING_MIDI, stringFretToMidi } from '../chords/data/chords';
+import { chordMidiNotes, getChord, OPEN_STRING_MIDI } from '../chords/data/chords';
 
 export function guideChordMidiNotes(name: string, transposeSemitones: number, capo: number): number[] {
   const shape = transposeChordName(name, transposeSemitones - capo);
@@ -86,25 +86,34 @@ export interface CapoChoice {
   difficulty: number;
 }
 
+const BASS_OPEN_MIDI = [28, 33, 38, 43] as const;
+
+export function practiceNoteMidi(stringIndex: number, fret: number, bass = false): number {
+  const open = bass ? BASS_OPEN_MIDI : OPEN_STRING_MIDI;
+  return open[stringIndex] + fret;
+}
+
 export function transposeNoteEvent(
   event: Extract<SongEvent, { kind: 'note' }>,
   semitones: number,
+  bass = false,
 ): Extract<SongEvent, { kind: 'note' }> {
-  const targetMidi = stringFretToMidi(event.stringIndex, event.fret) + Math.round(semitones);
-  const candidates = OPEN_STRING_MIDI.flatMap((openMidi, stringIndex) =>
-    Array.from({ length: 16 }, (_, fret) => ({ stringIndex, fret, midi: openMidi + fret })))
+  const open = bass ? BASS_OPEN_MIDI : OPEN_STRING_MIDI;
+  const labels = bass ? ['E', 'A', 'D', 'G'] : ['E', 'A', 'D', 'G', 'B', 'e'];
+  const targetMidi = practiceNoteMidi(event.stringIndex, event.fret, bass) + Math.round(semitones);
+  const candidates = open.flatMap((openMidi, stringIndex) =>
+    Array.from({ length: bass ? 13 : 16 }, (_, fret) => ({ stringIndex, fret, midi: openMidi + fret })))
     .filter((candidate) => ((candidate.midi - targetMidi) % 12 + 12) % 12 === 0)
     .sort((a, b) =>
       Math.abs(a.midi - targetMidi) - Math.abs(b.midi - targetMidi) ||
       Math.abs(a.stringIndex - event.stringIndex) - Math.abs(b.stringIndex - event.stringIndex) ||
       Math.abs(a.fret - event.fret) - Math.abs(b.fret - event.fret));
   const choice = candidates[0] ?? { stringIndex: event.stringIndex, fret: event.fret };
-  const stringLabels = ['E', 'A', 'D', 'G', 'B', 'e'];
   return {
     ...event,
     stringIndex: choice.stringIndex,
     fret: choice.fret,
-    label: `${stringLabels[choice.stringIndex]}${choice.fret}`,
+    label: `${labels[choice.stringIndex]}${choice.fret}`,
   };
 }
 
@@ -200,6 +209,7 @@ export function buildSongPracticeDrill(
     return {
       lessonId: songPracticeScoreKey(song.id),
       title: `${song.title}${section ? ` · ${section.label}` : ''}`,
+      instrument: song.instrument === 'bass' ? 'bass' : undefined,
       intro:
         `Generic CC0 practice exercise at ${tempoPercent}% speed. ` +
         'Follow Me waits for each target; Play in Time keeps the finger guide locked to the chart. The moving lane scrolls as you play.',
@@ -213,7 +223,7 @@ export function buildSongPracticeDrill(
               beats: event.beats,
               capo: options.capo,
             }
-          : transposeNoteEvent(event, options.transposeSemitones ?? 0),
+          : transposeNoteEvent(event, options.transposeSemitones ?? 0, song.instrument === 'bass'),
       ),
       defaultMode: events.some((event) => event.kind === 'chord') ? 'poly' : 'mono',
       // Song targets carry exact beat lengths. This remains a safe fallback.

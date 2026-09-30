@@ -13,6 +13,7 @@ import {
   soundingKeyForCapo,
   transposeChordName,
   transposeNoteEvent,
+  practiceNoteMidi,
 } from '../features/songs/songPractice';
 import { stringFretToMidi } from '../features/chords/data/chords';
 import { practiceScore, targetDurationMs } from '../features/lessons/playalong/timing';
@@ -175,4 +176,23 @@ test('community correction links are explicit, encoded, and reviewable', () => {
   assert.match(url, /^https:\/\/github\.com\/unexpear\/guitar-tutor\/issues\/new\?/);
   assert.match(decodeURIComponent(url), /Bar 4: try Am7 & explain why/);
   assert.match(decodeURIComponent(url), /public community review/);
+});
+
+test('bass charts score four-string pitches and stay on the bass', () => {
+  const song = SONGS.find((candidate) => candidate.id === 'bass-roots-g');
+  assert.ok(song);
+  const drill = buildSongPracticeDrill(song);
+  assert.equal(drill.instrument, 'bass');
+  const target = drill.targets[0];
+  assert.equal(target.kind, 'note');
+  if (target.kind !== 'note') return;
+  assert.equal(practiceNoteMidi(target.stringIndex, target.fret, true), 31);
+  assert.equal(target.stringIndex, 0);
+  assert.equal(target.fret, 3);
+  const source = arrangementEvents(song, null)[0];
+  assert.equal(source.kind, 'note');
+  if (source.kind !== 'note') return;
+  const moved = transposeNoteEvent(source, 0, true);
+  assert.ok(moved.stringIndex < 4);
+  assert.equal(moved.fret, 3);
 });

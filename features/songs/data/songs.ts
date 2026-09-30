@@ -58,6 +58,8 @@ export interface Song {
   note: string;
   /** Present only when StandardTune can legally provide the full exercise. */
   arrangement?: SongArrangement;
+  /** Omitted charts use six-string guitar. Bass charts are original four-string exercises. */
+  instrument?: 'bass';
 }
 
 const chordEvent = (chordName: string, beats = 4): SongChordEvent => ({
@@ -81,6 +83,14 @@ const noteEvent = (
   stringIndex,
   fret,
   label: `${['E', 'A', 'D', 'G', 'B', 'e'][stringIndex]}${fret}`,
+  beats,
+});
+
+const bassNote = (stringIndex: number, fret: number, beats = 1): SongNoteEvent => ({
+  kind: 'note',
+  stringIndex,
+  fret,
+  label: `${['E', 'A', 'D', 'G'][stringIndex]}${fret}`,
   beats,
 });
 
@@ -519,6 +529,63 @@ export const PRACTICE_EXERCISES: Song[] = [
         noteEvent(5, 0), noteEvent(4, 0), noteEvent(3, 0), noteEvent(2, 0), noteEvent(1, 0), noteEvent(0, 0),
       ],
     }], 'Alternate picking'),
+  },
+  {
+    id: 'bass-roots-g',
+    title: 'Bass roots: I–IV–V in G',
+    artist: 'Practice Exercise',
+    difficulty: 'Easy',
+    duration: '0:27',
+    genre: 'Bass Exercise',
+    chords: ['G', 'C', 'D'],
+    key: 'G',
+    instrument: 'bass',
+    note: 'Original four-string pattern: one root per bar. Not a song, lyric, or recording transcription.',
+    arrangement: originalArrangement(72, [{
+      id: 'roots', label: 'Roots', events: [
+        bassNote(0, 3, 4), bassNote(1, 3, 4), bassNote(1, 5, 4), bassNote(0, 3, 4),
+        bassNote(0, 3, 4), bassNote(1, 3, 4), bassNote(1, 5, 4), bassNote(0, 3, 4),
+      ],
+    }], 'One note per bar'),
+  },
+  {
+    id: 'bass-root-fifth-a',
+    title: 'Bass root and fifth in A',
+    artist: 'Practice Exercise',
+    difficulty: 'Easy',
+    duration: '0:22',
+    genre: 'Bass Exercise',
+    chords: ['A', 'D', 'E'],
+    key: 'A',
+    instrument: 'bass',
+    note: 'Original root-then-fifth pattern on E–A–D. Even note lengths, no borrowed hook.',
+    arrangement: originalArrangement(70, [{
+      id: 'fifths', label: 'Root and fifth', events: [
+        bassNote(0, 5, 2), bassNote(1, 7, 2), bassNote(0, 5, 2), bassNote(1, 7, 2),
+        bassNote(1, 5, 2), bassNote(2, 7, 2), bassNote(1, 5, 2), bassNote(2, 7, 2),
+        bassNote(0, 0, 2), bassNote(1, 2, 2), bassNote(0, 0, 2), bassNote(0, 5, 4),
+      ],
+    }], 'Index and middle'),
+  },
+  {
+    id: 'bass-open-ladder',
+    title: 'Four-string open ladder',
+    artist: 'Practice Exercise',
+    difficulty: 'Easy',
+    duration: '0:13',
+    genre: 'Bass Exercise',
+    chords: ['E', 'A'],
+    key: 'E',
+    instrument: 'bass',
+    note: 'Open E–A–D–G and back. A finger exercise for four strings, not a six-string guitar chart.',
+    arrangement: originalArrangement(72, [{
+      id: 'ladder', label: 'Down and back', events: [
+        bassNote(0, 0), bassNote(1, 0), bassNote(2, 0), bassNote(3, 0),
+        bassNote(3, 0), bassNote(2, 0), bassNote(1, 0), bassNote(0, 0),
+        bassNote(0, 0), bassNote(1, 0), bassNote(2, 0), bassNote(3, 0),
+        bassNote(3, 0), bassNote(2, 0), bassNote(1, 0), bassNote(0, 0),
+      ],
+    }], 'Index and middle'),
   },
 ];
 

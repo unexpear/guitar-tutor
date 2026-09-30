@@ -67,4 +67,12 @@ export const FOUNDATION_CONTENT: Record<string, LessonSection[]> = {
     { heading: 'Written and sounding octaves', body: 'Bass guitar is normally written one octave above its sound. Open E1, A1, D2 and G2 therefore appear as written E2, A2, D3 and G3. The note names still match the strings; the tuner simply reports the sounding octave. Use the guide to connect these four landmarks.' },
     { heading: 'Give each note its time', body: 'In a 4/4 exercise, count four steady beats per bar. A quarter note lasts one beat, a half note two and a whole note four. A rest has duration too. Play an open note for two beats, then mute it for two while counting. This is a listening self-check, not an automatic assessment of silence.' },
   ],
+  'bass-quarter-roots': [
+    { heading: 'The root is enough', body: 'A bass note can support a chord without playing the guitar shape. In G, the roots are G, C and D. On a standard four-string bass those are E-string fret 3, A-string fret 3, and A-string fret 5. Hold each one for a whole bar.' },
+    { heading: 'Keep the bar line clean', body: 'Count 1-2-3-4, then mute before the next root. The drill waits in Follow Me, so use that while you learn the frets. Play in Time only after the changes feel ordinary. This is an original pattern we wrote for practice. It is not a song arrangement.' },
+  ],
+  'bass-box-shapes': [
+    { heading: 'One shape, two chords', body: 'From a root on the E or A string, the fifth is one string thinner and two frets higher, and the octave is two strings thinner and two frets higher. G at E fret 3, D at A fret 5, and G at D fret 5 are the same shape as C at A fret 3, G at D fret 5, and C at G fret 5.' },
+    { heading: 'Move the hand, do not stretch', body: 'Shift the whole hand between G and C. Stop if the reach hurts. Open the drill and play one note at a time. The pattern is a generic exercise in the public domain of music theory, not a copied bass line from a recording.' },
+  ],
 };

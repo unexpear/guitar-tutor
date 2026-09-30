@@ -27,7 +27,7 @@ These sources are references, not endorsements. Free access does not grant permi
 | Acoustic guitar | 19 | Setup, notes/tab, pulse/listening, Em/Am, strumming, open chords, then optional further skills |
 | Electric guitar | 21 | Guitar foundations plus clean amplification, muting and root/fifth power shapes |
 | Classical guitar | 17 | Support and fingerstyle first, treble-staff landmarks, notes/tab, then accompaniment and further musicianship |
-| Four-string bass | 11 | Standard E1–A1–D2–G2, plucking, clean releases, four-line tab, rhythm/rests, roots, fifths, octaves and bass clef |
+| Four-string bass | 13 | Standard E1–A1–D2–G2, plucking, clean releases, four-line tab, rhythm/rests, roots, fifths, octaves, bass clef, and original root/fifth patterns |
 
 The other instruments in the tuner are not advertised as having complete lesson paths. Five-/six-string bass and alternate-tuning lesson curricula are outside this change.
 
@@ -60,5 +60,5 @@ Checked the required [Expo SDK 57 reference](https://docs.expo.dev/versions/v57.
 - Browser checks use the actual screen components with isolated test storage and simulated native services: path switching/reload, first-use bass Quick Start, self-completion/next step, the tuning shortcut, four-line bass practice, staff/chord guides and large-text layouts. These do not verify real microphone capture.
 - Type checking and Android bundle export passed. No dependency or audio-asset additions are needed.
 - Physical-device microphone checks with an actual bass and guitar remain necessary. Browser simulation and exact-frequency unit tests cannot prove acoustic performance in a room.
-- Future curriculum work should add reviewed, rights-cleared repertoire tied to each skill and teacher/novice observation sessions. Do not imply that introductory staff landmarks alone are a complete sight-reading course, or that an existing guitar song chart is automatically a bass arrangement.
+- Future curriculum work should add teacher/novice observation sessions. Original CC0 bass patterns are in Learn and in Songs when the learning instrument is bass. Do not imply that introductory staff landmarks alone are a complete sight-reading course, or that an existing guitar song chart is automatically a bass arrangement.
 - This work does not publish a release.

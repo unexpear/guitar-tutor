@@ -92,7 +92,7 @@ test('getSong finds songs by id and misses cleanly', () => {
 test('generic exercises and song references stay explicitly separated', () => {
   const complete = SONGS.filter((song) => song.arrangement);
   const references = SONGS.filter((song) => !song.arrangement);
-  assert.equal(complete.length, 26);
+  assert.equal(complete.length, 29);
   assert.equal(references.length, 15);
   assert.deepEqual(complete, PRACTICE_EXERCISES);
   assert.deepEqual(references, SONG_REFERENCES);
@@ -114,6 +114,25 @@ test('common progressions and mechanical riffs are present as playable exercises
   assert.ok(titles.has('Chromatic 1–2–3–4'));
   assert.ok(titles.has('A Minor Pentatonic Box Fragment'));
   assert.ok(titles.has('Open-String Picking Ladder'));
+  assert.ok(titles.has('Bass roots: I–IV–V in G'));
+  assert.ok(titles.has('Bass root and fifth in A'));
+  assert.ok(titles.has('Four-string open ladder'));
+});
+
+test('bass exercises are original four-string charts and stay off guitar charts', () => {
+  const bass = PRACTICE_EXERCISES.filter((exercise) => exercise.instrument === 'bass');
+  assert.equal(bass.length, 3);
+  for (const exercise of bass) {
+    assert.equal(exercise.arrangement?.license, 'CC0-1.0');
+    assert.match(exercise.note, /not a song|not a six-string|no borrowed hook/i);
+    assert.doesNotMatch(exercise.title, /seven nation|come as you are|another one bites|billie jean/i);
+    for (const section of exercise.arrangement!.sections) {
+      assert.ok(section.events.every((event) => event.kind === 'note' && event.stringIndex < 4));
+    }
+  }
+  assert.ok(PRACTICE_EXERCISES.filter((exercise) => exercise.instrument !== 'bass').every((exercise) =>
+    exercise.arrangement!.sections.every((section) => section.events.every((event) => event.kind === 'chord' || event.stringIndex < 6)),
+  ));
 });
 
 test('every complete chart has a valid finger guide and positive timing', () => {
@@ -125,7 +144,8 @@ test('every complete chart has a valid finger guide and positive timing', () => 
         if (event.kind === 'chord') {
           assert.ok(getChord(event.chordName), `${song.title}: missing guide for ${event.chordName}`);
         } else {
-          assert.ok(event.stringIndex >= 0 && event.stringIndex < 6, `${song.title}: bad string`);
+          const bass = song.instrument === 'bass';
+          assert.ok(event.stringIndex >= 0 && event.stringIndex < (bass ? 4 : 6), `${song.title}: bad string`);
           assert.ok(event.fret >= 0 && event.fret <= 24, `${song.title}: bad fret`);
         }
       }

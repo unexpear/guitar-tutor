@@ -4,7 +4,7 @@ import { Linking, Share, ScrollView, StyleSheet, Text, TextInput, View } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import PressableScale from '../../components/PressableScale';
-import { midiToNoteName, stringFretToMidi } from '../chords/data/chords';
+import { midiToNoteName } from '../chords/data/chords';
 import { useGuitarSound } from '../audio/hooks/useGuitarSound';
 import { isReferenceAudible } from '../audio/audibility';
 import { useSettingsStore } from '../store/settingsStore';
@@ -15,6 +15,7 @@ import {
   arrangementEvents,
   guideChordMidiNotes,
   capoChoicesForSong,
+  practiceNoteMidi,
   songPracticeFeedback,
   songCorrectionIssueUrl,
   transposeChordName,
@@ -113,8 +114,8 @@ export default function SongPracticeStudio({
     if (event.kind === 'chord') {
       void playChord(guideChordMidiNotes(event.chordName, transposeSemitones, options.capo).map(midiToNoteName));
     } else {
-      const note = transposeNoteEvent(event, transposeSemitones);
-      playNote(midiToNoteName(stringFretToMidi(note.stringIndex, note.fret)));
+      const note = transposeNoteEvent(event, transposeSemitones, song.instrument === 'bass');
+      playNote(midiToNoteName(practiceNoteMidi(note.stringIndex, note.fret, song.instrument === 'bass')));
     }
     const beatMs = 60_000 / Math.round(arrangement.bpm * options.tempoPercent / 100);
     // A guide is intentionally separate from microphone scoring: speaker

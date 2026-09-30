@@ -2,10 +2,9 @@
 
 Everything needed to fill in the Play Console for StandardTune, in the order the console asks for it. Repo-side artifacts (privacy policy, AAB, store assets) are already in place; this file is the answer sheet.
 
-**Current freeze:** do not run `npm run release` from current `main`. Last
-closed-testing upload is tag `v1.3.0-12` (`516a7db`). Curriculum `87eb530`
-is only for a new versionCode after device checks. Reticle `d1fb779` is not
-a Play candidate. See `docs/NEXT-RELEASE-PREP.md`.
+**Closed test:** `npm run release` from a clean `main` uploads the next
+versionCode to closed testing. The 2026-09-30 request is `v1.3.0-13`.
+Previous tag: `v1.3.0-12` (`516a7db`). See `docs/NEXT-RELEASE-PREP.md`.
 
 ## Artifacts
 
@@ -68,8 +67,8 @@ build if the code goes missing or drops back to 1.
 |---|---|---|
 | 2026-08-22, first closed test | 1 | 1.0.0 |
 | 2026-09-02 (tag `v1.0.0-5`) | 5 | 1.0.0 |
-| Last closed test (tag `v1.3.0-12`, `516a7db`) | 12 | 1.3.0 |
-| next | bump from 12 | only when cutting a new Play candidate |
+| Last closed test before this request (tag `v1.3.0-12`, `516a7db`) | 12 | 1.3.0 |
+| This closed test (`v1.3.0-13`) | 13 | 1.3.0 |
 
 ## Signing
 
@@ -124,8 +123,7 @@ a bundle is attached, so do the upload first.
 
 #### Option B - let CI upload it (recommended)
 
-Once set up, shipping a **deliberate** Play candidate is one command.
-Skip it while `main` is ahead of `v1.3.0-12` for curriculum or Reticle only:
+Once set up, shipping a deliberate closed-test build is one command:
 
 ```sh
 npm run release
