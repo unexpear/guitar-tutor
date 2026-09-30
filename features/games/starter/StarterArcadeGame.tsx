@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   question: { color: Colors.dark.text, fontSize: 23, fontWeight: '900', textAlign: 'center' },
   stringPicture: { width: '88%', gap: 15, paddingVertical: 15 },
   stringLine: { width: '100%', borderRadius: 4, backgroundColor: '#555779' },
-  stringLineActive: { backgroundColor: Colors.success, shadowColor: Colors.success, shadowOpacity: 0.8, shadowRadius: 8 },
+  stringLineActive: { backgroundColor: Colors.success, boxShadow: '0px 0px 8px rgba(76, 175, 80, 0.8)' },
   cents: { color: Colors.dark.text, fontSize: 58, fontWeight: '900' },
   meter: { width: '85%', height: 8, borderRadius: 4, backgroundColor: '#3B3D61', position: 'relative', alignItems: 'center' },
   meterCenter: { position: 'absolute', width: 4, height: 24, top: -8, backgroundColor: Colors.success },

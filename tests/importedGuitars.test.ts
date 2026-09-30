@@ -26,6 +26,28 @@ test('only approved imported models are packaged, static, self-contained and hav
   }
 });
 
+test('imported preview bodies stay labeled as unaccepted phone previews', () => {
+  for (const model of GUITAR_MODELS.filter((item) => isImportedGuitar(item.id))) {
+    assert.match(model.description, /preview/i);
+    assert.match(model.description, /not accepted/i);
+    assert.doesNotMatch(model.description, /photoreal/i);
+  }
+});
+
+test('Play store listing does not advertise imported preview bodies', async () => {
+  const files = [
+    '../fastlane/metadata/android/en-US/full_description.txt',
+    '../fastlane/metadata/android/en-US/short_description.txt',
+    '../distribution/whatsnew/whatsnew-en-US',
+  ];
+  for (const file of files) {
+    const listing = await readFile(new URL(file, import.meta.url), 'utf8');
+    assert.doesNotMatch(listing, /Cotton Candy/i);
+    assert.doesNotMatch(listing, /imported/i);
+    assert.doesNotMatch(listing, /Reticle/i);
+  }
+});
+
 test('fixed imported finishes stay outside new weighted rewards', () => {
   const originalIds = ['acoustic-grand', 'acoustic-cutaway', 'electric-doublecut', 'electric-singlecut'];
   for (let seed = 0; seed < 100; seed++) {

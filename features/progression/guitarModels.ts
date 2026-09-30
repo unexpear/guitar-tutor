@@ -19,8 +19,8 @@ export interface GuitarModel {
 }
 
 export const GUITAR_MODELS: readonly GuitarModel[] = [
-  {id:'acoustic-classical',name:'Classical',guitarType:'acoustic',description:'Detailed classical guitar. Fixed wood finish · device testing preview.'},
-  {id:'electric-cotton-candy',name:'Cotton Candy',guitarType:'electric',description:'Detailed electric guitar. Fixed iridescent cyan finish · device testing preview.'},
+  {id:'acoustic-classical',name:'Classical',guitarType:'acoustic',description:'Preview body · fixed wood finish. Phone memory and look are not accepted yet.'},
+  {id:'electric-cotton-candy',name:'Cotton Candy',guitarType:'electric',description:'Preview body · fixed cyan finish. Phone memory and look are not accepted yet.'},
   {
     id: 'acoustic-grand',
     name: 'Grand Acoustic',

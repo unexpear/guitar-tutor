@@ -66,7 +66,7 @@ function LockerContent({ onExit }: { onExit: () => void }) {
           <View style={styles.summary}>
             <Text style={styles.sectionTitle}>Equipped</Text>
             <Text style={styles.copy}>{equippedGift ? `${equippedGift.design.name} · ${guitarModel(equippedGift.modelId)?.name}` : `${guitarModel(selectedModels.acoustic)?.name} / ${guitarModel(selectedModels.electric)?.name}`}</Text>
-            <Text style={styles.caption}>{equippedGift ? 'Appears in the tuner for its matching instrument.' : `Finish: ${guitarDesign(selected).name}. Original finishes stay on Classical and Cotton Candy.`}</Text>
+            <Text style={styles.caption}>{equippedGift ? 'Appears in the tuner for its matching instrument.' : `Finish: ${guitarDesign(selected).name}. Preview-only bodies keep their original finish until they pass phone testing.`}</Text>
           </View>
           <ChoiceChips label="Owned category" value={category} options={[{ value: 'gifts', label: `Collected (${giftCount})` }, { value: 'bodies', label: `Bodies (${GUITAR_MODELS.length})` }, { value: 'finishes', label: `Finishes (${unlocked})` }]} onChange={next => { setCategory(next); setQuery(''); if (next === 'bodies' && sort === 'rarity') setSort('default'); }} />
         </>}
@@ -94,7 +94,7 @@ function LockerContent({ onExit }: { onExit: () => void }) {
             })}</View>
             {!bodies.length && <Text style={styles.copy}>No bodies match. Try another search or type.</Text>}
           </> : <>
-            {section === 'owned' && <Text style={styles.caption}>Preview a finish before equipping. Classical and Cotton Candy switch to a customizable body.</Text>}
+            {section === 'owned' && <Text style={styles.caption}>Preview a finish before equipping. Preview-only bodies switch to a customizable catalog body first.</Text>}
             <View style={styles.cards}>{finishes.map(design => {
               const open = isDesignUnlocked(design, level);
               const modelId = isImportedGuitar(selectedModels[design.guitarType]) ? DEFAULT_GUITAR_MODEL_IDS[design.guitarType] : selectedModels[design.guitarType];

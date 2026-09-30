@@ -1,3 +1,5 @@
+import type { ViewStyle } from 'react-native';
+
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
@@ -50,11 +52,8 @@ export const Colors = {
   },
 };
 
-export const CARD_SHADOW = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 4,
+export const CARD_SHADOW: ViewStyle = {
+  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
   elevation: 4,
 };
 

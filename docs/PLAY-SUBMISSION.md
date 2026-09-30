@@ -2,6 +2,11 @@
 
 Everything needed to fill in the Play Console for StandardTune, in the order the console asks for it. Repo-side artifacts (privacy policy, AAB, store assets) are already in place; this file is the answer sheet.
 
+**Current freeze:** do not run `npm run release` from current `main`. Last
+closed-testing upload is tag `v1.3.0-12` (`516a7db`). Curriculum `87eb530`
+is only for a new versionCode after device checks. Reticle `d1fb779` is not
+a Play candidate. See `docs/NEXT-RELEASE-PREP.md`.
+
 ## Artifacts
 
 | Item | Where |
@@ -63,7 +68,8 @@ build if the code goes missing or drops back to 1.
 |---|---|---|
 | 2026-08-22, first closed test | 1 | 1.0.0 |
 | 2026-09-02 (tag `v1.0.0-5`) | 5 | 1.0.0 |
-| next | 6 | 1.1.0 |
+| Last closed test (tag `v1.3.0-12`, `516a7db`) | 12 | 1.3.0 |
+| next | bump from 12 | only when cutting a new Play candidate |
 
 ## Signing
 
@@ -93,7 +99,8 @@ Two ways. The second one is a one-time setup that removes this step forever.
 2. Open the release: Test and release -> Testing -> Closed testing ->
    Manage track -> Create new release.
 3. Drag the `.aab` onto the "App bundles" drop zone and wait for processing.
-4. Release name: `6 (1.1.0) - next closed test`
+4. Release name: match the tag you are actually uploading (last shipped:
+   `12 (1.3.0)`). Do not invent a name from this doc’s older examples.
 5. Release notes (paste inside the existing `<en-US>` tags):
 
 ```
@@ -117,7 +124,8 @@ a bundle is attached, so do the upload first.
 
 #### Option B - let CI upload it (recommended)
 
-Once set up, shipping a build is one command:
+Once set up, shipping a **deliberate** Play candidate is one command.
+Skip it while `main` is ahead of `v1.3.0-12` for curriculum or Reticle only:
 
 ```sh
 npm run release

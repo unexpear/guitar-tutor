@@ -1,9 +1,43 @@
-# Next release preparation — September 6, 2026
+# Next release preparation
 
-Owner has confirmed testing through releases, not USB, on September 7.
-Proceed with an owner-testing release via the existing closed-testing workflow:
-version 1.3.0 / Android code 11. Device acceptance remains pending after installation,
-not a claim of completed validation or a pre-upload blocker for this testing build.
+## Play upload boundary (2026-09-28)
+
+**Do not run `npm run release` from current `main`.**
+
+Last Play closed-testing tag: **`v1.3.0-12` (`516a7db`)**. That is the last
+intended upload. `app.json` still reads 1.3.0 / versionCode 12; do not bump
+and push a new tag until you mean a new Play candidate.
+
+| Commit | What it is | Play |
+| --- | --- | --- |
+| `516a7db` (`v1.3.0-12`) | Last tagged closed-testing release | Yes, that tag only |
+| `87eb530` | UI normalization + instrument-specific learning paths | Only as a **new** versionCode after physical device checks |
+| `d1fb779` | Expo-web Reticle harness | **No.** Agent/web verification only. Not a tuner, 3D, or microphone test |
+
+Reticle, `react-native-web`, and Expo web scripts are not product features.
+They must not appear in Play listing copy, screenshots, or `whatsnew`.
+Production Android still skips the Reticle Babel plugin and uses a no-op
+native `connectReticle`. Do not mix the web harness into a Play upload
+unless that is the explicit intent of the next tag.
+
+Classical and Cotton Candy stay in the collection as **preview-only** bodies.
+They have not passed physical memory, WebView, GPU, or look acceptance.
+Fastlane `full_description.txt` and `distribution/whatsnew/whatsnew-en-US`
+must not name them. Phone checks still required before any listing that
+sells those models: load each body, switch tabs, background/foreground,
+watch RAM and 3D fallback.
+
+Release notes must match the tag you actually upload, not every commit on
+`main`.
+
+---
+
+## Historical: September 6, 2026 testing build
+
+Owner confirmed testing through releases, not USB, on September 7. That
+session targeted 1.3.0 / Android code 11 and is **not** the current Play
+head. Device acceptance after install was never a claim of completed
+validation. The later tag `v1.3.0-12` superseded that plan.
 
 ## Checks completed
 
@@ -69,3 +103,6 @@ not a claim of completed validation or a pre-upload blocker for this testing bui
 - The local ignored Android project still has version 1.0.0 / code 1 and debug
   signing. Do not distribute it as the current release. CI regenerates Android
   from app.json before applying release signing; no release tag was pushed.
+
+The 19-09 UI worktree is on `main` as `87eb530`; that still does not make
+current `main` a Play candidate.

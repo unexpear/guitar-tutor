@@ -31,7 +31,7 @@ export default function FullGuitarSvg({ design, modelId, width = 92, height = 15
     : DEFAULT_GUITAR_MODEL_IDS[design.guitarType];
   if(isImportedGuitar(compatibleModelId))return <Image
     source={compatibleModelId==='acoustic-classical'?require('../../../assets/guitars/imported/classical.png'):require('../../../assets/guitars/imported/cotton.png')}
-    style={{width,height}} resizeMode="contain" accessibilityLabel={`${compatibleModelId==='acoustic-classical'?'Classical':'Cotton Candy'} guitar, fixed finish preview`} />;
+    style={{width,height}} resizeMode="contain" accessibilityLabel="Imported guitar preview, fixed finish, not phone-accepted" />;
   const body = BODY_PATHS[compatibleModelId]
     ?? (design.guitarType === 'acoustic' ? ACOUSTIC_BODY : ELECTRIC_BODY);
   const bakedSkin = FULL_GUITAR_PLAYER_SKINS[compatibleModelId][design.id];

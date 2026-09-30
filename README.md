@@ -54,8 +54,10 @@ npm test
 npm run typecheck
 ```
 
-Shipping a build to the closed testers is one command, which bumps the
-Android version code, tags, and lets CI build and upload it:
+Shipping a **Play candidate** is one command, which bumps the Android
+version code, tags, and lets CI build and upload it. Do not run it from
+current `main`: last Play tag is `v1.3.0-12` (`516a7db`). See
+[docs/NEXT-RELEASE-PREP.md](docs/NEXT-RELEASE-PREP.md).
 
 ```sh
 npm run release

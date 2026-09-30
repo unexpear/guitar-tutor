@@ -116,7 +116,7 @@ export default function GuitarThumbnail({ design, modelId }: { design: GuitarDes
   const key = thumbnailKey(modelId, design);
   useEffect(() => request?.({ key, modelId, design }), [request, key]); // key fully describes the immutable recipe
   const uri = context?.images[key];
-  const label = `${guitarModel(modelId)?.name ?? 'Guitar'}${isImportedGuitar(modelId) ? '' : `, ${design.name}`}, rendered preview`;
+  const label = `${guitarModel(modelId)?.name ?? 'Guitar'}${isImportedGuitar(modelId) ? ', preview only' : `, ${design.name}`}, rendered preview`;
   return <View style={styles.frame}>
     {uri ? <Image source={{ uri }} style={styles.image} resizeMode="contain" onError={() => context?.reject(key)} accessibilityLabel={label} /> : <>
       {!context?.failed.has(key) && <ActivityIndicator color={Colors.dark.muted} />}
