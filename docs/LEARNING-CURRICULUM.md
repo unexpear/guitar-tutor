@@ -24,10 +24,10 @@ These sources are references, not endorsements. Free access does not grant permi
 
 | Choice | Lessons | Focus |
 | --- | ---: | --- |
-| Acoustic guitar | 19 | Setup, notes/tab, pulse/listening, Em/Am, strumming, open chords, then optional further skills |
+| Acoustic guitar | 21 | Setup, diagrams, Em/Am, pick downstrokes, open-chord changes, a slow G–C–D loop, then notes and later fingerpicking |
 | Electric guitar | 21 | Guitar foundations plus clean amplification, muting and root/fifth power shapes |
-| Classical guitar | 17 | Support and fingerstyle first, treble-staff landmarks, notes/tab, then accompaniment and further musicianship |
-| Four-string bass | 13 | Standard E1–A1–D2–G2, plucking, clean releases, four-line tab, rhythm/rests, roots, fifths, octaves, bass clef, and original root/fifth patterns |
+| Classical guitar | 18 | Posture, free stroke, rest stroke, a short treble melody, then accompaniment. Barre is not on this path |
+| Four-string bass | 15 | Fingers and volume, tab and bass clef, then roots, fifths and an original twelve-bar root form |
 
 The other instruments in the tuner are not advertised as having complete lesson paths. Five-/six-string bass and alternate-tuning lesson curricula are outside this change.
 

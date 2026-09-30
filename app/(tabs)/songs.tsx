@@ -260,6 +260,7 @@ export default function SongLibraryScreen() {
   const mySetIds = songSetlists.find((setlist) => setlist.id === 'my-set')?.songIds ?? [];
   const learningInstrument = useUserPreferencesStore((state) => state.learningInstrument);
   const bassPath = learningInstrument === 'bass';
+  const guitarPath = learningInstrument === 'acoustic' || learningInstrument === 'electric' || learningInstrument === 'classical';
   const practiceDrill = useMemo(
     () => (practiceSong ? buildSongPracticeDrill(practiceSong, practiceOptions) : null),
     [practiceSong, practiceOptions],
@@ -307,7 +308,11 @@ export default function SongLibraryScreen() {
       (libraryFilter === 'songs' && !isPracticeExercise(song)) ||
       (libraryFilter === 'saved' && favoriteSongs.includes(song.id)) ||
       (libraryFilter === 'setlist' && mySetIds.includes(song.id));
-    const matchesInstrument = bassPath ? song.instrument === 'bass' : song.instrument !== 'bass';
+    const matchesInstrument = learningInstrument === 'bass'
+      ? song.instrument === 'bass'
+      : learningInstrument === 'acoustic' || learningInstrument === 'electric' || learningInstrument === 'classical'
+        ? song.instrument !== 'bass'
+        : false;
     return matchesSearch && matchesFilter && matchesLibrary && matchesInstrument;
   }).sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : sort === 'difficulty' ? DIFFICULTY_FILTERS.indexOf(a.difficulty) - DIFFICULTY_FILTERS.indexOf(b.difficulty) : 0);
 
@@ -369,11 +374,13 @@ export default function SongLibraryScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.headerTitle}>{bassPath ? 'Bass exercises' : 'Songs & Exercises'}</Text>
+        <Text style={styles.headerTitle}>{bassPath ? 'Bass exercises' : guitarPath ? 'Songs & Exercises' : 'Tuner instrument'}</Text>
         <Text style={styles.headerSubtitle}>
           {bassPath
             ? `${filteredSongs.length} original four-string patterns`
-            : `${filteredSongs.length} items`}
+            : guitarPath
+              ? `${filteredSongs.length} items`
+              : 'Song charts stay on the guitar and bass paths'}
         </Text>
       </View>
 
@@ -412,7 +419,9 @@ export default function SongLibraryScreen() {
             <Text style={styles.emptyText}>
               {bassPath && libraryFilter === 'songs'
                 ? 'Song chord references stay on a guitar learning path. These bass items are original exercises.'
-                : 'No matching items. Try another search or clear the filters.'}
+                : guitarPath
+                  ? 'No matching items. Try another search or clear the filters.'
+                  : 'This instrument’s lessons are self-check steps in Learn. Guitar and bass charts are not arrangements for it.'}
             </Text>
             <PressableScale style={styles.filterButton} onPress={() => { setSearchQuery(''); setActiveFilter('All'); setLibraryFilter('all'); }}><Text style={styles.filterButtonText}>Clear search & filters</Text></PressableScale>
           </View>

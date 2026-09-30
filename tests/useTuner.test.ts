@@ -166,6 +166,23 @@ test('selected-string mode corrects an octave overtone without changing auto mod
   assert.equal(automatic.frequency, target * 2);
 });
 
+test('a banjo G is not retuned into the other G an octave away', () => {
+  const banjo = TUNING_PRESETS.find((preset) => preset.id === 'banjo-5-open-g');
+  assert.ok(banjo);
+  const frequencies = targetFrequenciesFor(banjo);
+  const playedLowG = mapTunerReading(
+    reading({ noteName: 'G', octave: 3 }),
+    opts({
+      tuning: banjo,
+      stringFrequencies: frequencies,
+      smoothHz: frequencies[2],
+      targetStringIndex: 0,
+    }),
+  );
+  assert.equal(playedLowG.harmonicRatio, 1);
+  assert.ok(Math.abs(playedLowG.targetCents ?? 0) > 100);
+});
+
 test('chromatic cents come from the measured frequency, not the engine label', () => {
   const chromatic = TUNING_PRESETS.find((preset) => preset.id === 'chromatic');
   assert.ok(chromatic);

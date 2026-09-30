@@ -5,6 +5,7 @@ import {
   TUNING_PRESETS,
   findTuningPreset,
   tuningTargetLabel,
+  unisonCourseMates,
   noteToFrequency,
   NOTE_NAMES,
 } from '../features/tuner/data/tunings';
@@ -208,8 +209,8 @@ test('the twelve-string layout declares six complete paired courses', () => {
     Array.from({ length: 12 }, (_, index) => index),
   );
   assert.equal(tuningTargetLabel(twelve, 0), 'Course 6, main string');
-  assert.equal(tuningTargetLabel(twelve, 1), 'Course 6, paired string');
-  assert.equal(tuningTargetLabel(twelve, 11), 'Course 1, paired string');
+  assert.equal(tuningTargetLabel(twelve, 1), 'Course 6, octave string');
+  assert.equal(tuningTargetLabel(twelve, 11), 'Course 1, second string of the pair');
 });
 
 test('ordinary string numbering follows instrument convention', () => {
@@ -219,6 +220,16 @@ test('ordinary string numbering follows instrument convention', () => {
   assert.equal(tuningTargetLabel(guitar, 0), 'String 6');
   assert.equal(tuningTargetLabel(guitar, 5), 'String 1');
   assert.equal(tuningTargetLabel(bass, 0), 'String 4');
+  const ukulele = TUNING_PRESETS.find((p) => p.id === 'ukulele-high-g-standard');
+  const banjo = TUNING_PRESETS.find((p) => p.id === 'banjo-5-open-g');
+  const mandolin = TUNING_PRESETS.find((p) => p.id === 'mandolin-standard');
+  assert.ok(ukulele && banjo && mandolin);
+  assert.equal(tuningTargetLabel(ukulele, 0), 'String 4');
+  assert.equal(tuningTargetLabel(ukulele, 3), 'String 1');
+  assert.equal(tuningTargetLabel(banjo, 0), '5th string, short drone');
+  assert.equal(tuningTargetLabel(banjo, 4), 'String 1');
+  assert.deepEqual(unisonCourseMates(mandolin, 0), [0, 1]);
+  assert.deepEqual(unisonCourseMates(mandolin, 6), [6, 7]);
 });
 
 test('drop tunings really drop the sixth string a full step', () => {

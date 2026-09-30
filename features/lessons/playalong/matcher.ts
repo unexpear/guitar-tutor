@@ -69,7 +69,16 @@ export type DetectionMode = 'mono' | 'poly';
 
 export type Target =
   | { kind: 'note'; stringIndex: number; fret: number; label: string; beats?: number }
-  | { kind: 'chord'; chordName: string; label: string; strums?: number; beats?: number; capo?: number };
+  | {
+      kind: 'chord';
+      chordName: string;
+      label: string;
+      strums?: number;
+      beats?: number;
+      capo?: number;
+      /** Sounding MIDI of this voicing. When set, the guitar chord library is not used. */
+      soundingMidi?: readonly number[];
+    };
 
 export interface PitchSample {
   frequency: number;
@@ -364,7 +373,10 @@ export class TargetMatcher {
     this.chord = targetChord(target);
     // The displayed chord is a finger shape; scoring needs its sounding pitches.
     const capo = target.kind === 'chord' ? target.capo ?? 0 : 0;
-    this.chordMidis = this.chord ? chordMidiNotes(this.chord).map((midi) => midi + capo) : [];
+    const voiced = target.kind === 'chord' && target.soundingMidi?.length
+      ? [...target.soundingMidi]
+      : this.chord ? chordMidiNotes(this.chord).map((midi) => midi + capo) : [];
+    this.chordMidis = voiced;
     this.chordClasses = new Set(this.chordMidis.map(pitchClassOf));
     this.bassMidi = this.chordMidis.length ? Math.min(...this.chordMidis) : null;
     this.bassClass = this.bassMidi !== null ? pitchClassOf(this.bassMidi) : null;

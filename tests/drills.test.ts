@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { DRILLS, getDrill } from '../features/lessons/data/drills';
-import { getChord, OPEN_STRING_MIDI, stringFretToMidi } from '../features/chords/data/chords';
+import { DRILLS, getDrill, BASS_OPEN_MIDI } from '../features/lessons/data/drills';
+import { practicePitch, UKULELE_C_MIDI, tabRows, practiceAllowsOctaveUp } from '../features/lessons/data/practicePitch';
+import { TargetMatcher } from '../features/lessons/playalong/matcher';
+import { getChord, stringFretToMidi } from '../features/chords/data/chords';
 
 const drills = Object.values(DRILLS);
 
@@ -53,6 +55,10 @@ test('every chord target names a chord in the library', () => {
   for (const d of drills) {
     for (const t of d.targets) {
       if (t.kind !== 'chord') continue;
+      if (t.soundingMidi?.length) {
+        assert.ok(t.soundingMidi.length >= 2, `${d.lessonId}: ${t.chordName} has no sounding pitches`);
+        continue;
+      }
       assert.ok(
         getChord(t.chordName),
         `${d.lessonId}: chord "${t.chordName}" is not in the library`
@@ -65,8 +71,9 @@ test('every note target is on a real string at a playable fret', () => {
   for (const d of drills) {
     for (const t of d.targets) {
       if (t.kind !== 'note') continue;
+      const strings = practicePitch(d.instrument).openMidi.length;
       assert.ok(
-        t.stringIndex >= 0 && t.stringIndex < OPEN_STRING_MIDI.length,
+        t.stringIndex >= 0 && t.stringIndex < strings,
         `${d.lessonId}: string index ${t.stringIndex} does not exist`
       );
       assert.ok(
@@ -200,4 +207,34 @@ test('the first fretting drill asks for single notes a beginner can reach', () =
     assert.ok(t.stringIndex <= 1, 'stay on the two thickest strings');
     assert.ok(t.fret <= 3, `fret ${t.fret} is a stretch for a first lesson`);
   }
+});
+
+test('ukulele, mandolin, banjo, and bowed drills use their own open pitches', () => {
+  assert.deepEqual([...practicePitch('bass').openMidi], [...BASS_OPEN_MIDI]);
+  assert.equal(practicePitch('ukulele').openMidi[0], 67);
+  assert.equal(practicePitch('violin').openMidi[2], 69);
+  assert.equal(practicePitch('viola').openMidi[0], 48);
+  assert.equal(practicePitch('cello').openMidi[1], 43);
+  assert.equal(practicePitch('mandolin').openMidi[0], 55);
+  assert.equal(practicePitch('banjo').openMidi[0], 67);
+  const chord = getDrill('uke-two-chord-strum')?.targets[0];
+  assert.equal(chord?.kind, 'chord');
+  if (chord?.kind === 'chord') {
+    assert.deepEqual([...(chord.soundingMidi ?? [])], [...UKULELE_C_MIDI]);
+    const classes = new TargetMatcher(chord, { mode: 'poly' }).state().targetClasses;
+    assert.deepEqual(classes, [0, 4, 7]);
+  }
+  const openA = getDrill('violin-bow-open')?.targets[0];
+  assert.equal(openA?.kind, 'note');
+  if (openA?.kind === 'note') {
+    assert.equal(practicePitch('violin').openMidi[openA.stringIndex] + openA.fret, 69);
+  }
+  assert.equal(tabRows('ukulele')[0]?.label, 'G');
+  assert.equal(tabRows('banjo').at(-1)?.label, 'g');
+  assert.equal(tabRows('mandolin')[0]?.label, 'E');
+  assert.equal(tabRows('violin')[0]?.label, 'E');
+  assert.equal(practiceAllowsOctaveUp('violin'), false);
+  assert.equal(practiceAllowsOctaveUp('ukulele'), false);
+  assert.equal(practiceAllowsOctaveUp('cello'), true);
+  assert.equal(practiceAllowsOctaveUp('bass'), true);
 });

@@ -194,8 +194,19 @@ export function mapTunerReading(
       : nearestStringIndex(smoothHz, stringFrequencies, preferredStringIndex);
 
   const target = idx !== null ? stringFrequencies[idx] : 0;
+  // An octave "correction" is unsafe when that pitch is already another open
+  // string: banjo's short G is the octave of the low G, and ukulele high G is
+  // not a harmonic of C.
+  const rawIsAnotherString =
+    targetStringIndex !== null &&
+    stringFrequencies.some(
+      (other, index) =>
+        index !== targetStringIndex &&
+        other > 0 &&
+        Math.abs(centsBetween(smoothHz, other)) <= 45,
+    );
   const corrected =
-    target > 0 && targetStringIndex !== null
+    target > 0 && targetStringIndex !== null && !rawIsAnotherString
       ? correctSelectedStringHarmonic(smoothHz, target)
       : { frequency: smoothHz, ratio: 1 };
   const signed =

@@ -30,6 +30,7 @@ import { useGuitarSound } from '../../features/audio/hooks/useGuitarSound';
 import {
   findTuningPreset,
   tuningTargetLabel,
+  unisonCourseMates,
   TUNING_PRESETS,
   TuningPreset,
 } from '../../features/tuner/data/tunings';
@@ -47,6 +48,7 @@ import { usePracticeTimer } from '../../features/practice/usePracticeTimer';
 import { useMicReleaseOnLeave } from '../../features/audio/useMicReleaseOnLeave';
 import { useUserPreferencesStore } from '../../features/store/userPreferencesStore';
 import { useSettingsStore } from '../../features/store/settingsStore';
+import { headstockColumns, visualStringOrder } from '../../features/tuner/leftHandLayout';
 import { useTuningStore } from '../../features/store/tuningStore';
 import { guitarDesign } from '../../features/progression/guitarDesigns';
 import { guitarModel, selectedModelId } from '../../features/progression/guitarModels';
@@ -192,6 +194,7 @@ export default function TunerScreen() {
   const spokenFeedbackEnabled = useSettingsStore((s) => s.spokenFeedbackEnabled);
   const autoAdvanceStrings = useSettingsStore((s) => s.autoAdvanceStrings);
   const closeToleranceCents = useSettingsStore((s) => s.closeToleranceCents);
+  const leftHanded = useSettingsStore((s) => s.leftHanded);
   const [tuning, setTuning] = useState<TuningPreset>(
     () => customTunings.find((item) => item.id === alternateTuning) ?? findTuningPreset(alternateTuning, guitarType) ?? TUNING_PRESETS[0],
   );
@@ -583,50 +586,43 @@ export default function TunerScreen() {
           : tuning.strings.length === 0
           ? 'Chromatic mode · play one clear note at a time'
           : 'Tap a string to guide tuning'}
+        {tuning.reentrant ? ' · first string is not the lowest pitch' : ''}
+        {tuning.instrumentId === 'violin' || tuning.instrumentId === 'viola' || tuning.instrumentId === 'cello' || tuning.instrumentId === 'mandolin'
+          ? ' · neighbors are a fifth apart'
+          : ''}
+        {tuning.coursePairs?.some((pair) => unisonCourseMates(tuning, pair[0]).length > 1)
+          ? ' · tune each string of a unison pair on its own'
+          : ''}
       </Text>
       {usesGuitarHeadstock ? <View style={[styles.stringsArea, { minHeight: compactHeight ? 176 : 210 }]}>
         <Guitar3D
           design={{ ...selectedGuitarDesign, guitarType: activeModel?.guitarType ?? profile.headstock ?? 'acoustic' }}
           modelId={activeModelId!}
           highlightedString={aimedString ?? undefined}
+          mirrored={leftHanded}
         />
-        <View style={styles.stringColumn}>
-          {[0, 1, 2].map((i) => (
-            <StringChip
-              key={`left-${i}`}
-              index={i}
-              label={stringLabels[i]}
-              note={tuning.strings[i]}
-              positionLabel={tuningTargetLabel(tuning, i)}
-              size={circleSize}
-              selected={selectedString === i}
-              aimed={aimedString === i}
-              verdict={aimedString === i ? tuner.verdict : null}
-              tuned={tunedStrings.has(i)}
-              onPress={handleSelectString}
-            />
-          ))}
-        </View>
-
-        <View style={{ width: 128 }} pointerEvents="none" />
-
-        <View style={styles.stringColumn}>
-          {[3, 4, 5].map((i) => (
-            <StringChip
-              key={`right-${i}`}
-              index={i}
-              label={stringLabels[i]}
-              note={tuning.strings[i]}
-              positionLabel={tuningTargetLabel(tuning, i)}
-              size={circleSize}
-              selected={selectedString === i}
-              aimed={aimedString === i}
-              verdict={aimedString === i ? tuner.verdict : null}
-              tuned={tunedStrings.has(i)}
-              onPress={handleSelectString}
-            />
-          ))}
-        </View>
+        {headstockColumns(leftHanded).map((column, columnIndex) => (
+          <View key={columnIndex === 0 ? 'neck-side' : 'other-side'} style={styles.headstockSide}>
+            {columnIndex === 1 ? <View style={styles.headstockGap} pointerEvents="none" /> : null}
+            <View style={styles.stringColumn}>
+              {column.map((i) => (
+                <StringChip
+                  key={i}
+                  index={i}
+                  label={stringLabels[i]}
+                  note={tuning.strings[i]}
+                  positionLabel={tuningTargetLabel(tuning, i)}
+                  size={circleSize}
+                  selected={selectedString === i}
+                  aimed={aimedString === i}
+                  verdict={aimedString === i ? tuner.verdict : null}
+                  tuned={tunedStrings.has(i)}
+                  onPress={handleSelectString}
+                />
+              ))}
+            </View>
+          </View>
+        ))}
       </View> : tuning.strings.length > 0 && showStringControls ? (
         <View style={styles.dynamicInstrumentArea}>
           <View style={styles.genericNeck}>
@@ -634,7 +630,10 @@ export default function TunerScreen() {
             <Text style={styles.genericInstrumentName}>{profile.shortName}</Text>
           </View>
           <View style={styles.dynamicStringGrid}>
-            {tuning.strings.map((note, index) => (
+            {visualStringOrder(tuning.strings.length, leftHanded).map((index) => {
+              const note = tuning.strings[index];
+              const courseAimed = aimedString === index;
+              return (
               <View key={`${index}-${note}`} style={styles.dynamicStringItem}>
                 <StringChip
                   index={index}
@@ -643,14 +642,15 @@ export default function TunerScreen() {
                   positionLabel={tuningTargetLabel(tuning, index)}
                   size={circleSize}
                   selected={selectedString === index}
-                  aimed={aimedString === index}
-                  verdict={aimedString === index ? tuner.verdict : null}
+                  aimed={courseAimed}
+                  verdict={courseAimed ? tuner.verdict : null}
                   tuned={tunedStrings.has(index)}
                   onPress={handleSelectString}
                 />
                 <Text style={styles.stringOctave}>{note}</Text>
               </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       ) : tuning.strings.length === 0 ? (
@@ -900,6 +900,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     marginTop: 8,
+  },
+  headstockSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headstockGap: {
+    width: 128,
   },
   stringColumn: {
     justifyContent: 'space-evenly',

@@ -269,10 +269,30 @@ export function tuningTargetLabel(
     if (pairIndex >= 0) {
       const courseNumber = tuning.coursePairs.length - pairIndex;
       const partner = tuning.coursePairs[pairIndex][1] === targetIndex;
-      return `Course ${courseNumber}, ${partner ? 'paired' : 'main'} string`;
+      const [low, high] = tuning.coursePairs[pairIndex].map((index) => noteToFrequency(tuning.strings[index]));
+      const unison = low > 0 && high > 0 && Math.abs(1200 * Math.log2(high / low)) < 3;
+      return unison
+        ? `Course ${courseNumber}, ${partner ? 'second' : 'first'} string of the pair`
+        : `Course ${courseNumber}, ${partner ? 'octave' : 'main'} string`;
     }
   }
+  if (tuning.reentrant && tuning.instrumentId === 'ukulele-standard') {
+    return `String ${tuning.strings.length - targetIndex}`;
+  }
+  if (tuning.instrumentId === 'banjo-5') {
+    return targetIndex === 0 ? '5th string, short drone' : `String ${tuning.strings.length - targetIndex}`;
+  }
   return `String ${tuning.strings.length - targetIndex}`;
+}
+
+/** Unison course-mates share one pitch. Octave courses, such as a 12-string pair, do not. */
+export function unisonCourseMates(tuning: TuningPreset, index: number): number[] {
+  const pair = tuning.coursePairs?.find((item) => item.includes(index));
+  if (!pair) return [index];
+  const frequencies = pair.map((item) => noteToFrequency(tuning.strings[item]));
+  if (frequencies.some((frequency) => frequency <= 0)) return [index];
+  const cents = Math.abs(1200 * Math.log2(frequencies[1] / frequencies[0]));
+  return cents < 3 ? [...pair] : [index];
 }
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];

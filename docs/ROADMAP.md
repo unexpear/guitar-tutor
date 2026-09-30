@@ -47,6 +47,10 @@ The remaining work is teacher-observed bass playing, not more guitar charts labe
 **Effort:** large. **Value:** medium — the tuner is ready, but learning content
 needs its own product design and instrument-tested exercises.
 
+### 3. Lesson videos — later
+
+A short phone-shaped video of an existing lesson, using that lesson’s own words, captions, and original sound. The acoustic Guitar Anatomy trial was enough to revisit. The missing piece is hands on a real guitar. A diagram with a synthetic voice is not the lesson product, and the trial file was removed on purpose. Do not bundle a video or mention one in the Play listing until that is solved.
+
 ## Smaller cleanups
 
 All done: the dead 49-entry sample table, the unused lesson-navigation API,

@@ -14,7 +14,7 @@ test('every path has reachable, unique lessons with a task and readiness check',
   assert.equal(new Set(LESSONS.map(l => l.id)).size, LESSONS.length);
   for (const { value } of LEARNING_INSTRUMENTS) {
     const lessons = curriculumFor(value).flatMap(unit => unit.lessons);
-    assert.ok(lessons.length >= 10);
+    assert.ok(lessons.length >= (['acoustic', 'electric', 'classical', 'bass'].includes(value) ? 10 : 1), value);
     assert.equal(new Set(lessons.map(l => l.id)).size, lessons.length);
     assert.ok(tuningPresetById(learningTuningId(value)));
     for (const lesson of lessons) {
@@ -33,7 +33,9 @@ test('every path has reachable, unique lessons with a task and readiness check',
 test('bass uses only bass or shared music lessons and four-string note drills', () => {
   for (const { value } of LEARNING_INSTRUMENTS) {
     for (const lesson of curriculumFor(value).flatMap(unit => unit.lessons)) {
-      if (value !== 'bass') { assert.ok(!lesson.id.startsWith('bass-')); continue; }
+      const bassFamily = value === 'bass' || value === 'bass5' || value === 'bass6';
+      if (!bassFamily) { assert.ok(!lesson.id.startsWith('bass-')); continue; }
+      if (value !== 'bass') continue;
       assert.match(lesson.id, /^(bass|music)-/);
       assert.equal(lesson.component, undefined);
       const drill = DRILLS[lesson.id];
@@ -61,7 +63,7 @@ test('path progress carries shared foundations but not unrelated or obsolete les
   const saved = structuredClone(completed);
   assert.equal(curriculumProgress('bass', completed).completed, 2);
   assert.equal(curriculumProgress('acoustic', completed).completed, 1);
-  assert.equal(curriculumProgress('bass', completed).next?.id, 'bass-right-hand');
+  assert.equal(curriculumProgress('bass', completed).next?.id, 'bass-fingers-hearing');
   assert.deepEqual(completed, saved);
   const all = Object.fromEntries(curriculumFor('bass').flatMap(unit => unit.lessons.map(l => [l.id, { completed: true }])));
   assert.equal(curriculumProgress('bass', all).next, null);

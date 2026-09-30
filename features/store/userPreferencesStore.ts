@@ -47,7 +47,9 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       setGuitarType: (type: GuitarType) => set({ guitarType: type, learningInstrument: type }),
       setLearningInstrument: (instrument: LearningInstrument) => set({
         learningInstrument: instrument,
-        ...(instrument === 'bass' ? {} : { guitarType: instrument }),
+        ...((['acoustic', 'electric', 'classical'] as const).includes(instrument as 'acoustic')
+          ? { guitarType: instrument as GuitarType }
+          : {}),
       }),
       setExperienceLevel: (level: ExperienceLevel) => set({ experienceLevel: level }),
       setTuningPreference: (tuning: TuningPreference) => set({ tuningPreference: tuning }),

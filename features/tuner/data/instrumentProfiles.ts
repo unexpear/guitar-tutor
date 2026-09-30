@@ -263,9 +263,13 @@ export function guitarPracticeEngineOptions(referencePitchHz = 440): TunerConfig
   return lessonPracticeEngineOptions(referencePitchHz, false);
 }
 
-export function lessonPracticeEngineOptions(referencePitchHz = 440, bass = false): TunerConfig {
+export function lessonPracticeEngineOptions(
+  referencePitchHz = 440,
+  bassOrProfile: boolean | InstrumentId = false,
+): TunerConfig {
+  const profileId = bassOrProfile === true ? 'bass-4' : bassOrProfile === false ? 'guitar-acoustic' : bassOrProfile;
   return {
-    ...instrumentProfile(bass ? 'bass-4' : 'guitar-acoustic').engine,
+    ...instrumentProfile(profileId).engine,
     a4: referencePitchHz,
     confidenceThreshold: 0.5,
     noiseGateDb: -52,

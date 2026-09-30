@@ -79,6 +79,8 @@ const LESSON_ICONS: Record<string, MCIName> = {
   'bass-reading-music': 'music-clef-bass',
   'bass-quarter-roots': 'metronome',
   'bass-box-shapes': 'music-note-plus',
+  'acoustic-pick-pulse': 'guitar-pick',
+  'acoustic-three-chord-loop': 'guitar-pick',
 };
 
 const FALLBACK_ICON: MCIName = 'music-note';

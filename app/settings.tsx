@@ -638,7 +638,8 @@ export default function SettingsScreen() {
         </SectionCard>
 
         <SectionCard title="Appearance">
-          <SettingRow label="Left-handed diagrams" right={<CustomSwitch value={leftHanded} onValueChange={setLeftHanded} accessibilityLabel="Toggle left-handed chord diagrams" />} />
+          <SettingRow label="Left-handed" right={<CustomSwitch value={leftHanded} onValueChange={setLeftHanded} accessibilityLabel="Toggle left-handed layout" />} />
+          <Text style={styles.hint}>Flips chord diagrams and which side the tuner strings sit on.</Text>
           {settingsMode === 'advanced' && (
             <>
               {/* There is only a dark palette, so this reports the theme rather

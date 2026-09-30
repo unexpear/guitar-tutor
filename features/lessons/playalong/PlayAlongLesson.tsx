@@ -16,7 +16,7 @@ import ChordDiagram from '../../../components/ChordDiagram';
 import PressableScale from '../../../components/PressableScale';
 import { getChord, NOTE_NAMES } from '../../chords/data/chords';
 import { useSettingsStore } from '../../store/settingsStore';
-import { Drill, BASS_OPEN_MIDI } from '../data/drills';
+import { Drill } from '../data/drills';
 import { TargetMatcher, Target, DetectionMode } from './matcher';
 import { practiceScore, targetDurationMs } from './timing';
 import { createBeatClock, BeatClock, gradeTiming, TimingVerdict } from '../../timing/beatClock';
@@ -25,6 +25,7 @@ import { usePracticeTimer } from '../../practice/usePracticeTimer';
 import { useProgressStore } from '../../store/progressStore';
 import { useMicReleaseOnLeave } from '../../audio/useMicReleaseOnLeave';
 import { lessonPracticeEngineOptions } from '../../tuner/data/instrumentProfiles';
+import { practicePitch, tabRows, fretsFromSounding, practiceAllowsOctaveUp } from '../data/practicePitch';
 
 const ACCENT_CLICK = require('../../../assets/audio/click-accent.wav');
 const REGULAR_CLICK = require('../../../assets/audio/click.wav');
@@ -68,18 +69,15 @@ export function coachingMessage({
   return 'Good progress. Repeat once at the same speed; consistency matters more than a single high score.';
 }
 
-/** Tab-convention string labels, top row = high e. */
-const TAB_ROWS = ['e', 'B', 'G', 'D', 'A', 'E']; // display order (stringIndex 5 -> 0)
-
-function TabStrip({ target, bass }: { target: Extract<Target, { kind: 'note' }>; bass: boolean }) {
-  const rows = bass ? ['G', 'D', 'A', 'E'] : TAB_ROWS;
+/** Tab labels for this instrument. Top row is the usual tab top, not always the highest pitch. */
+function TabStrip({ target, instrument }: { target: Extract<Target, { kind: 'note' }>; instrument?: Drill['instrument'] }) {
+  const rows = tabRows(instrument);
   return (
     <View style={styles.tabStrip}>
-      {rows.map((label, row) => {
-        const stringIndex = rows.length - 1 - row;
+      {rows.map(({ label, stringIndex }) => {
         const active = stringIndex === target.stringIndex;
         return (
-          <View key={label} style={styles.tabRow}>
+          <View key={`${label}-${stringIndex}`} style={styles.tabRow}>
             <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
             <View style={styles.tabLineWrap}>
               <View style={[styles.tabLine, active && styles.tabLineActive]} />
@@ -176,9 +174,10 @@ export default function PlayAlongLesson({
   onFinish?: (scorePercent: number) => void;
 }) {
   const referencePitchHz = useSettingsStore((state) => state.referencePitchHz);
+  const pitch = useMemo(() => practicePitch(drill.instrument), [drill.instrument]);
   const engineOptions = useMemo(
-    () => lessonPracticeEngineOptions(referencePitchHz, drill.instrument === 'bass'),
-    [referencePitchHz, drill.instrument],
+    () => lessonPracticeEngineOptions(referencePitchHz, pitch.profileId),
+    [referencePitchHz, pitch.profileId],
   );
   const engine = useTunerEngine(engineOptions);
   const { start, stop, latest, isRunning, error } = engine;
@@ -244,7 +243,10 @@ export default function PlayAlongLesson({
     matcherRef.current = new TargetMatcher(target, {
       mode,
       referencePitchHz,
-      openStringMidi: drill.instrument === 'bass' ? BASS_OPEN_MIDI : undefined,
+      openStringMidi: pitch.openMidi,
+      allowOctaveUp: practiceAllowsOctaveUp(drill.instrument),
+      requireBassClass: drill.instrument !== 'ukulele',
+      polyMinClasses: drill.instrument === 'ukulele' ? 2 : 3,
     });
     matcherRef.current.reset();
     setHeardState({
@@ -253,7 +255,7 @@ export default function PlayAlongLesson({
     });
     setStrumsLeft(target.kind === 'chord' ? target.strums ?? 1 : 1);
     setAttemptFeedback('idle');
-  }, [drill, idx, mode, finished, referencePitchHz]);
+  }, [drill, idx, mode, finished, referencePitchHz, pitch.openMidi]);
 
   // Engine lifecycle.
   useEffect(() => {
@@ -720,7 +722,17 @@ export default function PlayAlongLesson({
                         : 'Play this'}
               </Text>
               <View style={styles.targetBody}>
-                {target?.kind === 'chord' && targetChordData ? (
+                {target?.kind === 'chord' && target.soundingMidi?.length ? (
+                  <>
+                    <Text style={styles.targetName}>{target.label}</Text>
+                    <Text style={styles.strumCount}>Pitch of this voicing. A guitar shape does not count.</Text>
+                    {fretsFromSounding(pitch.openMidi, target.soundingMidi).map((fret, stringIndex) => (
+                      <Text key={`${target.label}-${stringIndex}`} style={styles.targetName}>
+                        {pitch.labels[stringIndex]} {fret === null ? '·' : fret === 0 ? 'open' : `fret ${fret}`}
+                      </Text>
+                    ))}
+                  </>
+                ) : target?.kind === 'chord' && targetChordData ? (
                   <>
                     <Text style={styles.targetName}>{target.chordName}</Text>
                     {(target.strums ?? 1) > 1 && (
@@ -733,10 +745,10 @@ export default function PlayAlongLesson({
                 ) : target?.kind === 'note' ? (
                   <>
                     <Text style={styles.targetName}>
-                      {TAB_ROWS[5 - target.stringIndex]} string ·{' '}
+                      {pitch.labels[target.stringIndex] ?? 'string'} ·{' '}
                       {target.fret === 0 ? 'open' : `fret ${target.fret}`}
                     </Text>
-                    <TabStrip target={target} bass={drill.instrument === 'bass'} />
+                    <TabStrip target={target} instrument={drill.instrument} />
                   </>
                 ) : null}
               </View>

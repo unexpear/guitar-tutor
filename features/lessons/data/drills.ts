@@ -1,8 +1,9 @@
 import { Target, DetectionMode } from '../playalong/matcher';
+import { UKULELE_C_MIDI, UKULELE_G7_MIDI, type PracticeInstrument } from './practicePitch';
 
 export interface Drill {
   /** Omitted means the existing standard six-string guitar practice. */
-  instrument?: 'bass';
+  instrument?: 'bass' | PracticeInstrument;
   /** Lesson this drill belongs to. */
   lessonId: string;
   title: string;
@@ -36,6 +37,128 @@ const chord = (chordName: string, strums = 1): Target => ({
 });
 
 export const DRILLS: Record<string, Drill> = {
+  'acoustic-pick-pulse': {
+    lessonId: 'acoustic-pick-pulse', title: 'Em, One String at a Time',
+    intro: 'Hold Em. The four downstrokes are your own count. This drill checks each sounding string once, because a ringing chord would satisfy the next identical target.',
+    targets: [note(0, 0, 'low E'), note(1, 2, 'A fret 2'), note(2, 2, 'D fret 2'), note(3, 0, 'G'), note(4, 0, 'B'), note(5, 0, 'high e')],
+    defaultMode: 'mono', secondsPerTarget: 8,
+  },
+  'acoustic-three-chord-loop': {
+    lessonId: 'acoustic-three-chord-loop', title: 'G C D Loop',
+    intro: 'Form each open chord, then one pick downstroke per target. This is an original practice loop, not a song arrangement.',
+    targets: [chord('G'), chord('C'), chord('D'), chord('G'), chord('C'), chord('D'), chord('G')],
+    defaultMode: 'poly', secondsPerTarget: 10,
+  },
+  'electric-fret-mute': {
+    lessonId: 'electric-fret-mute', title: 'Root and Fifth, Neighbours Quiet',
+    intro: 'Play each labeled note alone. Keep unused strings quiet with the fretting hand. The app hears pitch, not mute quality.',
+    targets: [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(0, 5, 'A root'), note(1, 7, 'E fifth'), note(0, 3, 'G root again')],
+    defaultMode: 'mono', secondsPerTarget: 8,
+  },
+  'electric-palm-mute': {
+    lessonId: 'electric-palm-mute', title: 'Short Then Ringing',
+    intro: 'Same root-and-fifth frets. Try a short palm-muted attack, then a ringing one. Pitch detection cannot score mute depth.',
+    targets: [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(0, 5, 'A root'), note(1, 7, 'E fifth')],
+    defaultMode: 'mono', secondsPerTarget: 8,
+  },
+  'classical-rest-stroke': {
+    lessonId: 'classical-rest-stroke', title: 'Open Treble Rest Stroke',
+    intro: 'Pluck each open treble string and land on the next thicker string. The app checks pitch, not which finger you used.',
+    targets: [note(3, 0, 'G open'), note(4, 0, 'B open'), note(5, 0, 'e open'), note(4, 0, 'B again'), note(3, 0, 'G again')],
+    defaultMode: 'mono', secondsPerTarget: 8,
+  },
+  'classical-treble-melody': {
+    lessonId: 'classical-treble-melody', title: 'Terrace Phrase',
+    intro: 'An original eight-note phrase on G, B and high e, frets 0–3. Not a folk tune. Follow Me waits.',
+    targets: [note(3, 0, 'G open'), note(3, 2, 'G fret 2'), note(4, 0, 'B open'), note(4, 1, 'B fret 1'), note(5, 0, 'e open'), note(5, 3, 'e fret 3'), note(4, 0, 'B return'), note(3, 0, 'G return')],
+    defaultMode: 'mono', secondsPerTarget: 8,
+  },
+  'uke-two-chord-strum': {
+    lessonId: 'uke-two-chord-strum',
+    title: 'Ukulele C and G7',
+    instrument: 'ukulele',
+    intro: 'Strum high-G ukulele C, then G7. The check listens for those sounding pitches. It does not judge strum size or whether you used a guitar shape.',
+    targets: [
+      { kind: 'chord', chordName: 'Ukulele C', label: 'C', soundingMidi: UKULELE_C_MIDI },
+      { kind: 'chord', chordName: 'Ukulele G7', label: 'G7', soundingMidi: UKULELE_G7_MIDI },
+      { kind: 'chord', chordName: 'Ukulele C', label: 'C again', soundingMidi: UKULELE_C_MIDI },
+      { kind: 'chord', chordName: 'Ukulele G7', label: 'G7 again', soundingMidi: UKULELE_G7_MIDI },
+    ],
+    defaultMode: 'poly',
+    secondsPerTarget: 8,
+  },
+  'uke-open-pluck': {
+    lessonId: 'uke-open-pluck',
+    title: 'Open G C E A',
+    instrument: 'ukulele',
+    intro: 'Pluck the open ukulele strings in this order. Pitch only. High G is the string nearest you, not a low guitar string.',
+    targets: [note(0, 0, 'G'), note(1, 0, 'C'), note(2, 0, 'E'), note(3, 0, 'A'), note(2, 0, 'E return'), note(1, 0, 'C return'), note(0, 0, 'G return'), note(3, 0, 'A end')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
+  'mandolin-clean-course': {
+    lessonId: 'mandolin-clean-course',
+    title: 'Open G and D courses',
+    instrument: 'mandolin',
+    intro: 'One pitch stands for both strings of a course. The check cannot tell whether you struck one string or the pair. Listen for the pair yourself.',
+    targets: [note(0, 0, 'G course'), note(1, 0, 'D course'), note(0, 0, 'G again'), note(1, 0, 'D again')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
+  'mandolin-open-fifth': {
+    lessonId: 'mandolin-open-fifth',
+    title: 'G to D, then a fret',
+    instrument: 'mandolin',
+    intro: 'Open G then open D is a fifth. Then fret the D course at fret 2. Guitar fourths shapes are the wrong map.',
+    targets: [note(0, 0, 'G'), note(1, 0, 'D'), note(1, 2, 'D fret 2'), note(2, 0, 'A')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
+  'banjo-eight-forward': {
+    lessonId: 'banjo-eight-forward',
+    title: 'Eight open pitches',
+    instrument: 'banjo',
+    intro: 'These are the pitches of an original slow roll. The check hears pitch only. It does not know whether you used thumb, index, or middle, and it is not clawhammer.',
+    targets: [note(1, 0, 'D'), note(2, 0, 'G'), note(3, 0, 'B'), note(4, 0, 'd'), note(2, 0, 'G again'), note(3, 0, 'B again'), note(0, 0, 'short g'), note(4, 0, 'd end')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
+  'violin-bow-open': {
+    lessonId: 'violin-bow-open',
+    title: 'Open A and D',
+    instrument: 'violin',
+    intro: 'Bow open A, then open D. A sustained bow on one pitch cannot be scored as four separate quarters, so those repeats stay in your own count. Bow direction is not graded.',
+    targets: [note(2, 0, 'A'), note(1, 0, 'D'), note(2, 0, 'A again'), note(3, 0, 'E')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
+  'violin-open-listen': {
+    lessonId: 'violin-open-listen',
+    title: 'In-tune open strings',
+    instrument: 'violin',
+    intro: 'Play each open string close enough for the pitch check. The tuner screen still shows sharp or flat. This does not grade fingered notes or the bow.',
+    targets: [note(0, 0, 'G'), note(1, 0, 'D'), note(2, 0, 'A'), note(3, 0, 'E')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
+  'viola-bow-open-cg': {
+    lessonId: 'viola-bow-open-cg',
+    title: 'Open C and G',
+    instrument: 'viola',
+    intro: 'Bow open C, then open G. Pitch only. Bow direction and tone are for you to judge. These are not violin strings.',
+    targets: [note(0, 0, 'C'), note(1, 0, 'G'), note(0, 0, 'C again'), note(2, 0, 'D')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
+  'cello-bow-open-gd': {
+    lessonId: 'cello-bow-open-gd',
+    title: 'Open G and D',
+    instrument: 'cello',
+    intro: 'Bow open G, then open D, with separate bows. The check hears pitch. It does not grade the bow hold or thumb position.',
+    targets: [note(1, 0, 'G'), note(2, 0, 'D'), note(1, 0, 'G again'), note(0, 0, 'C')],
+    defaultMode: 'mono',
+    secondsPerTarget: 8,
+  },
   'beginner-two-chords': {
     lessonId: 'beginner-two-chords', title: 'Em and Am, Slowly',
     intro: 'Form Em, then Am, with no countdown in Follow Me. Check each string yourself too: chord-tone evidence is useful feedback, not proof of fingering or every string.',
@@ -318,7 +441,9 @@ Object.assign(DRILLS, {
   'bass-fretboard': bassDrill('bass-fretboard', 'Find Bass Octaves', [note(0, 0, 'E1'), note(2, 2, 'E2'), note(1, 0, 'A1'), note(3, 2, 'A2')]),
   'bass-roots-fifths': bassDrill('bass-roots-fifths', 'Root and Fifth', [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(0, 3, 'G root'), note(0, 5, 'A root'), note(1, 7, 'E fifth'), note(0, 5, 'A root')]),
   'bass-quarter-roots': bassDrill('bass-quarter-roots', 'G, C, D, G', [note(0, 3, 'G'), note(1, 3, 'C'), note(1, 5, 'D'), note(0, 3, 'G')]),
-  'bass-box-shapes': bassDrill('bass-box-shapes', 'Two Bass Boxes', [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(2, 5, 'G octave'), note(0, 3, 'G root'), note(1, 3, 'C root'), note(2, 5, 'G fifth'), note(3, 5, 'C octave'), note(1, 3, 'C root')]),
+  'bass-box-shapes': bassDrill('bass-box-shapes', 'Two Bass Boxes', [note(0, 3, 'G root'), note(1, 5, 'D fifth'), note(2, 5, 'G octave'), note(0, 3, 'G return'), note(1, 3, 'C root'), note(2, 5, 'G fifth'), note(3, 5, 'C octave'), note(1, 3, 'C return')]),
+  'bass-fingers-hearing': bassDrill('bass-fingers-hearing', 'Open E and A, Soft Attack', [note(0, 0, 'E open'), note(1, 0, 'A open'), note(0, 0, 'E again'), note(1, 0, 'A again')]),
+  'bass-roots-form-a': bassDrill('bass-roots-form-a', 'Roots in A', [note(1, 0, 'A bar 1'), note(0, 0, 'E bar 2'), note(1, 0, 'A bar 3'), note(0, 0, 'E bar 4'), note(1, 5, 'D bar 5'), note(1, 0, 'A bar 6'), note(0, 0, 'E bar 7'), note(1, 0, 'A bar 8'), note(0, 0, 'E bar 10'), note(1, 5, 'D bar 11'), note(1, 0, 'A bar 12')]),
 });
 
 export function getDrill(lessonId: string): Drill | undefined {
